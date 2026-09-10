@@ -4,14 +4,6 @@ description: 把用户与 AI 的对话内容沉淀为结构化的、可检索、
 name_cn: 智识沉淀
 description_cn: 把对话沉淀为可检索、可关联、可长期复用的知识库笔记（Obsidian/普通Markdown），保留细节、按分类归档、自动维护索引。
 create_source: super-agent-skill-creator
-AIGC:
-  ContentProducer: '001191110102MAD55U9H0F10002'
-  ContentPropagator: '001191110102MAD55U9H0F10002'
-  Label: '1'
-  ProduceID: '07717751-ceed-4df6-9a73-beb47a987f48'
-  PropagateID: '07717751-ceed-4df6-9a73-beb47a987f48'
-  ReservedCode1: '3e730745-6dd6-4054-9589-3bd16cda321e'
-  ReservedCode2: '3e730745-6dd6-4054-9589-3bd16cda321e'
 ---
 
 # 智识沉淀（对话总结为笔记）

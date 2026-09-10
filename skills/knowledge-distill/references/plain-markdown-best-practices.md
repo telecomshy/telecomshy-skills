@@ -1,14 +1,3 @@
----
-AIGC:
-  ContentProducer: '001191110102MAD55U9H0F10002'
-  ContentPropagator: '001191110102MAD55U9H0F10002'
-  Label: '1'
-  ProduceID: '6f807e81-26b6-4dda-a9b7-92a7c6f2fea1'
-  PropagateID: '6f807e81-26b6-4dda-a9b7-92a7c6f2fea1'
-  ReservedCode1: '61e79dc8-288c-43ab-9ad0-8e8dd22c22b3'
-  ReservedCode2: '61e79dc8-288c-43ab-9ad0-8e8dd22c22b3'
----
-
 # 普通 Markdown 笔记最佳实践（智识沉淀专用）
 
 本参考文件用于指导生成**普通 Markdown**（非 Obsidian）格式的笔记。仅当保存格式为普通 Markdown 时查阅。
@@ -108,5 +97,3 @@ AIGC:
 ---
 
 > 与 Obsidian 格式的取舍：普通 Markdown 牺牲了反链自动化与丰富语法，换来跨工具通用性。若你后来改用 Obsidian，只需通过「修改智识沉淀设置」切换格式，笔记正文内容无需重写（仅链接写法与索引会按新格式生成）。
-
-> AI生成
