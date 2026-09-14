@@ -71,6 +71,17 @@ _BACKUP_KEEP = 10
 _QUESTION_LINK_SEP = "、"
 _QUESTION_LINK_WARN_THRESHOLD = 3
 
+# 笔记间「疑似重复 / 可合并」候选检测（确定性、零依赖）。
+# 只用结构化信号 + 已有的双链图谱，不引入向量 / 语义检索（与设计边界一致）。
+# 权重把不同信号折算到同一分值；达到阈值才作为候选上报，仅报告、不改文件。
+_SIMILAR_TAG_WEIGHT = 3.0        # tags Jaccard 重叠
+_SIMILAR_TITLE_WEIGHT = 2.0      # 标题 / 别名 词元 Jaccard
+_SIMILAR_LINK_WEIGHT = 2.0       # 图谱邻接：共享出链，或同列于一条「已收录疑问」
+_SIMILAR_CATEGORY_WEIGHT = 0.5   # 同分类（弱信号）
+_SIMILAR_THRESHOLD = 2.0         # 达到该分才作为候选
+_SIMILAR_MAX_PAIRS = 50          # 最多返回的候选对数
+_SIMILAR_PER_NOTE = 5            # 每篇笔记最多参与几个候选对（保留高分）
+
 # 分类索引模板：脚本新建索引时按模板渲染，保证与 SKILL.md 走模板路径的产出结构一致
 # （含 frontmatter、"笔记导航"、"已收录疑问" 三个部分，避免两条路径产出不一致）
 INDEX_TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "assets" / "分类索引模板.md"
@@ -241,7 +252,7 @@ def discover_vaults():
         if not candidate.exists():
             continue
         try:
-            data = json.loads(candidate.read_text(encoding="utf-8"))
+            data = json.loads(candidate.read_text(encoding="utf-8-sig"))
         except (json.JSONDecodeError, OSError):
             continue
         vault_list = data.get("vaults", {})
@@ -297,7 +308,7 @@ def list_index(category_dir):
     if not index_file.exists():
         return {"exists": False, "index_file": str(index_file), "content": ""}
     return {"exists": True, "index_file": str(index_file),
-            "content": index_file.read_text(encoding="utf-8")}
+            "content": index_file.read_text(encoding="utf-8-sig")}
 
 
 def list_questions(category_dir):
@@ -317,7 +328,7 @@ def list_questions(category_dir):
     if not index_file.exists():
         return {"ok": True, "exists": False, "index_file": str(index_file),
                 "count": 0, "questions": []}
-    items = _parse_index_questions(index_file.read_text(encoding="utf-8"))
+    items = _parse_index_questions(index_file.read_text(encoding="utf-8-sig"))
     return {"ok": True, "exists": True, "index_file": str(index_file),
             "count": len(items), "questions": items}
 
@@ -392,7 +403,7 @@ def search_notes(note_root, query, category=None, use_regex=False, max_snippets=
             if note.name.casefold() == DEFAULT_INDEX_FILE.casefold():
                 continue  # 索引文件不是知识笔记，不参与检索
             try:
-                text = note.read_text(encoding="utf-8", errors="replace")
+                text = note.read_text(encoding="utf-8-sig", errors="replace")
             except OSError:
                 continue
 
@@ -400,12 +411,18 @@ def search_notes(note_root, query, category=None, use_regex=False, max_snippets=
             if not matched:
                 continue
 
+            fm_text, _ = _split_frontmatter(text)
+            title_hit = bool(pattern.search(note.stem))
+            date = _frontmatter_date(fm_text)
+
             if full:
                 # 全文模式：命中即返回整篇正文，供带引用作答；不做片段截取
                 hits.append({
                     "category": cat_dir.name,
                     "note": note.name,
                     "path": str(note),
+                    "title_hit": title_hit,
+                    "date": date,
                     "count": len(pattern.findall(text)),
                     "content": text,
                     "snippets": [],
@@ -430,9 +447,15 @@ def search_notes(note_root, query, category=None, use_regex=False, max_snippets=
                     "category": cat_dir.name,
                     "note": note.name,
                     "path": str(note),
+                    "title_hit": title_hit,
+                    "date": date,
                     "count": len(pattern.findall(text)),
                     "snippets": snippets,
                 })
+
+    # 确定性排序（不上向量）：标题命中优先 → 命中次数多 → 日期新（updated/created）→ 文件名
+    hits.sort(key=lambda h: h["note"].casefold())
+    hits.sort(key=lambda h: (h["title_hit"], h["count"], h["date"]), reverse=True)
 
     return {"ok": True, "query": query, "use_regex": use_regex, "full": full,
             "matched_notes": len(hits), "hits": hits}
@@ -487,7 +510,7 @@ def _render_index_template(category_name):
     """
     template = ""
     try:
-        template = INDEX_TEMPLATE_PATH.read_text(encoding="utf-8")
+        template = INDEX_TEMPLATE_PATH.read_text(encoding="utf-8-sig")
     except OSError:
         template = _INDEX_FALLBACK_TEMPLATE
     content = _strip_aigc_frontmatter_block(template)
@@ -520,7 +543,7 @@ def append_index_entry(category_dir, title, summary, fmt=None):
     if created:
         index_file.write_text(_render_index_template(cat.name), encoding="utf-8")
 
-    text = index_file.read_text(encoding="utf-8")
+    text = index_file.read_text(encoding="utf-8-sig")
     lines = text.splitlines()
 
     # 已存在同名条目 -> 更新摘要
@@ -591,7 +614,7 @@ def append_index_question(category_dir, question, note_title, fmt=None):
     if not index_file.exists():
         index_file.write_text(_render_index_template(cat.name), encoding="utf-8")
 
-    text = index_file.read_text(encoding="utf-8")
+    text = index_file.read_text(encoding="utf-8-sig")
     lines = text.splitlines()
 
     # 已存在同一疑问 -> 合并链接：保留已有片段原样、按需追加新链接，不覆盖、不重复
@@ -976,7 +999,7 @@ def write_note(note_path, content, backup=True):
     existed = target.exists()
     if existed:
         try:
-            old_text = target.read_text(encoding="utf-8", errors="replace")
+            old_text = target.read_text(encoding="utf-8-sig", errors="replace")
         except OSError as e:
             return {"ok": False, "error": f"读取原文件失败: {e}"}
         if old_text == new_text:
@@ -1008,6 +1031,133 @@ def write_note(note_path, content, backup=True):
             "path": str(target),
             "backup": str(backup_path) if backup_path else None,
             "bytes": len(new_text.encode("utf-8"))}
+
+
+def find_similar_notes(note_root, threshold=_SIMILAR_THRESHOLD,
+                       max_pairs=_SIMILAR_MAX_PAIRS, per_note=_SIMILAR_PER_NOTE):
+    """确定性检测「疑似重复 / 可合并」的笔记候选对（只报告，不改文件）。
+
+    信号（全部确定性、零依赖，不做向量 / 语义检索）：
+    - tags 重叠（Jaccard）；
+    - 标题 + aliases 的词元重叠（中文二元组近似）；
+    - 图谱邻接：共享出链目标，或同列于一条索引「已收录疑问」下；
+    - 同分类（弱信号）。
+
+    候选对按加权分排序，阈值以上才上报，并给出命中依据（reasons）供人工判断。
+    只提示候选，是否合并由用户决定。
+    """
+    root = Path(note_root)
+    if not root.is_dir():
+        return {"ok": False, "error": f"笔记根目录不存在: {root}"}
+
+    notes = []
+    tag_index, term_index, link_index, question_index = {}, {}, {}, {}
+    by_cat_stem = {}
+
+    def _add(index, key, nid):
+        if key:
+            index.setdefault(key, set()).add(nid)
+
+    cat_dirs = sorted(d for d in root.iterdir() if d.is_dir())
+    for cat_dir in cat_dirs:
+        for p in sorted(cat_dir.iterdir()):
+            if not p.is_file() or p.suffix.lower() not in NOTE_SUFFIXES:
+                continue
+            if p.name.casefold() == DEFAULT_INDEX_FILE.casefold():
+                continue
+            try:
+                text = p.read_text(encoding="utf-8-sig", errors="replace")
+            except OSError:
+                continue
+            fm_text, _body = _split_frontmatter(text)
+            tags = {t.strip().casefold() for t in _frontmatter_tags(fm_text) if t.strip()}
+            aliases = _frontmatter_aliases(fm_text)
+            title_terms = _terms(p.stem) | _terms(" ".join(aliases))
+            outlinks = {_link_basename(t).casefold() for t in _extract_links(text) if _link_basename(t)}
+            nid = len(notes)
+            notes.append({"id": nid, "name": p.name, "stem": p.stem,
+                          "category": cat_dir.name, "path": str(p),
+                          "tags": tags, "title_terms": title_terms, "outlinks": outlinks})
+            by_cat_stem[(cat_dir.name, p.stem.casefold())] = nid
+            for t in tags:
+                _add(tag_index, t, nid)
+            for t in title_terms:
+                _add(term_index, t, nid)
+            for t in outlinks:
+                _add(link_index, t, nid)
+
+        # 同列于一条疑问：从该分类索引的「已收录疑问」读取
+        index_file = cat_dir / DEFAULT_INDEX_FILE
+        if not index_file.exists():
+            continue
+        try:
+            idx_text = index_file.read_text(encoding="utf-8-sig", errors="replace")
+        except OSError:
+            continue
+        for item in _parse_index_questions(idx_text):
+            q = (item.get("question") or "").strip().casefold()
+            if not q:
+                continue
+            ids = [by_cat_stem.get((cat_dir.name, _link_basename(t).casefold()))
+                   for t in item.get("links", [])]
+            for nid in [x for x in ids if x is not None]:
+                _add(question_index, q, nid)
+
+    # 候选对：只比较共享某个索引键的笔记，避免 O(n²) 全量两两比
+    pair_ids = set()
+    for index in (tag_index, term_index, link_index, question_index):
+        for members in index.values():
+            m = sorted(members)
+            for i in range(len(m)):
+                for j in range(i + 1, len(m)):
+                    pair_ids.add((m[i], m[j]))
+
+    pairs = []
+    for a, b in pair_ids:
+        na, nb = notes[a], notes[b]
+        score = 0.0
+        reasons = []
+        tag_j = _jaccard(na["tags"], nb["tags"])
+        if tag_j:
+            score += _SIMILAR_TAG_WEIGHT * tag_j
+            reasons.append("标签重叠：" + "、".join(sorted(na["tags"] & nb["tags"])))
+        title_j = _jaccard(na["title_terms"], nb["title_terms"])
+        if title_j:
+            score += _SIMILAR_TITLE_WEIGHT * title_j
+            reasons.append("标题 / 别名相似")
+        link_j = _jaccard(na["outlinks"], nb["outlinks"])
+        if link_j:
+            score += _SIMILAR_LINK_WEIGHT * link_j
+            reasons.append("共同链接到：" + "、".join(sorted(na["outlinks"] & nb["outlinks"])))
+        shared_q = {q for q, ids in question_index.items() if a in ids and b in ids}
+        if shared_q:
+            score += _SIMILAR_LINK_WEIGHT
+            reasons.append("同列于疑问：" + "、".join(sorted(shared_q)))
+        if na["category"] == nb["category"]:
+            score += _SIMILAR_CATEGORY_WEIGHT
+        if score >= threshold:
+            pairs.append({
+                "a": na["stem"], "b": nb["stem"],
+                "category_a": na["category"], "category_b": nb["category"],
+                "path_a": na["path"], "path_b": nb["path"],
+                "score": round(score, 2), "reasons": reasons,
+            })
+
+    pairs.sort(key=lambda x: (-x["score"], x["path_a"], x["path_b"]))
+    if per_note and per_note > 0:  # 每篇最多参与 per_note 个候选对，保留高分
+        kept, count = [], {}
+        for pair in pairs:
+            if count.get(pair["path_a"], 0) >= per_note or count.get(pair["path_b"], 0) >= per_note:
+                continue
+            kept.append(pair)
+            count[pair["path_a"]] = count.get(pair["path_a"], 0) + 1
+            count[pair["path_b"]] = count.get(pair["path_b"], 0) + 1
+        pairs = kept
+    if max_pairs and max_pairs > 0:
+        pairs = pairs[:max_pairs]
+
+    return {"ok": True, "note_root": str(root), "threshold": threshold,
+            "count": len(pairs), "pairs": pairs}
 
 
 def lint_notes(note_root):
@@ -1048,7 +1198,7 @@ def lint_notes(note_root):
                  if p.is_file() and p.suffix.lower() in NOTE_SUFFIXES
                  and p.name.casefold() != DEFAULT_INDEX_FILE.casefold()]
         index_file = entry / DEFAULT_INDEX_FILE
-        index_text = index_file.read_text(encoding="utf-8", errors="replace") if index_file.exists() else ""
+        index_text = index_file.read_text(encoding="utf-8-sig", errors="replace") if index_file.exists() else ""
         entries = _parse_index_entries(index_text)
         categories.append({
             "dir": entry,
@@ -1109,7 +1259,7 @@ def lint_notes(note_root):
                 unindexed_notes.append({"category": cat_name, "note": note.name,
                                         "path": str(note), "has_index": cat["has_index"]})
             try:
-                text = note.read_text(encoding="utf-8", errors="replace")
+                text = note.read_text(encoding="utf-8-sig", errors="replace")
             except OSError:
                 continue
 
@@ -1165,6 +1315,9 @@ def lint_notes(note_root):
                         + len(question_orphans))
     content_issues = (len(missing_frontmatter) + len(empty_sections)
                       + len(stale_index))
+    # 合并候选为**参考信息**，不计入 issues（确定性信号会有误报，是否合并由用户判断）
+    similar = find_similar_notes(root)
+    similar_pairs = similar.get("pairs", []) if similar.get("ok") else []
     return {
         "ok": True,
         "note_root": str(root),
@@ -1174,6 +1327,7 @@ def lint_notes(note_root):
             "issues": structure_issues + content_issues,
             "structure_issues": structure_issues,
             "content_issues": content_issues,
+            "similar_notes": len(similar_pairs),
         },
         "index_orphans": index_orphans,
         "question_orphans": question_orphans,
@@ -1183,6 +1337,7 @@ def lint_notes(note_root):
         "missing_frontmatter": missing_frontmatter,
         "empty_sections": empty_sections,
         "stale_index": stale_index,
+        "similar_notes": similar_pairs,
     }
 
 
@@ -1206,6 +1361,70 @@ def _frontmatter_tags(fm_text):
             tags.append(m2.group(1).strip().strip("'\""))
         return tags
     return []
+
+
+def _frontmatter_aliases(fm_text):
+    """从 frontmatter 取 aliases 列表（兼容 `aliases: [a, b]` 与 `- a` 缩进两种写法）。"""
+    lines = fm_text.splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(r"^aliases?[ \t]*:[ \t]*(.*)$", line, re.IGNORECASE)
+        if not m:
+            continue
+        rest = m.group(1).strip()
+        if rest.startswith("[") and rest.endswith("]"):
+            return [x.strip().strip("'\"") for x in rest[1:-1].split(",") if x.strip()]
+        if rest:
+            return [rest.strip("'\"")]
+        alts = []
+        for nxt in lines[i + 1:]:
+            m2 = re.match(r"^\s+-\s+(.+?)\s*$", nxt)
+            if not m2:
+                break
+            alts.append(m2.group(1).strip().strip("'\""))
+        return alts
+    return []
+
+
+def _frontmatter_date(fm_text):
+    """取 frontmatter 的 updated（优先）或 created 日期，用于检索结果的新近度排序。
+
+    返回 `YYYY-MM-DD` 字符串；缺失时返回空串（排序时视为最旧）。
+    """
+    for key in ("updated", "created"):
+        m = re.search(rf"^{key}[ \t]*:[ \t]*['\"]?(\d{{4}}-\d{{2}}-\d{{2}})",
+                      fm_text, re.IGNORECASE | re.MULTILINE)
+        if m:
+            return m.group(1)
+    return ""
+
+
+_CJK_RUN_RE = re.compile(r"[\u4e00-\u9fff]+")
+_ASCII_TERM_RE = re.compile(r"[a-z0-9]{2,}")
+
+
+def _terms(text):
+    """把文本切成用于相似度比较的词元集合：ASCII 小写单词 + 中文二元组。
+
+    中文不引入分词依赖，用二元组（bigram）近似；ASCII 取长度 >= 2 的小写词。
+    """
+    s = str(text or "").casefold()
+    terms = set(_ASCII_TERM_RE.findall(s))
+    for run in _CJK_RUN_RE.findall(s):
+        if len(run) == 1:
+            terms.add(run)
+        else:
+            terms.update(run[i:i + 2] for i in range(len(run) - 1))
+    return terms
+
+
+def _jaccard(a, b):
+    """集合 Jaccard 相似度；任一为空或交集为空时返回 0。"""
+    if not a or not b:
+        return 0.0
+    inter = len(a & b)
+    if not inter:
+        return 0.0
+    return inter / len(a | b)
 
 
 def _clip_summary(text, limit):
@@ -1291,7 +1510,7 @@ def generate_moc(note_root, topic, tag=None, keyword=None, category=None, descri
             if note.name.casefold() == DEFAULT_INDEX_FILE.casefold():
                 continue
             try:
-                text = note.read_text(encoding="utf-8", errors="replace")
+                text = note.read_text(encoding="utf-8-sig", errors="replace")
             except OSError:
                 continue
             fm_text, body = _split_frontmatter(text)

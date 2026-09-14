@@ -1357,6 +1357,118 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         self.assertIn("分布式事务的正文说明。", content)
         self.assertNotIn("列表项一", content)
 
+    # ------------------------------------------------------------ 检索排序
+    def test_search_notes_ranks_title_hit_first(self):
+        """标题命中的笔记排在前面，即使正文命中次数更少。"""
+        root = self.sandbox / "AI笔记"
+        cat = root / "分类"
+        cat.mkdir(parents=True)
+        (cat / "关键词笔记.md").write_text("# 标题\n\n这里有关键词一次。\n", encoding="utf-8")
+        (cat / "其它.md").write_text("# 其它\n\n关键词 关键词 关键词。\n", encoding="utf-8")
+        result = t.search_notes(str(root), "关键词")
+        self.assertEqual(result["hits"][0]["note"], "关键词笔记.md")
+
+    def test_search_notes_ranks_more_hits_first(self):
+        """标题均未命中时，正文命中次数多的排前。"""
+        root = self.sandbox / "AI笔记"
+        cat = root / "分类"
+        cat.mkdir(parents=True)
+        (cat / "少.md").write_text("# 标题\n\n关键词一次。\n", encoding="utf-8")
+        (cat / "多.md").write_text("# 标题\n\n关键词 关键词 关键词。\n", encoding="utf-8")
+        result = t.search_notes(str(root), "关键词")
+        self.assertEqual(result["hits"][0]["note"], "多.md")
+
+    def test_search_notes_ranks_newer_date_first(self):
+        """命中与次数相同时，updated/created 更新的排前。"""
+        root = self.sandbox / "AI笔记"
+        cat = root / "分类"
+        cat.mkdir(parents=True)
+        (cat / "旧.md").write_text("---\ncreated: 2026-01-01\n---\n\n# 旧\n\n关键词。\n", encoding="utf-8")
+        (cat / "新.md").write_text("---\ncreated: 2026-09-01\n---\n\n# 新\n\n关键词。\n", encoding="utf-8")
+        result = t.search_notes(str(root), "关键词")
+        self.assertEqual(result["hits"][0]["note"], "新.md")
+
+    # ------------------------------------------------------------ 笔记间相似 / 合并候选
+    def test_frontmatter_aliases_inline_and_block(self):
+        self.assertEqual(t._frontmatter_aliases("aliases: [别名一, 别名二]"), ["别名一", "别名二"])
+        self.assertEqual(t._frontmatter_aliases("aliases:\n  - 别名一\n  - 别名二\n"),
+                         ["别名一", "别名二"])
+        self.assertEqual(t._frontmatter_aliases("tags:\n  - x\n"), [])
+
+    def test_frontmatter_date_prefers_updated(self):
+        self.assertEqual(t._frontmatter_date("created: 2026-01-01\nupdated: 2026-09-09\n"),
+                         "2026-09-09")
+        self.assertEqual(t._frontmatter_date("created: 2026-01-01\n"), "2026-01-01")
+        self.assertEqual(t._frontmatter_date("tags: [x]\n"), "")
+
+    def test_terms_ascii_and_cjk_bigram(self):
+        terms = t._terms("Nginx 网关 502")
+        self.assertIn("nginx", terms)
+        self.assertIn("502", terms)
+        self.assertIn("网关", terms)
+
+    def test_jaccard(self):
+        self.assertAlmostEqual(t._jaccard({"a", "b"}, {"b", "c"}), 1 / 3)
+        self.assertEqual(t._jaccard(set(), {"a"}), 0.0)
+        self.assertEqual(t._jaccard({"a"}, {"b"}), 0.0)
+
+    def _similar_lib(self):
+        root = self.sandbox / "AI笔记"
+        cat = root / "运维"
+        cat.mkdir(parents=True)
+        return root, cat
+
+    def test_find_similar_notes_flags_tag_and_title_overlap(self):
+        root, cat = self._similar_lib()
+        (cat / "Nginx 502 排查.md").write_text(
+            "---\ntags:\n  - 运维\n  - nginx\n---\n\n# Nginx 502 排查\n", encoding="utf-8")
+        (cat / "Nginx 网关 502 处理.md").write_text(
+            "---\ntags:\n  - 运维\n  - nginx\n---\n\n# Nginx 网关 502 处理\n", encoding="utf-8")
+        result = t.find_similar_notes(str(root))
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["count"], 1)
+        self.assertTrue(any("标签重叠" in r for r in result["pairs"][0]["reasons"]))
+
+    def test_find_similar_notes_ignores_unrelated(self):
+        root, cat = self._similar_lib()
+        (cat / "Nginx 502.md").write_text("---\ntags:\n  - nginx\n---\n\n正文\n", encoding="utf-8")
+        (cat / "Python 装饰器.md").write_text("---\ntags:\n  - python\n---\n\n正文\n", encoding="utf-8")
+        self.assertEqual(t.find_similar_notes(str(root))["count"], 0)
+
+    def test_find_similar_notes_flags_shared_question(self):
+        """同列在一条「已收录疑问」下的两篇笔记应被判为候选（图谱邻接信号）。"""
+        root, cat = self._similar_lib()
+        (cat / "排查记录.md").write_text("# 排查记录\n", encoding="utf-8")
+        (cat / "网关处理.md").write_text("# 网关处理\n", encoding="utf-8")
+        (cat / "00-分类索引.md").write_text(
+            "# 分类索引 —— 运维\n\n## 笔记导航\n\n| 笔记 | 主题摘要 | 链接 |\n| ---- | -------- | ---- |\n\n"
+            "## 已收录疑问\n\n- 如何排查 502？ → [[排查记录]]、[[网关处理]]\n", encoding="utf-8")
+        result = t.find_similar_notes(str(root))
+        self.assertEqual(result["count"], 1)
+        self.assertTrue(any("同列于疑问" in r for r in result["pairs"][0]["reasons"]))
+
+    def test_lint_notes_includes_similar_notes(self):
+        root, cat = self._similar_lib()
+        (cat / "Nginx 502 排查.md").write_text(
+            "---\ntags:\n  - nginx\n---\n\n# Nginx 502 排查\n", encoding="utf-8")
+        (cat / "Nginx 网关 502 处理.md").write_text(
+            "---\ntags:\n  - nginx\n---\n\n# Nginx 网关 502 处理\n", encoding="utf-8")
+        result = t.lint_notes(str(root))
+        self.assertIn("similar_notes", result)
+        self.assertGreaterEqual(result["summary"]["similar_notes"], 1)
+
+    # ------------------------------------------------------------ BOM 健壮性
+    def test_bom_notes_are_parsed(self):
+        """带 UTF-8 BOM 的笔记应能正确解析 frontmatter（读取统一用 utf-8-sig）。"""
+        t.save_config({"format": "obsidian"})
+        root, cat = self._similar_lib()
+        bom = "\ufeff"
+        note = bom + ("---\ntags:\n  - nginx\ncreated: 2026-01-01\nsource: 对话总结\n---\n\n# 笔记A\n")
+        (cat / "笔记A.md").write_text(note, encoding="utf-8")
+        result = t.lint_notes(str(root))
+        self.assertEqual(result["missing_frontmatter"], [])
+        self.assertEqual(t.search_notes(str(root), "笔记A")["matched_notes"], 1)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
