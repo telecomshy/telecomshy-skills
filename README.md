@@ -20,6 +20,7 @@ TeleAgent 技能集合仓库（Agent Skills for TeleAgent）。
 | 技能 | 文件夹 | 说明 |
 | ---- | ------ | ---- |
 | 智识沉淀 (knowledge-distill) | [`skills/knowledge-distill`](skills/knowledge-distill) | 把对话沉淀为可检索、可关联、可长期复用的知识库笔记（Obsidian / 普通 Markdown） |
+| 回答风格 (answer-style) | [`skills/answer-style`](skills/answer-style) | 按指令切换回答的讲解风格：更通俗地做知识拓展式讲解，或更专业严谨，也可恢复默认 |
 
 ## 目录结构
 
@@ -65,6 +66,19 @@ telecomshy-skills/
 - **可回退**：每次改写前自动备份，可列出历史版本并整篇恢复（撤销上次改写）。
 
 > 完整指令、触发条件与配置详见 [`skills/knowledge-distill/SKILL.md`](skills/knowledge-distill/SKILL.md)。
+
+### 回答风格（answer-style）
+
+按用户指令切换回答的**讲解风格与深度**，把回答从"换个说法"升级为"知识拓展式讲解"。
+
+关键能力：
+
+- **通俗模式（`/answer-more-clear`）**：术语换日常说法（首次出现先解释）、补齐前置知识、补背景动机、给可复现实例、类比限量并回映射（说清哪里像/不像）、末尾附常见误解与自检小结。
+- **专业模式（`/answer-more-pro`）**：结论先行，给依据、前提、边界与权衡，术语精确、省去铺垫。
+- **恢复默认（`/answer-default`）**：停止叠加风格，回到默认呈现。
+- **会话级保持**：切换后持续生效直到复位；风格只作用于讲解文字，代码、命令、参数保持精确原样。
+
+> 完整指令与触发条件详见 [`skills/answer-style/SKILL.md`](skills/answer-style/SKILL.md)。
 
 ## 许可证
 
