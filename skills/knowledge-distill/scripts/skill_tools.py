@@ -359,7 +359,7 @@ def check_name(category_dir, title):
 def search_notes(note_root, query, category=None, use_regex=False, max_snippets=3, context=60, full=False):
     """在笔记正文中按关键词/正则检索，返回命中片段。
 
-    用于 Step 5 判断"新建 vs 合并"时真正看到已有笔记内容（而非只看标题），
+    用于 Step 2 判断"新建 vs 合并"、Step 5 检测新旧笔记冲突时真正看到已有笔记内容（而非只看标题），
     也支撑"我之前记过什么关于 X 的笔记"这类查找场景。
 
     - query：关键词（默认）或正则表达式（use_regex=True）
