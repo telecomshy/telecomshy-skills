@@ -1063,6 +1063,70 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertFalse(target.exists())
 
+    # ------------------------------------------------------------ 备份列表 / 回退
+    def test_backup_name_includes_path_key(self):
+        """备份名含路径短哈希（区分跨分类同名笔记）。"""
+        target = self._write_target()
+        target.write_text("旧\n", encoding="utf-8")
+        result = t.write_note(str(target), "新")
+        backup = Path(result["backup"]).name
+        self.assertRegex(backup, r"^笔记A\.md\.[0-9a-f]{6}\.\d{8}-\d{6}(-\d+)?\.bak$")
+
+    def test_list_backups_for_note(self):
+        target = self._write_target()
+        target.write_text("v1\n", encoding="utf-8")
+        t.write_note(str(target), "v2")
+        target.write_text("v2\n", encoding="utf-8")
+        t.write_note(str(target), "v3")
+        result = t.list_backups(str(target))
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["count"], 2)
+        self.assertTrue(all(b["attributable"] for b in result["backups"]))
+        self.assertTrue(all(b["stamp"] for b in result["backups"]))
+
+    def test_restore_note_latest(self):
+        """缺省恢复最近一版；恢复前先备份当前版本（可反悔）。"""
+        target = self._write_target()
+        target.write_text("旧版本\n", encoding="utf-8")
+        t.write_note(str(target), "新版本")
+        result = t.restore_note(str(target))
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["action"], "restored")
+        self.assertEqual(target.read_text(encoding="utf-8"), "旧版本\n")
+        self.assertTrue(result["backup"])  # 当前（新版）也被备份，可再退回
+
+    def test_restore_note_specific_version(self):
+        target = self._write_target()
+        target.write_text("v1\n", encoding="utf-8")
+        t.write_note(str(target), "v2")          # 备份 v1
+        target.write_text("v2\n", encoding="utf-8")
+        t.write_note(str(target), "v3")          # 备份 v2
+        backups = t.list_backups(str(target))["backups"]
+        # 按内容挑出保存 v1 的那份备份（避免同秒时间戳并列）
+        v1 = next(b for b in backups
+                  if (t.BACKUP_DIR / b["file"]).read_text(encoding="utf-8") == "v1\n")
+        result = t.restore_note(str(target), version=v1["stamp"])
+        self.assertTrue(result["ok"])
+        self.assertEqual(target.read_text(encoding="utf-8"), "v1\n")
+
+    def test_restore_note_without_backup_fails(self):
+        target = self._write_target()
+        target.write_text("内容\n", encoding="utf-8")
+        result = t.restore_note(str(target))
+        self.assertFalse(result["ok"])
+        self.assertIn("备份", result["error"])
+
+    def test_restore_note_disambiguates_same_name_across_categories(self):
+        """跨分类同名笔记的备份互不串用（按路径哈希区分）。"""
+        a = self.sandbox / "AI笔记" / "运维" / "排查.md"
+        b = self.sandbox / "AI笔记" / "开发" / "排查.md"
+        a.parent.mkdir(parents=True); b.parent.mkdir(parents=True)
+        a.write_text("运维旧\n", encoding="utf-8"); t.write_note(str(a), "运维新")
+        b.write_text("开发旧\n", encoding="utf-8"); t.write_note(str(b), "开发新")
+        self.assertTrue(t.restore_note(str(a))["ok"])
+        self.assertEqual(a.read_text(encoding="utf-8"), "运维旧\n")
+        self.assertEqual(b.read_text(encoding="utf-8"), "开发新\n")  # b 不受影响
+
     def test_write_note_creates_missing_parent_dir(self):
         """父目录不存在时自动创建。"""
         target = self.sandbox / "AI笔记" / "新分类" / "笔记.md"

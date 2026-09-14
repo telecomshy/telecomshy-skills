@@ -14,6 +14,8 @@ knowledge-distill 技能工具脚本
   - search-notes    : 在笔记正文中按关键词/正则检索，返回命中片段
   - lint-notes      : 只读健康检查，报告链接结构问题 + 内容质量问题
   - write-note      : 事务化写入笔记（写入前备份、临时文件原子替换）
+  - list-backups    : 列出笔记的备份版本（不带参数则列全部）
+  - restore-note    : 把笔记恢复到某个备份版本（恢复前先备份当前版本）
   - gen-moc         : 按主题生成/刷新 MOC 内容地图（根目录 MOC-<主题>.md）
   - append-index-entry    : 向分类索引的"笔记导航"表格追加/更新一行
   - append-index-question : 向分类索引的"已收录疑问"追加/更新一条（链接可并列多个）
@@ -29,6 +31,8 @@ knowledge-distill 技能工具脚本
   python skill_tools.py search-notes "D:\\vault\\AI笔记" "关键词"
   python skill_tools.py lint-notes "D:\\vault\\AI笔记"
   python skill_tools.py write-note "D:\\vault\\AI笔记\\示例分类\\标题.md" --content-file draft.md
+  python skill_tools.py list-backups "D:\\vault\\AI笔记\\示例分类\\标题.md"
+  python skill_tools.py restore-note "D:\\vault\\AI笔记\\示例分类\\标题.md" --version 20260101-120000
   python skill_tools.py gen-moc "D:\\vault\\AI笔记" "分布式系统" --tag 分布式
   python skill_tools.py append-index-entry "D:\\vault\\AI笔记\\示例分类" "标题" "摘要"
   python skill_tools.py append-index-question "D:\\vault\\AI笔记\\示例分类" "示例疑问？" "标题"
@@ -36,6 +40,7 @@ knowledge-distill 技能工具脚本
 
 import argparse
 import datetime
+import hashlib
 import json
 import os
 import posixpath
@@ -946,11 +951,39 @@ def _find_empty_sections(body):
     return empties
 
 
-def _prune_backups(note_name, keep=_BACKUP_KEEP):
-    """每个笔记文件只保留最近 keep 份备份，淘汰更旧的，避免备份目录无限增长。"""
+def _note_key(path):
+    """返回笔记绝对路径的短哈希，用于备份名区分跨分类同名笔记。"""
+    norm = os.path.normcase(os.path.abspath(str(path)))
+    return hashlib.sha1(norm.encode("utf-8")).hexdigest()[:6]
+
+
+# 备份时间戳形如 20260101-120000，同一秒内多次备份追加 -1、-2 …
+_BACKUP_STAMP_RE = re.compile(r"^\d{8}-\d{6}(-\d+)?$")
+
+
+def _parse_backup_name(filename, note_name):
+    """解析某笔记的备份文件名，返回 (key, stamp)；不匹配该笔记则返回 None。
+
+    新命名 `{文件名}.{hash6}.{时间戳}.bak`，旧命名 `{文件名}.{时间戳}.bak`（key=None）。
+    """
+    if not filename.endswith(".bak") or not filename.startswith(note_name + "."):
+        return None
+    rest = filename[:-4][len(note_name) + 1:]
+    parts = rest.split(".")
+    if len(parts) == 1:
+        key, stamp = None, parts[0]
+    elif len(parts) == 2:
+        key, stamp = parts[0], parts[1]
+    else:
+        return None
+    return (key, stamp) if _BACKUP_STAMP_RE.match(stamp) else None
+
+
+def _prune_backups(note_name, key=None, keep=_BACKUP_KEEP):
+    """每个笔记（按 文件名 + 路径短哈希）只保留最近 keep 份备份，避免无限增长。"""
     if keep <= 0:
         return
-    prefix = f"{note_name}."
+    prefix = f"{note_name}.{key}." if key else f"{note_name}."
     candidates = [p for p in BACKUP_DIR.iterdir()
                   if p.is_file() and p.name.startswith(prefix) and p.name.endswith(".bak")]
     candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
@@ -962,17 +995,117 @@ def _prune_backups(note_name, keep=_BACKUP_KEEP):
 
 
 def _backup_file(target):
-    """把原文件备份到备份目录（用户主目录下），返回备份路径。"""
+    """把原文件备份到备份目录（用户主目录下），返回备份路径。
+
+    备份名含基于完整路径的短哈希，避免跨分类同名笔记的备份互相混淆。
+    """
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    key = _note_key(target)
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    dest = BACKUP_DIR / f"{target.name}.{stamp}.bak"
+    base = f"{target.name}.{key}.{stamp}"
+    dest = BACKUP_DIR / f"{base}.bak"
     n = 1
     while dest.exists():
-        dest = BACKUP_DIR / f"{target.name}.{stamp}-{n}.bak"
+        dest = BACKUP_DIR / f"{base}-{n}.bak"
         n += 1
     shutil.copy2(target, dest)
-    _prune_backups(target.name)
+    _prune_backups(target.name, key)
     return dest
+
+
+def list_backups(note_path=None):
+    """列出备份版本。给了 note_path 只列该笔记的；否则列全部。
+
+    每条含 `file`、`stamp`（时间戳，取不到为 null）、`size`、`mtime`；
+    给了 note_path 时另含 `attributable`（是否能精确对应到该路径的笔记）。
+    """
+    if not BACKUP_DIR.is_dir():
+        return {"ok": True, "backup_dir": str(BACKUP_DIR), "count": 0, "backups": []}
+    name = Path(note_path).name if note_path else None
+    key = _note_key(note_path) if note_path else None
+    items = []
+    for p in BACKUP_DIR.iterdir():
+        if not p.is_file() or not p.name.endswith(".bak"):
+            continue
+        stamp, attributable = None, None
+        if name:
+            parsed = _parse_backup_name(p.name, name)
+            if not parsed:
+                continue
+            bkey, stamp = parsed
+            if bkey is not None and bkey != key:
+                continue  # 同名但属于别的分类
+            attributable = (bkey == key)
+        else:
+            m = _BACKUP_STAMP_RE.search(p.name[:-4].rsplit(".", 1)[-1])
+            stamp = m.group(0) if m else None
+        try:
+            stat = p.stat()
+        except OSError:
+            continue
+        item = {"file": p.name, "stamp": stamp,
+                "size": stat.st_size, "mtime": int(stat.st_mtime)}
+        if name:
+            item["attributable"] = attributable
+        items.append(item)
+    items.sort(key=lambda x: x["mtime"], reverse=True)
+    return {"ok": True, "backup_dir": str(BACKUP_DIR), "count": len(items), "backups": items}
+
+
+def restore_note(note_path, version=None):
+    """把笔记恢复到某个历史备份版本（缺省=最近一版）。
+
+    恢复前先对**当前版本**再备份一次，保证回退本身也能反悔。
+    返回 action / path / from（所用备份）/ backup（当前版本的新备份）。
+    """
+    target = Path(note_path)
+    if target.suffix.lower() not in NOTE_SUFFIXES:
+        return {"ok": False, "error": f"只接受 Markdown 笔记文件: {target}"}
+    name, key = target.name, _note_key(target)
+
+    candidates = []
+    if BACKUP_DIR.is_dir():
+        for p in BACKUP_DIR.iterdir():
+            if not p.is_file():
+                continue
+            parsed = _parse_backup_name(p.name, name)
+            if not parsed:
+                continue
+            bkey, stamp = parsed
+            if bkey is not None and bkey != key:
+                continue  # 同名但不同分类
+            candidates.append((p, stamp))
+    if not candidates:
+        return {"ok": False, "error": f"没有找到该笔记的备份: {target}"}
+
+    if version:
+        matches = [c for c in candidates if c[1] == version]
+        if not matches:
+            return {"ok": False,
+                    "error": f"未找到版本 {version}；用 list-backups 查看可用版本"}
+        chosen = matches[0][0]
+    else:
+        chosen = max(candidates, key=lambda c: c[0].stat().st_mtime)[0]
+
+    try:
+        content = chosen.read_text(encoding="utf-8-sig")
+    except OSError as e:
+        return {"ok": False, "error": f"读取备份失败: {e}"}
+
+    backup_path = None
+    if target.exists():
+        try:
+            backup_path = _backup_file(target)  # 先备份当前版本，回退可反悔
+        except OSError as e:
+            return {"ok": False, "error": f"备份当前版本失败（已中止恢复）: {e}"}
+
+    result = write_note(str(target), content, backup=False)
+    if not result.get("ok"):
+        return result
+    return {"ok": True, "action": "restored", "path": str(target),
+            "from": str(chosen),
+            "backup": str(backup_path) if backup_path else None,
+            "bytes": result.get("bytes")}
 
 
 def write_note(note_path, content, backup=True):
@@ -1627,6 +1760,13 @@ def main(argv=None):
     p_write.add_argument("--content-file", help="从文件读取笔记完整内容（推荐，避免长文本转义问题）")
     p_write.add_argument("--content", help="直接传入笔记完整内容（短内容可用）")
 
+    p_lb = sub.add_parser("list-backups", help="列出笔记的备份版本（不带参数则列全部）")
+    p_lb.add_argument("note_path", nargs="?", help="目标笔记路径；省略则列出全部备份")
+
+    p_rn = sub.add_parser("restore-note", help="把笔记恢复到某个备份版本（缺省=最近一版）")
+    p_rn.add_argument("note_path", help="目标笔记的绝对路径（.md / .markdown）")
+    p_rn.add_argument("--version", help="要恢复的时间戳版本（用 list-backups 查看；缺省=最近一版）")
+
     p_moc = sub.add_parser("gen-moc", help="按主题生成/刷新 MOC 内容地图（根目录 MOC-<主题>.md）")
     p_moc.add_argument("note_root", help="笔记根目录（MOC 写在其下）")
     p_moc.add_argument("topic", help="MOC 主题（用于文件名与标题）")
@@ -1710,6 +1850,13 @@ def main(argv=None):
             print(json.dumps({"ok": False, "error": "需提供 --content-file 或 --content"}, ensure_ascii=False))
             return 1
         result = write_note(args.note_path, content)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        if not result.get("ok"):
+            return 1
+    elif args.command == "list-backups":
+        print(json.dumps(list_backups(args.note_path), ensure_ascii=False, indent=2))
+    elif args.command == "restore-note":
+        result = restore_note(args.note_path, version=args.version)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         if not result.get("ok"):
             return 1
