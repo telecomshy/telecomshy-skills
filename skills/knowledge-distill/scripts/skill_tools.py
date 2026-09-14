@@ -148,6 +148,11 @@ def _resolve_format(fmt=None):
     return str(cfg.get("format") or "obsidian").strip().lower()
 
 
+def _is_markdown_format(fmt=None):
+    """当前（或指定）格式是否按普通 Markdown 渲染链接（唯一判定点，避免各处重复）。"""
+    return _resolve_format(fmt) in ("markdown", "md")
+
+
 def render_note_link(title, fmt=None, table_safe=True):
     """按笔记格式渲染索引里的笔记链接。
 
@@ -159,7 +164,7 @@ def render_note_link(title, fmt=None, table_safe=True):
     列表场景（如 MOC）传 False——双链里的 `|` 是别名分隔符，转义反而破坏链接。
     """
     display = escape_table_cell(title) if table_safe else flatten_text(title)
-    if _resolve_format(fmt) in ("markdown", "md"):
+    if _is_markdown_format(fmt):
         return f"[{display}]({_md_href(title)})"
     return f"[[{display}]]"
 
@@ -279,6 +284,20 @@ def discover_vaults():
 
 
 # ---------------------------------------------------------------- 目录结构
+def _iter_notes(cat_dir):
+    """按名称顺序产出分类目录下的**知识笔记**文件。
+
+    排除索引文件（00-分类索引.md）与非笔记扩展名（如 .txt、图片）——
+    这是"什么算一篇笔记"的唯一判定点，供 list-structure / search / lint / MOC 共用。
+    """
+    for p in sorted(Path(cat_dir).iterdir()):
+        if not p.is_file() or p.suffix.lower() not in NOTE_SUFFIXES:
+            continue
+        if p.name.casefold() == DEFAULT_INDEX_FILE.casefold():
+            continue
+        yield p
+
+
 def list_structure(note_root):
     """列出 AI 笔记根目录下一层分类（子目录）及每类下的笔记文件。
 
@@ -293,16 +312,9 @@ def list_structure(note_root):
     for entry in sorted(root.iterdir()):
         if not entry.is_dir():
             continue  # 只把一层子目录视为分类
-        notes = []
-        has_index = False
-        for p in sorted(entry.iterdir()):
-            if not p.is_file():
-                continue
-            if p.name.casefold() == DEFAULT_INDEX_FILE.casefold():
-                has_index = True
-                continue
-            if p.suffix.lower() in NOTE_SUFFIXES:
-                notes.append(p.name)
+        has_index = any(p.is_file() and p.name.casefold() == DEFAULT_INDEX_FILE.casefold()
+                        for p in entry.iterdir())
+        notes = [p.name for p in _iter_notes(entry)]
         categories.append({"name": entry.name, "notes": notes, "has_index": has_index})
     return {"exists": True, "note_root": str(root), "categories": categories}
 
@@ -402,11 +414,7 @@ def search_notes(note_root, query, category=None, use_regex=False, max_snippets=
 
     hits = []
     for cat_dir in cat_dirs:
-        for note in sorted(cat_dir.iterdir()):
-            if not note.is_file() or note.suffix.lower() not in NOTE_SUFFIXES:
-                continue
-            if note.name.casefold() == DEFAULT_INDEX_FILE.casefold():
-                continue  # 索引文件不是知识笔记，不参与检索
+        for note in _iter_notes(cat_dir):
             try:
                 text = note.read_text(encoding="utf-8-sig", errors="replace")
             except OSError:
@@ -592,6 +600,25 @@ def _render_question_entry(question, link_fragments, fmt=None):
     return f"- {flatten_text(question)} → {links}"
 
 
+def _find_section_bounds(lines, title):
+    """定位二级标题 `## <title>` 章节，返回 (标题行号, 结束行号)；找不到返回 None。
+
+    结束行号为下一个二级标题的行号，或文件末尾。标题与后续标题都容忍多余空格
+    （如 `##  已收录疑问  `），供写入与解析两处共用。
+    """
+    start = None
+    for i, line in enumerate(lines):
+        if re.match(rf"^\s*##\s+{re.escape(title)}\s*$", line):
+            start = i
+            break
+    if start is None:
+        return None
+    for i in range(start + 1, len(lines)):
+        if re.match(r"^\s*##\s+", lines[i]):
+            return start, i
+    return start, len(lines)
+
+
 def append_index_question(category_dir, question, note_title, fmt=None):
     """向分类索引的"已收录疑问"章节追加/更新一条疑问，并附指向笔记的链接。
 
@@ -664,14 +691,8 @@ def append_index_question(category_dir, question, note_title, fmt=None):
         question_text, [render_note_link(note_link_title, fmt)])
 
     # 定位"已收录疑问"章节（容忍标题内的多余空格，如 `##  已收录疑问  `）
-    section_idx = None
-    section_re = re.compile(r"^\s*##\s+已收录疑问\s*$")
-    for i, line in enumerate(lines):
-        if section_re.match(line):
-            section_idx = i
-            break
-
-    if section_idx is None:
+    bounds = _find_section_bounds(lines, "已收录疑问")
+    if bounds is None:
         # 章节不存在 -> 追加到文件末尾
         if lines and lines[-1].strip():
             lines.append("")
@@ -680,12 +701,7 @@ def append_index_question(category_dir, question, note_title, fmt=None):
         return {"ok": True, "action": "section_created",
                 "index_file": str(index_file), "entry": entry}
 
-    # 确定章节范围：下一个章节标题（容忍多余空格）或文件末尾
-    section_end = len(lines)
-    for i in range(section_idx + 1, len(lines)):
-        if re.match(r"^\s*##\s+", lines[i]):
-            section_end = i
-            break
+    section_idx, section_end = bounds
 
     # 章节内定位插入点：优先追加到最后一条疑问之后
     last_item = None
@@ -854,20 +870,10 @@ def _parse_index_questions(index_text):
     （以"（"开头）不计入。
     """
     lines = index_text.splitlines()
-    section_re = re.compile(r"^\s*##\s+已收录疑问\s*$")
-    start = None
-    for i, line in enumerate(lines):
-        if section_re.match(line):
-            start = i
-            break
-    if start is None:
+    bounds = _find_section_bounds(lines, "已收录疑问")
+    if bounds is None:
         return []
-
-    end = len(lines)
-    for i in range(start + 1, len(lines)):
-        if re.match(r"^\s*##\s+", lines[i]):
-            end = i
-            break
+    start, end = bounds
 
     items = []
     for line in lines[start + 1:end]:
@@ -1166,8 +1172,7 @@ def write_note(note_path, content, backup=True):
             "bytes": len(new_text.encode("utf-8"))}
 
 
-def find_similar_notes(note_root, threshold=_SIMILAR_THRESHOLD,
-                       max_pairs=_SIMILAR_MAX_PAIRS, per_note=_SIMILAR_PER_NOTE):
+def find_similar_notes(note_root):
     """确定性检测「疑似重复 / 可合并」的笔记候选对（只报告，不改文件）。
 
     信号（全部确定性、零依赖，不做向量 / 语义检索）：
@@ -1176,8 +1181,8 @@ def find_similar_notes(note_root, threshold=_SIMILAR_THRESHOLD,
     - 图谱邻接：共享出链目标，或同列于一条索引「已收录疑问」下；
     - 同分类（弱信号）。
 
-    候选对按加权分排序，阈值以上才上报，并给出命中依据（reasons）供人工判断。
-    只提示候选，是否合并由用户决定。
+    候选对按加权分排序，阈值（`_SIMILAR_THRESHOLD`）以上才上报，并给出命中依据
+    （reasons）供人工判断。只提示候选，是否合并由用户决定。
     """
     root = Path(note_root)
     if not root.is_dir():
@@ -1193,11 +1198,7 @@ def find_similar_notes(note_root, threshold=_SIMILAR_THRESHOLD,
 
     cat_dirs = sorted(d for d in root.iterdir() if d.is_dir())
     for cat_dir in cat_dirs:
-        for p in sorted(cat_dir.iterdir()):
-            if not p.is_file() or p.suffix.lower() not in NOTE_SUFFIXES:
-                continue
-            if p.name.casefold() == DEFAULT_INDEX_FILE.casefold():
-                continue
+        for p in _iter_notes(cat_dir):
             try:
                 text = p.read_text(encoding="utf-8-sig", errors="replace")
             except OSError:
@@ -1268,7 +1269,7 @@ def find_similar_notes(note_root, threshold=_SIMILAR_THRESHOLD,
             reasons.append("同列于疑问：" + "、".join(sorted(shared_q)))
         if na["category"] == nb["category"]:
             score += _SIMILAR_CATEGORY_WEIGHT
-        if score >= threshold:
+        if score >= _SIMILAR_THRESHOLD:
             pairs.append({
                 "a": na["stem"], "b": nb["stem"],
                 "category_a": na["category"], "category_b": nb["category"],
@@ -1277,19 +1278,20 @@ def find_similar_notes(note_root, threshold=_SIMILAR_THRESHOLD,
             })
 
     pairs.sort(key=lambda x: (-x["score"], x["path_a"], x["path_b"]))
-    if per_note and per_note > 0:  # 每篇最多参与 per_note 个候选对，保留高分
+    if _SIMILAR_PER_NOTE > 0:  # 每篇最多参与 _SIMILAR_PER_NOTE 个候选对，保留高分
         kept, count = [], {}
         for pair in pairs:
-            if count.get(pair["path_a"], 0) >= per_note or count.get(pair["path_b"], 0) >= per_note:
+            if (count.get(pair["path_a"], 0) >= _SIMILAR_PER_NOTE
+                    or count.get(pair["path_b"], 0) >= _SIMILAR_PER_NOTE):
                 continue
             kept.append(pair)
             count[pair["path_a"]] = count.get(pair["path_a"], 0) + 1
             count[pair["path_b"]] = count.get(pair["path_b"], 0) + 1
         pairs = kept
-    if max_pairs and max_pairs > 0:
-        pairs = pairs[:max_pairs]
+    if _SIMILAR_MAX_PAIRS > 0:
+        pairs = pairs[:_SIMILAR_MAX_PAIRS]
 
-    return {"ok": True, "note_root": str(root), "threshold": threshold,
+    return {"ok": True, "note_root": str(root), "threshold": _SIMILAR_THRESHOLD,
             "count": len(pairs), "pairs": pairs}
 
 
@@ -1320,16 +1322,14 @@ def lint_notes(note_root):
     cfg = load_config()
     # frontmatter 是 Obsidian 的约定：仅在用户已配置为 Obsidian 时检查，
     # 避免对普通 Markdown 笔记库（含尚未配置的场景）产生误报。
-    check_frontmatter = bool(cfg) and _resolve_format() not in ("markdown", "md")
+    check_frontmatter = bool(cfg) and not _is_markdown_format()
 
     # 1. 收集分类与笔记（只处理一层子目录，与 list-structure 保持一致）
     categories = []
     for entry in sorted(root.iterdir()):
         if not entry.is_dir():
             continue
-        notes = [p for p in sorted(entry.iterdir())
-                 if p.is_file() and p.suffix.lower() in NOTE_SUFFIXES
-                 and p.name.casefold() != DEFAULT_INDEX_FILE.casefold()]
+        notes = list(_iter_notes(entry))
         index_file = entry / DEFAULT_INDEX_FILE
         index_text = index_file.read_text(encoding="utf-8-sig", errors="replace") if index_file.exists() else ""
         entries = _parse_index_entries(index_text)
@@ -1474,11 +1474,14 @@ def lint_notes(note_root):
     }
 
 
-def _frontmatter_tags(fm_text):
-    """从 frontmatter 取 tags 列表，兼容 `tags: [a, b]` 行内与 `- a` 缩进两种写法。"""
+def _frontmatter_list(fm_text, key_re):
+    """解析 frontmatter 中某个列表字段，兼容 `key: [a, b]` 行内与 `- a` 缩进两种写法。
+
+    `key_re` 需带一个捕获组，匹配该字段所在行的"值"部分。
+    """
     lines = fm_text.splitlines()
     for i, line in enumerate(lines):
-        m = re.match(r"^tags[ \t]*:[ \t]*(.*)$", line, re.IGNORECASE)
+        m = re.match(key_re, line, re.IGNORECASE)
         if not m:
             continue
         rest = m.group(1).strip()
@@ -1486,36 +1489,24 @@ def _frontmatter_tags(fm_text):
             return [x.strip().strip("'\"") for x in rest[1:-1].split(",") if x.strip()]
         if rest:
             return [rest.strip("'\"")]
-        tags = []
+        items = []
         for nxt in lines[i + 1:]:
             m2 = re.match(r"^\s+-\s+(.+?)\s*$", nxt)
             if not m2:
                 break
-            tags.append(m2.group(1).strip().strip("'\""))
-        return tags
+            items.append(m2.group(1).strip().strip("'\""))
+        return items
     return []
+
+
+def _frontmatter_tags(fm_text):
+    """从 frontmatter 取 tags 列表。"""
+    return _frontmatter_list(fm_text, r"^tags[ \t]*:[ \t]*(.*)$")
 
 
 def _frontmatter_aliases(fm_text):
-    """从 frontmatter 取 aliases 列表（兼容 `aliases: [a, b]` 与 `- a` 缩进两种写法）。"""
-    lines = fm_text.splitlines()
-    for i, line in enumerate(lines):
-        m = re.match(r"^aliases?[ \t]*:[ \t]*(.*)$", line, re.IGNORECASE)
-        if not m:
-            continue
-        rest = m.group(1).strip()
-        if rest.startswith("[") and rest.endswith("]"):
-            return [x.strip().strip("'\"") for x in rest[1:-1].split(",") if x.strip()]
-        if rest:
-            return [rest.strip("'\"")]
-        alts = []
-        for nxt in lines[i + 1:]:
-            m2 = re.match(r"^\s+-\s+(.+?)\s*$", nxt)
-            if not m2:
-                break
-            alts.append(m2.group(1).strip().strip("'\""))
-        return alts
-    return []
+    """从 frontmatter 取 aliases 列表。"""
+    return _frontmatter_list(fm_text, r"^aliases?[ \t]*:[ \t]*(.*)$")
 
 
 def _frontmatter_date(fm_text):
@@ -1637,11 +1628,7 @@ def generate_moc(note_root, topic, tag=None, keyword=None, category=None, descri
     total = 0
     for cat_dir in cat_dirs:
         items = []
-        for note in sorted(cat_dir.iterdir()):
-            if not note.is_file() or note.suffix.lower() not in NOTE_SUFFIXES:
-                continue
-            if note.name.casefold() == DEFAULT_INDEX_FILE.casefold():
-                continue
+        for note in _iter_notes(cat_dir):
             try:
                 text = note.read_text(encoding="utf-8-sig", errors="replace")
             except OSError:
