@@ -8,7 +8,6 @@ knowledge-distill 技能工具脚本
   - load-config     : 读取持久化配置文件（格式 / vault / 笔记根目录）
   - save-config     : 写入持久化配置文件
   - list-structure  : 列出 AI 笔记根目录下的一层分类及每类下的笔记
-  - ensure-root     : 在指定路径下检查/创建 AI 笔记根目录
   - list-index      : 读取分类下的目录文件（索引文件）
   - list-questions  : 列出索引「已收录疑问」条目（写入前查重、判断是否合并）
   - check-name      : 写入前检查同名笔记，避免误覆盖
@@ -24,7 +23,6 @@ knowledge-distill 技能工具脚本
   python skill_tools.py load-config
   python skill_tools.py save-config --config '{"format":"obsidian","vault":"D:\\vault","note_root":"AI笔记"}'
   python skill_tools.py list-structure "D:\\vault\\AI笔记"
-  python skill_tools.py ensure-root "D:\\vault" --name AI笔记
   python skill_tools.py list-index "D:\\vault\\AI笔记\\示例分类"
   python skill_tools.py list-questions "D:\\vault\\AI笔记\\示例分类"
   python skill_tools.py check-name "D:\\vault\\AI笔记\\示例分类" "示例笔记标题"
@@ -59,8 +57,14 @@ BACKUP_DIR = Path.home() / ".knowledge-distill-backups"
 # 分类子目录，因此根目录下的 MOC 文件天然不会被误当作笔记）。
 MOC_PREFIX = "MOC-"
 
-DEFAULT_NOTE_ROOT = "AI笔记"
 DEFAULT_INDEX_FILE = "00-分类索引.md"
+
+# 笔记文件扩展名（唯一权威）：技能只认这两种为知识笔记。
+# 其它文件（含 .txt）一律视为附件，不参与笔记的列举、检索、索引与健康检查。
+NOTE_SUFFIXES = (".md", ".markdown")
+
+# 每个笔记文件在备份目录中保留的历史版本数，超出则淘汰最旧的（避免无限增长）。
+_BACKUP_KEEP = 10
 
 # 「已收录疑问」条目里并列多个笔记链接时的分隔符；
 # 链接数超过阈值时给出提醒（一条疑问铺得太开，往往说明该疑问过于宽泛，宜拆分）。
@@ -281,21 +285,10 @@ def list_structure(note_root):
             if p.name.casefold() == DEFAULT_INDEX_FILE.casefold():
                 has_index = True
                 continue
-            if p.suffix.lower() in (".md", ".markdown", ".txt"):
+            if p.suffix.lower() in NOTE_SUFFIXES:
                 notes.append(p.name)
         categories.append({"name": entry.name, "notes": notes, "has_index": has_index})
     return {"exists": True, "note_root": str(root), "categories": categories}
-
-
-def ensure_root(base_path, name=DEFAULT_NOTE_ROOT):
-    """在 base_path 下检查/创建 AI 笔记根目录（若同名已存在则直接复用）。"""
-    base = Path(base_path)
-    if not base.is_dir():
-        return {"ok": False, "error": f"基目录不存在: {base}"}
-    root = base / name
-    existed = root.is_dir()
-    root.mkdir(parents=True, exist_ok=True)
-    return {"ok": True, "note_root": str(root), "created": not existed}
 
 
 def list_index(category_dir):
@@ -357,7 +350,7 @@ def check_name(category_dir, title):
 
     # 同名文件已存在：尝试找出可能的同名笔记（Obsidian 双链会因同名而歧义）
     same_name = [p.name for p in cat.iterdir()
-                 if p.is_file() and p.stem == title and p.suffix.lower() in (".md", ".markdown")]
+                 if p.is_file() and p.stem == title and p.suffix.lower() in NOTE_SUFFIXES]
     return {"ok": True, "valid": True, "exists": True, "path": str(target),
             "same_name_files": sorted(same_name),
             "suggestion": "向用户确认：覆盖 / 改名 / 合并进该笔记"}
@@ -394,7 +387,7 @@ def search_notes(note_root, query, category=None, use_regex=False, max_snippets=
     hits = []
     for cat_dir in cat_dirs:
         for note in sorted(cat_dir.iterdir()):
-            if not note.is_file() or note.suffix.lower() not in (".md", ".markdown", ".txt"):
+            if not note.is_file() or note.suffix.lower() not in NOTE_SUFFIXES:
                 continue
             if note.name.casefold() == DEFAULT_INDEX_FILE.casefold():
                 continue  # 索引文件不是知识笔记，不参与检索
@@ -699,6 +692,7 @@ _MD_LINK_RE = re.compile(r"(!?)\[([^\[\]]*)\]\(([^()]*)\)")
 _ATTACHMENT_SUFFIXES = (
     ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".bmp", ".ico",
     ".pdf", ".mp3", ".mp4", ".wav", ".zip", ".xlsx", ".docx", ".pptx", ".csv",
+    ".txt",
 )
 # 外链协议，不参与断链判断
 _EXTERNAL_SCHEMES = ("http://", "https://", "mailto:", "ftp://", "tel:", "file://")
@@ -740,7 +734,7 @@ def _normalize_md_href(href):
         raw = raw[1:-1].strip()
     if raw.lower().endswith(_ATTACHMENT_SUFFIXES):
         return ""
-    if raw.lower().endswith((".md", ".markdown", ".txt")):
+    if raw.lower().endswith(NOTE_SUFFIXES):
         raw = raw.rsplit(".", 1)[0]
     # 规范化相对路径：去掉 `./` `../` 前缀并压平冗余分隔符，
     # 使 `../分类/笔记` 与 `分类/笔记` 一致，便于与库内相对路径比对
@@ -929,6 +923,21 @@ def _find_empty_sections(body):
     return empties
 
 
+def _prune_backups(note_name, keep=_BACKUP_KEEP):
+    """每个笔记文件只保留最近 keep 份备份，淘汰更旧的，避免备份目录无限增长。"""
+    if keep <= 0:
+        return
+    prefix = f"{note_name}."
+    candidates = [p for p in BACKUP_DIR.iterdir()
+                  if p.is_file() and p.name.startswith(prefix) and p.name.endswith(".bak")]
+    candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    for old in candidates[keep:]:
+        try:
+            old.unlink()
+        except OSError:
+            pass
+
+
 def _backup_file(target):
     """把原文件备份到备份目录（用户主目录下），返回备份路径。"""
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -939,6 +948,7 @@ def _backup_file(target):
         dest = BACKUP_DIR / f"{target.name}.{stamp}-{n}.bak"
         n += 1
     shutil.copy2(target, dest)
+    _prune_backups(target.name)
     return dest
 
 
@@ -954,7 +964,7 @@ def write_note(note_path, content, backup=True):
     都应走本命令，而不是直接覆盖。返回：action、path、backup、bytes。
     """
     target = Path(note_path)
-    if target.suffix.lower() not in (".md", ".markdown"):
+    if target.suffix.lower() not in NOTE_SUFFIXES:
         return {"ok": False, "error": f"只接受 Markdown 笔记文件: {target}"}
     if not target.parent.is_dir():
         try:
@@ -1035,7 +1045,7 @@ def lint_notes(note_root):
         if not entry.is_dir():
             continue
         notes = [p for p in sorted(entry.iterdir())
-                 if p.is_file() and p.suffix.lower() in (".md", ".markdown", ".txt")
+                 if p.is_file() and p.suffix.lower() in NOTE_SUFFIXES
                  and p.name.casefold() != DEFAULT_INDEX_FILE.casefold()]
         index_file = entry / DEFAULT_INDEX_FILE
         index_text = index_file.read_text(encoding="utf-8", errors="replace") if index_file.exists() else ""
@@ -1276,7 +1286,7 @@ def generate_moc(note_root, topic, tag=None, keyword=None, category=None, descri
     for cat_dir in cat_dirs:
         items = []
         for note in sorted(cat_dir.iterdir()):
-            if not note.is_file() or note.suffix.lower() not in (".md", ".markdown", ".txt"):
+            if not note.is_file() or note.suffix.lower() not in NOTE_SUFFIXES:
                 continue
             if note.name.casefold() == DEFAULT_INDEX_FILE.casefold():
                 continue
@@ -1345,6 +1355,13 @@ def generate_moc(note_root, topic, tag=None, keyword=None, category=None, descri
 
 # ---------------------------------------------------------------- 命令行入口
 def main(argv=None):
+    # 强制以 UTF-8 输出，避免 Windows 控制台默认编码（如 cp936）把中文 JSON 写乱。
+    # 由脚本自处理，调用方无需再手动设置 PYTHONUTF8。
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError):
+            pass
     parser = argparse.ArgumentParser(description="knowledge-distill 技能工具")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -1358,10 +1375,6 @@ def main(argv=None):
 
     p_list = sub.add_parser("list-structure", help="列出笔记根目录结构")
     p_list.add_argument("note_root")
-
-    p_ensure = sub.add_parser("ensure-root", help="检查/创建笔记根目录")
-    p_ensure.add_argument("base_path")
-    p_ensure.add_argument("--name", default=DEFAULT_NOTE_ROOT)
 
     p_index = sub.add_parser("list-index", help="读取分类索引文件")
     p_index.add_argument("category_dir")
@@ -1443,11 +1456,6 @@ def main(argv=None):
         print(json.dumps({"ok": True, "config": cfg, "path": str(CONFIG_PATH)}, ensure_ascii=False, indent=2))
     elif args.command == "list-structure":
         print(json.dumps(list_structure(args.note_root), ensure_ascii=False, indent=2))
-    elif args.command == "ensure-root":
-        result = ensure_root(args.base_path, args.name)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-        if not result.get("ok"):
-            return 1
     elif args.command == "list-index":
         print(json.dumps(list_index(args.category_dir), ensure_ascii=False, indent=2))
     elif args.command == "list-questions":

@@ -3,7 +3,7 @@
 """knowledge-distill 技能工具脚本单元测试
 
 运行方式（在技能目录下）：
-    $env:PYTHONUTF8="1"; python scripts/test_skill_tools.py
+    python scripts/test_skill_tools.py
     # 或：python -m unittest scripts.test_skill_tools -v
 
 测试全部在临时目录中进行，不会触碰用户真实配置与笔记。
@@ -68,28 +68,6 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         t.CONFIG_PATH.write_text("{bad json", encoding="utf-8")
         self.assertEqual(t.load_config(), {})
 
-    # ------------------------------------------------------------ 根目录
-    def test_ensure_root_creates_and_reports_created(self):
-        base = self.sandbox / "vault"
-        base.mkdir()
-        result = t.ensure_root(str(base), "AI笔记")
-        self.assertTrue(result["ok"])
-        self.assertTrue(result["created"])
-        self.assertTrue((base / "AI笔记").is_dir())
-
-    def test_ensure_root_existing_reports_not_created(self):
-        base = self.sandbox / "vault"
-        base.mkdir()
-        t.ensure_root(str(base), "AI笔记")
-        result = t.ensure_root(str(base), "AI笔记")
-        self.assertTrue(result["ok"])
-        self.assertFalse(result["created"])
-
-    def test_ensure_root_missing_base_fails(self):
-        result = t.ensure_root(str(self.sandbox / "不存在"), "AI笔记")
-        self.assertFalse(result["ok"])
-        self.assertIn("error", result)
-
     # ------------------------------------------------------------ 目录结构
     def _make_category(self):
         root = self.sandbox / "AI笔记"
@@ -110,12 +88,13 @@ class KnowledgeDistillTestCase(unittest.TestCase):
     def test_list_structure_keeps_real_notes(self):
         root, _ = self._make_category()
         cats = {c["name"]: c for c in t.list_structure(str(root))["categories"]}
-        self.assertEqual(set(cats["示例分类"]["notes"]),
-                         {"示例笔记标题.md", "附录.txt"})
+        self.assertEqual(set(cats["示例分类"]["notes"]), {"示例笔记标题.md"})
 
-    def test_list_structure_excludes_non_documents(self):
+    def test_list_structure_excludes_txt_and_non_documents(self):
+        """只把 .md/.markdown 当笔记：.txt 与图片都不计入。"""
         root, _ = self._make_category()
         cats = {c["name"]: c for c in t.list_structure(str(root))["categories"]}
+        self.assertNotIn("附录.txt", cats["示例分类"]["notes"])
         self.assertNotIn("图片.png", cats["示例分类"]["notes"])
 
     def test_list_structure_empty_category(self):
@@ -1066,6 +1045,16 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         result = t.write_note(str(target), "新", backup=False)
         self.assertEqual(result["action"], "overwritten")
         self.assertIsNone(result["backup"])
+
+    def test_backup_retention_keeps_newest_n(self):
+        """同一笔记的备份只保留最近 _BACKUP_KEEP 份，避免无限增长。"""
+        target = self._write_target()
+        for i in range(t._BACKUP_KEEP + 5):
+            target.write_text(f"第{i}版\n", encoding="utf-8")
+            t.write_note(str(target), f"新{i}版")
+        backups = [p for p in t.BACKUP_DIR.iterdir()
+                   if p.name.startswith("笔记A.md.") and p.name.endswith(".bak")]
+        self.assertEqual(len(backups), t._BACKUP_KEEP)
 
     def test_write_note_rejects_non_markdown(self):
         """只接受 Markdown 文件，避免误写其它类型。"""

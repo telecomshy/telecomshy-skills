@@ -44,7 +44,7 @@ create_source: super-agent-skill-creator
   ```
 
   例：`python "C:\Users\<用户>\.config\TeleAgent\skills\knowledge-distill\scripts\skill_tools.py" load-config`
-- **Windows PowerShell**：调用前先设置 `$env:PYTHONUTF8="1";`，避免中文路径与内容编码错误。
+- 脚本自带 UTF-8 输出，中文路径与内容无需额外环境变量。
 - 路径含空格时必须加引号。
 - 若不确定技能目录位置，先用文件搜索定位 `skill_tools.py`，再使用其绝对路径。
 
@@ -64,37 +64,30 @@ create_source: super-agent-skill-creator
 
 ### 首次触发（无配置）流程
 
-#### Step 1：确认笔记格式
+#### Step 1：确认格式与保存位置，并写入配置
 
-询问用户的笔记格式，三选一：**Obsidian**（推荐）、**普通 Markdown**、**其它**。
+一次性问清**格式**与**保存位置**两件事，再写入配置——不要拆成两轮追问。
 
-- **Obsidian**：运行 `python "<SKILL_DIR>/scripts/skill_tools.py" discover-vaults` 发现本机 vault。
-  - 发现到多个 vault → 列出并询问用户保存到哪个。
-  - 发现到单个 vault → 直接采用。
-  - 未发现（未装 Obsidian / obsidian.json 不存在）→ 让用户手动填写 vault 绝对路径。
-- **普通 Markdown / 其它**：直接询问用户保存目录（绝对路径）。
+- **格式**二选一：**Obsidian**（推荐）/ **普通 Markdown**。
+- **位置**：
+  - Obsidian：运行 `python "<SKILL_DIR>/scripts/skill_tools.py" discover-vaults` 发现本机 vault——多个则列出让用户选一个，单个直接采用，未发现（未装 Obsidian / `obsidian.json` 不存在）则请用户给出 vault 绝对路径。
+  - 普通 Markdown：请用户给出保存目录的绝对路径。
+- 笔记根目录名默认 `AI笔记`；所选位置下已有 `AI笔记` 则复用，否则保存时创建。
+- 写入配置（推荐用 `--config-file` 传 JSON 文件路径，避免命令行引号转义问题）：
 
-> 注意：用户机器上可能没有 Obsidian，若无法自动发现且用户也不确定 vault，可推荐用户先明确保存目录，或选普通 Markdown。
->
-> 两种格式的差异与完整写法：Obsidian 见 `references/obsidian-best-practices.md`，普通 Markdown 见 `references/plain-markdown-best-practices.md`。写入前按所配格式查阅对应文件。
+  ```bash
+  python "<SKILL_DIR>/scripts/skill_tools.py" save-config --config-file <临时json文件>
+  ```
 
-#### Step 2：确定并保存配置
+  配置结构示例：
 
-1. 确认最终 `format` 与存储位置（vault 或目录）。
-2. 笔记根目录名默认 `AI笔记`；若所选目录下已存在 `AI笔记` 目录则直接复用，否则在保存时创建。
-3. 将配置写入文件（**推荐用 `--config-file` 传 JSON 文件路径**，避免命令行引号转义问题）：
+  ```json
+  {"format": "obsidian", "vault": "D:\\示例路径\\我的笔记库", "note_root": "AI笔记"}
+  ```
 
-   ```bash
-   python "<SKILL_DIR>/scripts/skill_tools.py" save-config --config-file <临时json文件>
-   ```
+  普通 Markdown 时用 `"directory"` 字段代替 `"vault"`。
 
-   配置结构示例：
-
-   ```json
-   {"format": "obsidian", "vault": "D:\\示例路径\\我的笔记库", "note_root": "AI笔记"}
-   ```
-
-   普通 Markdown 时用 `"directory"` 字段代替 `"vault"`。
+两种格式的差异与完整写法：Obsidian 见 `references/obsidian-best-practices.md`，普通 Markdown 见 `references/plain-markdown-best-practices.md`。写入前按所配格式查阅对应文件。
 
 ---
 
@@ -104,11 +97,13 @@ create_source: super-agent-skill-creator
 
 **核心原则：所有询问默认在本步集中完成**（避免一篇笔记来回确认 2-3 轮）；后续步骤按确认结果执行，只在遇到方案表未覆盖的新情况时单独询问那一项。
 
+**快速通道（省一次确认）**：当且仅当**恰好 1 篇、新建、无合并、归入已有分类**时，跳过方案表，直接进入 Step 4 保存，并在 Step 8 汇报。只要涉及拆分、合并、新建分类，或存在"待确认"项，就必须走下面的方案表确认。
+
 1. **判断是否需要拆分**：AI 通读整段对话，识别存在哪些**相互独立、各有价值**的主题块。
    - **默认偏保守**：只有主题差异明显、且内容**足够充实、独立成篇才有价值**时才拆分；碎片化、几句话的小话题不单独拆。
    - **同主题合并**：同一主题下的不同维度（如"实现过程"与"踩坑经验"）**合并进同一篇**的不同章节，不拆。
    - **异主题才拆**：仅当主题间差异大、关联弱、各自内容充实时才拆成多篇。
-   - 单一主题的对话 → 维持单篇，同样走第 2 步的方案表。
+   - 单一主题的对话 → 维持单篇；满足快速通道条件时直接保存，否则走第 2 步方案表。
 2. **一次性给出完整方案表**：结合 Step 0 的 `list-structure` 结果（已有分类、已有笔记），为**每一篇**拟定标题、分类、新建或合并、一句话概要，合并成一张表让用户**一次性确认或调整**：
 
    | # | 笔记标题 | 分类 | 新建/合并（含合并方式） | 一句话概要 |
@@ -127,7 +122,7 @@ create_source: super-agent-skill-creator
 4. 后续 **Step 4 ~ Step 8 对方案表中的每一行分别执行**（可各自归入不同/相同分类）；主题间若有相关性，跨笔记用链接互链。
 5. 若方案表中存在"待确认"项，或执行中发现新情况（如目标文件重名、合并目标笔记内容不符），再**单独就该项询问用户**，不影响已确认的其它行。
 
-**本步完成判据**：用户对方案表明确回复"确认"（或提出调整、调整后再次确认）后，Step 3 结束。未收到用户回复前停在方案表等待，不进入 Step 4。
+**本步完成判据**：走快速通道时本步直接跳过；否则，用户对方案表明确回复"确认"（或提出调整、调整后再次确认）后，Step 3 结束。未收到用户回复前停在方案表等待，不进入 Step 4。
 
 ### Step 4：确定分类（按 Step 3 方案表执行）
 
@@ -281,9 +276,7 @@ python "<SKILL_DIR>/scripts/skill_tools.py" append-index-question "<分类目录
 1. **告知用户**保存结果：共生成几篇笔记，逐篇列出格式、vault/目录、分类、标题、完整文件路径；并提醒"可修改智识沉淀设置以变更保存位置"。
 2. 若过程中任何判断不确定，**主动询问用户**，不擅自决定。
 3. 若写入过程中出现失败（如权限、路径异常），如实告知用户并保留已完成的成果。
-4. **顺带回报相关旧笔记（沉淀即检索）**：保存完成后，用本次主题关键词运行
-   `python "<SKILL_DIR>/scripts/skill_tools.py" search-notes "<note_root>" "<主题关键词>"`
-   把命中的**其它旧笔记**（分类 + 标题 + 路径 + 片段）一并列出，提示"这些旧笔记可能与本次相关"。
+4. **顺带回报相关旧笔记（沉淀即检索）**：把 Step 5 已检索到的**其它旧笔记**（分类 + 标题 + 路径 + 片段）一并列出，提示"这些旧笔记可能与本次相关"——复用那次结果，不重复检索。
    - 这是把"沉淀"与"检索"接起来，用户不必再单独问一句"我之前记过什么"；只读检索，不生成任何新笔记。
    - 若本次笔记**已回链某篇旧笔记**，在该篇后注明"已互链"；若发现主题明显重合，可建议下次合并。
 
@@ -353,7 +346,7 @@ python "<SKILL_DIR>/scripts/skill_tools.py" gen-moc "<note_root>" "<主题>" [--
 
 ## 配置修改
 
-用户要求修改保存位置/格式时，更新配置文件（Step 2 的 save-config），并告知新的保存位置。
+用户要求修改保存位置/格式时，更新配置文件（Step 1 的 save-config），并告知新的保存位置。
 
 ## 脚本说明
 
