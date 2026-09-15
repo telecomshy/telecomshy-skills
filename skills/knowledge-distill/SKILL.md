@@ -1,8 +1,8 @@
 ---
 name: knowledge-distill
-description: 智识沉淀：把与 AI 的对话沉淀为可检索、可关联、可长期复用的知识库笔记（Obsidian / 普通 Markdown）。触发：把对话总结/保存成笔记；修改笔记保存位置或格式；检索之前记过的笔记；检查笔记库（断链/索引对齐）；给某主题做知识地图（MOC）；把笔记回退到历史版本。
+description: 智识沉淀：把与 AI 的对话沉淀为可检索、可关联、可长期复用的知识库笔记。触发：把对话总结/保存成笔记；修改笔记保存位置或格式；检索之前记过的笔记；检查笔记库（断链/索引对齐）；给某主题做知识地图（MOC）；把笔记回退到历史版本。
 name_cn: 智识沉淀
-description_cn: 把对话沉淀为可检索、可关联、可长期复用的知识库笔记（Obsidian/普通Markdown），保留细节、按分类归档、自动维护索引。
+description_cn: 把对话沉淀为可检索、可关联、可长期复用的知识库笔记，保留细节、按分类归档、自动维护索引。
 create_source: super-agent-skill-creator
 ---
 
@@ -39,6 +39,8 @@ create_source: super-agent-skill-creator
 
 **路径参数一律用绝对路径**：`<note_root>`、`<分类目录>` 等是传给脚本的路径参数，脚本按**当前工作目录**解析——相对路径会报 `笔记根目录不存在`，`list-index` 更会静默返回空。`<note_root>` 指配置里 `vault`（普通 Markdown 用 `directory`）与 `note_root` 拼成的绝对路径；`<分类目录>` 指 `<note_root>\<分类名>`。
 
+**有道后端（`format: youdao`）例外——传逻辑路径**：有道没有本地磁盘路径，`<note_root>`、`<分类目录>`、`<笔记路径>` 一律传**逻辑路径**（以 `/` 分隔，根即笔记根文件夹），例如 `<note_root>` = `AI笔记`、`<分类目录>` = `AI笔记/示例分类`、`<笔记路径>` = `AI笔记/示例分类/标题.md`。脚本据此在有道里解析/创建同名文件夹、并按标题匹配笔记（不按文件路径）。
+
 - **推荐写法**（先解析出技能目录，再拼绝对路径）：
 
   ```bash
@@ -71,11 +73,12 @@ create_source: super-agent-skill-creator
 
 一次性问清**格式**与**保存位置**两件事，再写入配置——不要拆成两轮追问。
 
-- **格式**二选一：**Obsidian**（推荐）/ **普通 Markdown**。
+- **格式**三选一：**Obsidian**（推荐）/ **普通 Markdown** / **有道云笔记**。
 - **位置**：
   - Obsidian：运行 `python "<SKILL_DIR>/scripts/skill_tools.py" discover-vaults` 发现本机 vault——多个则列出让用户选一个，单个直接采用，未发现（未装 Obsidian / `obsidian.json` 不存在）则请用户给出 vault 绝对路径。
   - 普通 Markdown：请用户给出保存目录的绝对路径。
-- 笔记根目录名默认 `AI笔记`；所选位置下已有 `AI笔记` 则复用，否则保存时创建。
+  - **有道云笔记**：运行 `python "<SKILL_DIR>/scripts/skill_tools.py" youdao-check` 检测 CLI 与认证；未就绪则按 `references/youdao-best-practices.md` 引导用户配置（改配置前先征得同意）；就绪后用 `list-structure "AI笔记"` 查看/创建根文件夹。
+- 笔记根目录名默认 `AI笔记`；所选位置下已有 `AI笔记` 则复用，否则保存时创建（有道下为同名文件夹）。
 - 写入配置（推荐用 `--config-file` 传 JSON 文件路径，避免命令行引号转义问题）：
 
   ```bash
@@ -88,9 +91,11 @@ create_source: super-agent-skill-creator
   {"format": "obsidian", "vault": "D:\\示例路径\\我的笔记库", "note_root": "AI笔记"}
   ```
 
-  普通 Markdown 时用 `"directory"` 字段代替 `"vault"`。
+  普通 Markdown 时用 `"directory"` 字段代替 `"vault"`；**有道云笔记**时为
+  `{"format": "youdao", "note_root": "AI笔记"}`（不需要 `vault`/`directory`，
+  API Key 由 `youdaonote` CLI 自己管理）。
 
-两种格式的差异与完整写法：Obsidian 见 `references/obsidian-best-practices.md`，普通 Markdown 见 `references/plain-markdown-best-practices.md`。写入前按所配格式查阅对应文件。
+三种格式的差异与完整写法：Obsidian 见 `references/obsidian-best-practices.md`，普通 Markdown 见 `references/plain-markdown-best-practices.md`，**有道云笔记见 `references/youdao-best-practices.md`**。写入前按所配格式查阅对应文件。
 
 ---
 
@@ -184,7 +189,7 @@ create_source: super-agent-skill-creator
   - **呈现形式随格式**：Obsidian 用 callout（如 `> [!tip] 通俗理解`）；普通 Markdown 用 `> **通俗理解**：……`（普通 Markdown 不支持 callout）。
   - **风格要求本身不进笔记**："用户要求这样讲"属于对话过程，不构成知识，不写入正文（同 `references/obsidian-best-practices.md` 中"不谈 AI/LLM 话题本身"的原则）。
 - **结构化**：标题层级、分点、代码块、表格组织清晰，便于检索。
-- **按所配格式写入**：Obsidian 遵循 `references/obsidian-best-practices.md`，普通 Markdown 遵循 `references/plain-markdown-best-practices.md`（frontmatter 必填字段、链接写法、callout 替代、可写的语法子集等规则都在其中）。写入前先查对应文件。
+- **按所配格式写入**：Obsidian 遵循 `references/obsidian-best-practices.md`，普通 Markdown 遵循 `references/plain-markdown-best-practices.md`，**有道云笔记遵循 `references/youdao-best-practices.md`**（frontmatter 必填字段、链接写法、callout 替代、可写的语法子集等规则都在其中）。写入前先查对应文件。
 - **关联**：文中提到的既有概念/笔记用链接关联，无法链到概念时保持内容自洽，后续可回补。本次拆分生成的多篇笔记若主题相关，在"相关笔记"章节互相链接。
   - **主动回链旧笔记（沉淀即检索）**：把 Step 2 用 `search-notes` 检索到的**同主题旧笔记**，在「相关笔记」章节回链，新笔记一落库就与既有知识连上；旧笔记这侧保持不动。
   - **Obsidian 格式**：只在本篇写**单向**双链 `[[笔记名]]`，反向链接交给 Obsidian 原生能力（Backlinks 面板与 Graph view）自动生成。
@@ -368,6 +373,7 @@ python "<SKILL_DIR>/scripts/skill_tools.py" gen-moc "<note_root>" "<主题>" [--
 
 - **只影响之后保存的位置**，已有笔记不会自动迁移；需要迁移请用户另行说明。
 - **切到普通 Markdown 时**，已有 Obsidian 笔记正文里的 `[[双链]]` 在普通 Markdown 阅读器中会失效（反向改用 Obsidian 则无此问题）；需提示用户，并询问是否转换已有链接。
+- **切到有道时**：按 `references/youdao-best-practices.md` 的「能力对照与降级」如实告知用户差异，并说明需要官方 `youdaonote` CLI 与 API Key。
 
 ---
 

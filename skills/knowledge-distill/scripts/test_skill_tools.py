@@ -17,6 +17,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import skill_tools as t  # noqa: E402
@@ -1532,6 +1533,295 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         result = t.lint_notes(str(root))
         self.assertEqual(result["missing_frontmatter"], [])
         self.assertEqual(t.search_notes(str(root), "笔记A")["matched_notes"], 1)
+
+
+class _FakeYoudao:
+    """内存版有道后端：模拟 youdaonote CLI 暴露的 MCP 工具，供单元测试使用。
+
+    不联网、不依赖真实账号，只覆盖技能用到的工具子集；`run` 可直接替换
+    `skill_tools._youdao_run`。
+    """
+
+    def __init__(self):
+        self.nodes = {}  # id -> {"id","name","dir","parentId","content"}
+        self._next = 1
+
+    def _new_id(self):
+        nid = str(self._next)
+        self._next += 1
+        return nid
+
+    def _entries(self, parent):
+        return [{"id": n["id"], "name": n["name"], "dir": n["dir"], "parentId": n["parentId"]}
+                for n in self.nodes.values() if n["parentId"] == str(parent)]
+
+    def run(self, tool, args=None, **kwargs):
+        args = args or {}
+        if tool == "listNotes":
+            return {"entries": self._entries(args.get("parentId", "0"))}
+        if tool == "createDir":
+            parent, name = str(args.get("parentId", "0")), args.get("dirName")
+            for n in self.nodes.values():
+                if n["parentId"] == parent and n["dir"] and n["name"] == name:
+                    return {"id": n["id"]}
+            nid = self._new_id()
+            self.nodes[nid] = {"id": nid, "name": name, "dir": True,
+                               "parentId": parent, "content": ""}
+            return {"id": nid}
+        if tool == "createAnyNote":
+            nid = self._new_id()
+            self.nodes[nid] = {"id": nid, "name": args.get("title"), "dir": False,
+                               "parentId": str(args.get("parentId", "0")),
+                               "content": args.get("content", "")}
+            return {"fileId": nid}
+        if tool == "updateMarkdownNote":
+            fid = str(args.get("fileId"))
+            if fid not in self.nodes:
+                raise t.YoudaoError("笔记不存在")
+            self.nodes[fid]["content"] = args.get("content", "")
+            if args.get("title"):
+                self.nodes[fid]["name"] = args["title"]
+            return {"ok": True}
+        if tool == "getNoteTextContent":
+            fid = str(args.get("fileId"))
+            if fid not in self.nodes:
+                raise t.YoudaoError("笔记不存在")
+            return {"content": self.nodes[fid]["content"], "title": self.nodes[fid]["name"]}
+        if tool == "searchNotes":
+            kw = str(args.get("keyword") or "").casefold()
+            hits = [n for n in self.nodes.values()
+                    if not n["dir"] and kw
+                    and (kw in n["name"].casefold() or kw in (n["content"] or "").casefold())]
+            return {"entries": [{"id": n["id"], "name": n["name"], "dir": False,
+                                 "parentId": n["parentId"]} for n in hits]}
+        raise t.YoudaoError(f"未实现的工具: {tool}")
+
+
+class YoudaoBackendTestCase(unittest.TestCase):
+    """有道后端单元测试：用内存假后端替换 CLI，不依赖真实账号与网络。"""
+
+    def setUp(self):
+        self.sandbox = Path(tempfile.mkdtemp(prefix="kd_youdao_test_"))
+        self._orig_config = t.CONFIG_PATH
+        self._orig_backup_dir = t.BACKUP_DIR
+        self._orig_run = t._youdao_run
+        t.CONFIG_PATH = self.sandbox / ".knowledge-distill-config.json"
+        t.BACKUP_DIR = self.sandbox / "backups"
+        t.save_config({"format": "youdao", "note_root": "AI笔记"})
+        self.fake = _FakeYoudao()
+        t._youdao_run = self.fake.run
+
+    def tearDown(self):
+        t._youdao_run = self._orig_run
+        t.CONFIG_PATH = self._orig_config
+        t.BACKUP_DIR = self._orig_backup_dir
+        shutil.rmtree(self.sandbox, ignore_errors=True)
+
+    # ------------------------------------------------------------ 链接渲染
+    def test_render_note_link_youdao_is_plain_text(self):
+        self.assertEqual(t.render_note_link("标题", fmt="youdao"), "标题")
+        self.assertTrue(t._is_youdao_format())
+
+    # ------------------------------------------------------------ 结构 / 查重
+    def test_list_structure_missing_root(self):
+        self.assertFalse(t.youdao_list_structure("AI笔记")["exists"])
+
+    def test_check_name_free_then_conflict(self):
+        free = t.youdao_check_name("AI笔记/示例分类", "新笔记")
+        self.assertTrue(free["valid"])
+        self.assertFalse(free["exists"])
+        t.youdao_write_note("AI笔记/示例分类/新笔记.md", "x\n")
+        conflict = t.youdao_check_name("AI笔记/示例分类", "新笔记")
+        self.assertTrue(conflict["exists"])
+        self.assertIn("file_id", conflict)
+
+    def test_check_name_empty_title(self):
+        self.assertFalse(t.youdao_check_name("AI笔记/示例分类", "  ")["ok"])
+
+    # ------------------------------------------------------------ 写入
+    def test_write_note_creates_note_and_folder(self):
+        r = t.youdao_write_note("AI笔记/示例分类/示例笔记.md", "# 标题\n\n正文\n")
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["action"], "created")
+        self.assertIsNotNone(r["file_id"])
+        cats = {c["name"]: c for c in t.youdao_list_structure("AI笔记")["categories"]}
+        self.assertIn("示例分类", cats)
+        self.assertIn("示例笔记", cats["示例分类"]["notes"])
+
+    def test_write_note_overwrite_backs_up_old_content(self):
+        t.youdao_write_note("AI笔记/示例分类/笔记.md", "旧内容\n")
+        r = t.youdao_write_note("AI笔记/示例分类/笔记.md", "新内容\n")
+        self.assertEqual(r["action"], "overwritten")
+        self.assertIsNotNone(r["backup"])
+        self.assertIn("旧内容", Path(r["backup"]).read_text(encoding="utf-8"))
+
+    def test_write_note_unchanged_skips_backup(self):
+        t.youdao_write_note("AI笔记/示例分类/笔记.md", "内容\n")
+        r = t.youdao_write_note("AI笔记/示例分类/笔记.md", "内容\n")
+        self.assertEqual(r["action"], "unchanged")
+        self.assertIsNone(r["backup"])
+
+    def test_write_note_normalizes_crlf_for_unchanged(self):
+        t.youdao_write_note("AI笔记/示例分类/笔记.md", "一行\n二行\n")
+        r = t.youdao_write_note("AI笔记/示例分类/笔记.md", "一行\r\n二行\r\n")
+        self.assertEqual(r["action"], "unchanged")
+
+    # ------------------------------------------------------------ 索引
+    def test_append_index_entry_creates_then_updates(self):
+        r1 = t.youdao_append_index_entry("AI笔记/示例分类", "标题A", "摘要A")
+        self.assertEqual(r1["action"], "created")
+        idx = t.youdao_list_index("AI笔记/示例分类")
+        self.assertTrue(idx["exists"])
+        self.assertFalse(idx["content"].startswith("---"))  # 无 frontmatter
+        self.assertIn("创建：", idx["content"])
+        self.assertIn("标题A", idx["content"])
+        r2 = t.youdao_append_index_entry("AI笔记/示例分类", "标题A", "摘要B")
+        self.assertEqual(r2["action"], "updated")
+        self.assertIn("摘要B", t.youdao_list_index("AI笔记/示例分类")["content"])
+
+    def test_append_index_question_plain_links_and_merge(self):
+        r1 = t.youdao_append_index_question("AI笔记/示例分类", "疑问？", "笔记A")
+        self.assertTrue(r1["ok"])
+        self.assertIn("笔记A", r1["entry"])
+        r2 = t.youdao_append_index_question("AI笔记/示例分类", "疑问？", "笔记B")
+        self.assertIn("笔记A", r2["entry"])
+        self.assertIn("笔记B", r2["entry"])
+        r3 = t.youdao_append_index_question("AI笔记/示例分类", "疑问？", "笔记B")
+        self.assertEqual(r3["action"], "unchanged")
+        qs = t.youdao_list_questions("AI笔记/示例分类")
+        self.assertEqual(qs["count"], 1)
+        self.assertEqual(set(qs["questions"][0]["links"]), {"笔记A", "笔记B"})
+
+    def test_append_index_question_rejects_empty(self):
+        self.assertFalse(t.youdao_append_index_question("AI笔记/示例分类", "  ", "笔记A")["ok"])
+
+    # ------------------------------------------------------------ 检索
+    def test_search_notes_finds_body_and_snippet(self):
+        t.youdao_write_note("AI笔记/示例分类/幂等笔记.md",
+                            "# 幂等\n\n按电梯按钮一次与多次结果相同。\n")
+        r = t.youdao_search_notes("AI笔记", "电梯")
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["matched_notes"], 1)
+        self.assertIn("电梯", r["hits"][0]["snippets"][0]["snippet"])
+
+    def test_search_notes_invalid_regex(self):
+        self.assertFalse(t.youdao_search_notes("AI笔记", "(", use_regex=True)["ok"])
+
+    def test_search_notes_full_returns_content(self):
+        t.youdao_write_note("AI笔记/示例分类/笔记.md", "含关键字的正文\n")
+        r = t.youdao_search_notes("AI笔记", "关键字", full=True)
+        self.assertIn("content", r["hits"][0])
+
+    # ------------------------------------------------------------ 备份 / 回退
+    def test_list_backups_and_restore(self):
+        t.youdao_write_note("AI笔记/示例分类/笔记.md", "第一版\n")
+        t.youdao_write_note("AI笔记/示例分类/笔记.md", "第二版\n")
+        backups = t.youdao_list_backups("AI笔记/示例分类/笔记.md")
+        self.assertEqual(backups["count"], 1)
+        self.assertTrue(backups["backups"][0]["attributable"])
+        r = t.youdao_restore_note("AI笔记/示例分类/笔记.md")
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["action"], "restored")
+        folder_id = t._youdao_folder_id(["AI笔记", "示例分类"])
+        _, content = t._youdao_read_note(folder_id, "笔记")
+        self.assertIn("第一版", content)
+
+    def test_restore_without_backup_fails(self):
+        t.youdao_write_note("AI笔记/示例分类/笔记.md", "内容\n")
+        self.assertFalse(t.youdao_restore_note("AI笔记/示例分类/笔记.md")["ok"])
+
+    # ------------------------------------------------------------ 就绪检测 / 错误
+    def test_ready_reports_missing_cli(self):
+        with mock.patch.object(t.subprocess, "run", side_effect=FileNotFoundError):
+            result = t.youdao_ready()
+        self.assertFalse(result["ok"])
+        self.assertFalse(result["cli_installed"])
+
+    def test_ready_parses_checks(self):
+        class _Proc:
+            returncode = 0
+            stdout = '{"ok": true, "checks": [{"name": "api-key", "status": "pass"}]}'
+            stderr = ""
+
+        with mock.patch.object(t.subprocess, "run", return_value=_Proc()):
+            result = t.youdao_ready()
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["cli_installed"])
+
+    def test_youdao_guard_wraps_error_as_dict(self):
+        def boom(*args, **kwargs):
+            raise t.YoudaoError("有道认证失败")
+
+        result = t._youdao_guard(boom)
+        self.assertFalse(result["ok"])
+        self.assertIn("认证失败", result["error"])
+
+    def test_error_kind_classification(self):
+        self.assertEqual(t._youdao_error_kind("API Key 未配置"), "auth")
+        self.assertEqual(t._youdao_error_kind("error: unknown option '--json'"), "permanent")
+        self.assertEqual(t._youdao_error_kind("429 Too Many Requests"), "transient")
+
+    def _count_run_attempts(self, returncode, stderr):
+        """跑一次 _youdao_run，返回 subprocess.run 的调用次数（预期抛 YoudaoError）。"""
+        class _Proc:
+            stdout = ""
+
+            def __init__(self, rc, err):
+                self.returncode = rc
+                self.stderr = err
+
+        calls = {"n": 0}
+
+        def fake_run(*args, **kwargs):
+            calls["n"] += 1
+            return _Proc(returncode, stderr)
+
+        with mock.patch.object(t.subprocess, "run", side_effect=fake_run), \
+                mock.patch.object(t.time, "sleep", return_value=None):
+            with self.assertRaises(t.YoudaoError):
+                self._orig_run("listNotes", {"parentId": "0"})  # 真实现（setUp 已把 t._youdao_run 换成假后端）
+        return calls["n"]
+
+    def test_permanent_error_is_not_retried(self):
+        self.assertEqual(self._count_run_attempts(1, "error: unknown option '--json'"), 1)
+
+    def test_auth_error_is_not_retried(self):
+        self.assertEqual(self._count_run_attempts(1, "API Key 未配置"), 1)
+
+    def test_transient_error_is_retried(self):
+        self.assertEqual(self._count_run_attempts(1, "429 Too Many Requests"),
+                         t._YOUDAO_RETRY_ATTEMPTS)
+
+    def test_run_parses_json_on_success(self):
+        class _Proc:
+            returncode = 0
+            stdout = '{"entries": [{"id": "1", "name": "示例"}]}'
+            stderr = ""
+
+        with mock.patch.object(t.subprocess, "run", return_value=_Proc()):
+            result = self._orig_run("listNotes", {"parentId": "0"})
+        self.assertEqual(result["entries"][0]["name"], "示例")
+
+    def test_ready_handles_timeout(self):
+        with mock.patch.object(t.subprocess, "run",
+                               side_effect=t.subprocess.TimeoutExpired(cmd="youdaonote", timeout=30)):
+            result = t.youdao_ready()
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["cli_installed"])
+
+    def test_index_meta_line_at_top(self):
+        t.youdao_append_index_entry("AI笔记/示例分类", "标题A", "摘要A")
+        content = t.youdao_list_index("AI笔记/示例分类")["content"]
+        self.assertTrue(content.splitlines()[0].startswith("> 创建："))
+
+    def test_parse_output_tolerates_surrounding_text(self):
+        self.assertEqual(t._youdao_parse_output('提示: {"a": 1} 结束'), {"a": 1})
+        self.assertEqual(t._youdao_parse_output(""), {})
+
+    def test_normalize_and_title_key(self):
+        self.assertEqual(t._youdao_title_key("标题.md"), "标题")
+        self.assertEqual(t._youdao_title_key("  标题  "), "标题")
+        self.assertEqual(t._normalize_newlines("a\r\nb\rc"), "a\nb\nc")
 
 
 if __name__ == "__main__":

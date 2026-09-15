@@ -19,7 +19,7 @@ TeleAgent 技能集合仓库（Agent Skills for TeleAgent）。
 
 | 技能 | 文件夹 | 说明 |
 | ---- | ------ | ---- |
-| 智识沉淀 (knowledge-distill) | [`skills/knowledge-distill`](skills/knowledge-distill) | 把对话沉淀为可检索、可关联、可长期复用的知识库笔记（Obsidian / 普通 Markdown） |
+| 智识沉淀 (knowledge-distill) | [`skills/knowledge-distill`](skills/knowledge-distill) | 把对话沉淀为可检索、可关联、可长期复用的知识库笔记（Obsidian / 普通 Markdown / 有道云笔记） |
 | 回答风格 (answer-style) | [`skills/answer-style`](skills/answer-style) | 按指令切换回答的讲解风格：更通俗地做知识拓展式讲解，或更专业严谨，也可恢复默认 |
 
 ## 目录结构
@@ -64,6 +64,7 @@ telecomshy-skills/
 - **真实可靠**：绝不编造事实，区分事实与推断（`(推断)` / `(待核实)`），易变事实标注日期；对客观、易失效的外部事实必要时联网核验准确性并标注出处，且只核验不沉淀外部内容。
 - **检索与维护**：检索已有笔记（按标题命中 / 命中次数 / 新近度排序）、笔记库健康检查（断链 / 索引对齐 / **疑似重复笔记候选**）、按主题生成内容地图（MOC）。
 - **可回退**：每次改写前自动备份，可列出历史版本并整篇恢复（撤销上次改写）。
+- **可选云端存储**：除本地 Obsidian / 普通 Markdown 外，可选用**有道云笔记**作为唯一存储——经官方 `youdaonote` CLI 读写云端；标签、双链、版本回退、全文检索等按有道能力降级（详见技能内 `references/youdao-best-practices.md`）。
 
 > 完整指令、触发条件与配置详见 [`skills/knowledge-distill/SKILL.md`](skills/knowledge-distill/SKILL.md)。
 

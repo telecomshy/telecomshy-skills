@@ -46,7 +46,9 @@ import os
 import posixpath
 import re
 import shutil
+import subprocess
 import sys
+import time
 import urllib.parse
 from pathlib import Path
 
@@ -153,17 +155,26 @@ def _is_markdown_format(fmt=None):
     return _resolve_format(fmt) in ("markdown", "md")
 
 
+def _is_youdao_format(fmt=None):
+    """当前（或指定）格式是否为有道云笔记后端（云端存储，无本地文件）。"""
+    return _resolve_format(fmt) == "youdao"
+
+
 def render_note_link(title, fmt=None, table_safe=True):
     """按笔记格式渲染索引里的笔记链接。
 
     - Obsidian：双链 `[[标题]]`（原生支持，可点击、可进图谱）。
     - 普通 Markdown：标准链接 `[标题](标题.md)`（VSCode/Typora/GitHub 可点击，
       双链语法在普通 Markdown 阅读器里只是纯文本）。
+    - 有道云笔记：**纯文本标题**（云端不支持 `[[wikilinks]]`，CLI 也给不出笔记 URL，
+      链接不可点击；可点双链由用户在桌面端手工补）。
 
     table_safe=True 时按表格单元格转义竖线（用于索引表格）；
     列表场景（如 MOC）传 False——双链里的 `|` 是别名分隔符，转义反而破坏链接。
     """
     display = escape_table_cell(title) if table_safe else flatten_text(title)
+    if _is_youdao_format(fmt):
+        return display
     if _is_markdown_format(fmt):
         return f"[{display}]({_md_href(title)})"
     return f"[[{display}]]"
@@ -534,29 +545,15 @@ def _render_index_template(category_name):
     return content if content.endswith("\n") else content + "\n"
 
 
-def append_index_entry(category_dir, title, summary, fmt=None):
-    """向分类索引的"笔记导航"表格追加一行（格式由脚本保证，避免 LLM 手写漂移）。
+def _upsert_index_entry(text, title, summary, fmt=None):
+    """在索引文本中追加/更新一行「笔记导航」，返回 (新文本, 结果片段)。
 
-    - 标题/摘要中的竖线与换行会被转义，避免破坏 Markdown 表格结构。
-    - 已存在同名条目则更新摘要，不重复追加。
-    - 表格不存在时自动补表头。
-    - 索引文件不存在时按模板新建（结构与 SKILL.md 的模板路径一致）。
-    - `fmt` 指定链接写法：obsidian（双链）/ markdown（标准链接）；缺省读配置。
+    纯文本操作，不碰文件——本地文件后端与有道云端后端共用同一套表格格式，
+    避免两条路径产出不一致（列格式与链接写法由脚本保证）。
     """
-    cat = Path(category_dir)
-    if not cat.is_dir():
-        return {"ok": False, "error": f"分类目录不存在: {cat}"}
-
     title_cell = escape_table_cell(title)
     summary_cell = escape_table_cell(summary)
     row = f"| {title_cell} | {summary_cell} | {render_note_link(title, fmt)} |"
-
-    index_file = cat / DEFAULT_INDEX_FILE
-    created = not index_file.exists()
-    if created:
-        index_file.write_text(_render_index_template(cat.name), encoding="utf-8")
-
-    text = index_file.read_text(encoding="utf-8-sig")
     lines = text.splitlines()
 
     # 已存在同名条目 -> 更新摘要
@@ -564,10 +561,9 @@ def append_index_entry(category_dir, title, summary, fmt=None):
     for i, line in enumerate(lines):
         if line.startswith(prefix):
             if line.strip() == row:
-                return {"ok": True, "action": "unchanged", "index_file": str(index_file), "row": row}
+                return text, {"action": "unchanged", "row": row}
             lines[i] = row
-            index_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-            return {"ok": True, "action": "updated", "index_file": str(index_file), "row": row}
+            return "\n".join(lines) + "\n", {"action": "updated", "row": row}
 
     # 不存在 -> 追加到表格末尾（找到表头分隔行后的最后一行表格）
     header_idx = None
@@ -583,9 +579,34 @@ def append_index_entry(category_dir, title, summary, fmt=None):
     while insert_at < len(lines) and lines[insert_at].startswith("|"):
         insert_at += 1
     lines.insert(insert_at, row)
-    index_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return {"ok": True, "action": "created" if created else "appended",
-            "index_file": str(index_file), "row": row}
+    return "\n".join(lines) + "\n", {"action": "appended", "row": row}
+
+
+def append_index_entry(category_dir, title, summary, fmt=None):
+    """向分类索引的"笔记导航"表格追加一行（格式由脚本保证，避免 LLM 手写漂移）。
+
+    - 标题/摘要中的竖线与换行会被转义，避免破坏 Markdown 表格结构。
+    - 已存在同名条目则更新摘要，不重复追加。
+    - 表格不存在时自动补表头。
+    - 索引文件不存在时按模板新建（结构与 SKILL.md 的模板路径一致）。
+    - `fmt` 指定链接写法：obsidian（双链）/ markdown（标准链接）；缺省读配置。
+    """
+    cat = Path(category_dir)
+    if not cat.is_dir():
+        return {"ok": False, "error": f"分类目录不存在: {cat}"}
+
+    index_file = cat / DEFAULT_INDEX_FILE
+    created = not index_file.exists()
+    if created:
+        index_file.write_text(_render_index_template(cat.name), encoding="utf-8")
+
+    text = index_file.read_text(encoding="utf-8-sig")
+    new_text, info = _upsert_index_entry(text, title, summary, fmt)
+    if info["action"] == "unchanged":
+        return {"ok": True, "action": "unchanged", "index_file": str(index_file), "row": info["row"]}
+    index_file.write_text(new_text, encoding="utf-8")
+    return {"ok": True, "action": "created" if created else info["action"],
+            "index_file": str(index_file), "row": info["row"]}
 
 
 def _link_key(title):
@@ -619,6 +640,90 @@ def _find_section_bounds(lines, title):
     return start, len(lines)
 
 
+def _upsert_index_question(text, question_text, note_link_title, fmt=None, plain_links=False):
+    """在索引文本中追加/更新一条「已收录疑问」，返回 (新文本, 结果片段)。
+
+    纯文本操作，不碰文件——本地文件后端与有道云端后端共用同一套格式。
+    `plain_links=True`（有道）时链接是纯文本标题，用 `、` 分隔，需要按分隔符
+    识别已有链接；本地格式（双链 / 标准链接）仍走 `_extract_links`。
+    """
+    lines = text.splitlines()
+
+    # 已存在同一疑问 -> 合并链接：保留已有片段原样、按需追加新链接，不覆盖、不重复
+    for i, line in enumerate(lines):
+        if not line.startswith("- "):
+            continue
+        # 箭头两侧空格可有可无（兼容 `？→ 回答` 这类历史写法）
+        m = re.match(r"^(.*?)\s*→\s*(.*)$", line[2:].strip(), re.DOTALL)
+        if not m:
+            continue
+        existing_q, tail = m.group(1), m.group(2)
+        if existing_q.strip() != question_text:
+            continue
+
+        existing_links = _extract_links(tail)
+        if not existing_links and plain_links and tail.strip():
+            existing_links = [p.strip() for p in tail.split(_QUESTION_LINK_SEP) if p.strip()]
+        # 旧格式（→ 后是纯文本回答、无任何链接）不保留回答文本，规范为仅链接
+        if existing_links:
+            parts = [p.strip() for p in tail.split(_QUESTION_LINK_SEP) if p.strip()]
+        else:
+            parts = []
+        merged_links = list(existing_links)
+        if not any(_link_key(t) == _link_key(note_link_title) for t in existing_links):
+            parts.append(render_note_link(note_link_title, fmt))
+            merged_links.append(note_link_title)
+
+        entry = _render_question_entry(question_text, parts)
+        info = {"action": "unchanged", "entry": entry, "links": merged_links,
+                "normalized": bool(tail.strip()) and not existing_links}
+        if line.strip() != entry:
+            lines[i] = entry
+            info["action"] = "updated"
+            text = "\n".join(lines) + "\n"
+        if len(merged_links) > _QUESTION_LINK_WARN_THRESHOLD:
+            info["warning"] = (
+                f"该疑问已指向 {len(merged_links)} 篇笔记，可能过于宽泛；"
+                "建议确认是否应拆分为更聚焦的疑问，或合并主题重复的笔记。"
+            )
+        return text, info
+
+    entry = _render_question_entry(
+        question_text, [render_note_link(note_link_title, fmt)])
+
+    # 定位"已收录疑问"章节（容忍标题内的多余空格，如 `##  已收录疑问  `）
+    bounds = _find_section_bounds(lines, "已收录疑问")
+    if bounds is None:
+        # 章节不存在 -> 追加到文件末尾
+        if lines and lines[-1].strip():
+            lines.append("")
+        lines.extend(["## 已收录疑问", "", entry])
+        return "\n".join(lines) + "\n", {"action": "section_created", "entry": entry}
+
+    section_idx, section_end = bounds
+
+    # 章节内定位插入点：优先追加到最后一条疑问之后
+    last_item = None
+    for i in range(section_idx + 1, section_end):
+        if lines[i].startswith("- "):
+            last_item = i
+
+    if last_item is not None:
+        insert_at = last_item + 1
+    else:
+        # 章节内还没有疑问条目：跳过标题后的前导空行
+        insert_at = section_idx + 1
+        while insert_at < section_end and not lines[insert_at].strip():
+            insert_at += 1
+
+    lines.insert(insert_at, entry)
+    # 保证条目与后续内容（下一条疑问/引用块/下一章节）之间有空行分隔
+    if insert_at + 1 < len(lines) and lines[insert_at + 1].strip():
+        lines.insert(insert_at + 1, "")
+
+    return "\n".join(lines) + "\n", {"action": "appended", "entry": entry}
+
+
 def append_index_question(category_dir, question, note_title, fmt=None):
     """向分类索引的"已收录疑问"章节追加/更新一条疑问，并附指向笔记的链接。
 
@@ -647,84 +752,13 @@ def append_index_question(category_dir, question, note_title, fmt=None):
         index_file.write_text(_render_index_template(cat.name), encoding="utf-8")
 
     text = index_file.read_text(encoding="utf-8-sig")
-    lines = text.splitlines()
-
-    # 已存在同一疑问 -> 合并链接：保留已有片段原样、按需追加新链接，不覆盖、不重复
-    for i, line in enumerate(lines):
-        if not line.startswith("- "):
-            continue
-        # 箭头两侧空格可有可无（兼容 `？→ 回答` 这类历史写法）
-        m = re.match(r"^(.*?)\s*→\s*(.*)$", line[2:].strip(), re.DOTALL)
-        if not m:
-            continue
-        existing_q, tail = m.group(1), m.group(2)
-        if existing_q.strip() != question_text:
-            continue
-
-        existing_links = _extract_links(tail)
-        # 旧格式（→ 后是纯文本回答、无任何链接）不保留回答文本，规范为仅链接
-        if existing_links:
-            parts = [p.strip() for p in tail.split(_QUESTION_LINK_SEP) if p.strip()]
-        else:
-            parts = []
-        merged_links = list(existing_links)
-        if not any(_link_key(t) == _link_key(note_link_title) for t in existing_links):
-            parts.append(render_note_link(note_link_title, fmt))
-            merged_links.append(note_link_title)
-
-        entry = _render_question_entry(question_text, parts)
-        result = {"ok": True, "action": "unchanged", "index_file": str(index_file),
-                  "entry": entry, "links": merged_links,
-                  "normalized": bool(tail.strip()) and not existing_links}
-        if line.strip() != entry:
-            lines[i] = entry
-            index_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-            result["action"] = "updated"
-        if len(merged_links) > _QUESTION_LINK_WARN_THRESHOLD:
-            result["warning"] = (
-                f"该疑问已指向 {len(merged_links)} 篇笔记，可能过于宽泛；"
-                "建议确认是否应拆分为更聚焦的疑问，或合并主题重复的笔记。"
-            )
-        return result
-
-    entry = _render_question_entry(
-        question_text, [render_note_link(note_link_title, fmt)])
-
-    # 定位"已收录疑问"章节（容忍标题内的多余空格，如 `##  已收录疑问  `）
-    bounds = _find_section_bounds(lines, "已收录疑问")
-    if bounds is None:
-        # 章节不存在 -> 追加到文件末尾
-        if lines and lines[-1].strip():
-            lines.append("")
-        lines.extend(["## 已收录疑问", "", entry])
-        index_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        return {"ok": True, "action": "section_created",
-                "index_file": str(index_file), "entry": entry}
-
-    section_idx, section_end = bounds
-
-    # 章节内定位插入点：优先追加到最后一条疑问之后
-    last_item = None
-    for i in range(section_idx + 1, section_end):
-        if lines[i].startswith("- "):
-            last_item = i
-
-    if last_item is not None:
-        insert_at = last_item + 1
-    else:
-        # 章节内还没有疑问条目：跳过标题后的前导空行
-        insert_at = section_idx + 1
-        while insert_at < section_end and not lines[insert_at].strip():
-            insert_at += 1
-
-    lines.insert(insert_at, entry)
-    # 保证条目与后续内容（下一条疑问/引用块/下一章节）之间有空行分隔
-    if insert_at + 1 < len(lines) and lines[insert_at + 1].strip():
-        lines.insert(insert_at + 1, "")
-
-    index_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return {"ok": True, "action": "appended",
-            "index_file": str(index_file), "entry": entry}
+    new_text, info = _upsert_index_question(text, question_text, note_link_title, fmt)
+    if info["action"] != "unchanged":
+        index_file.write_text(new_text, encoding="utf-8")
+    return {"ok": True, "action": info["action"], "index_file": str(index_file),
+            "entry": info["entry"], "links": info.get("links"),
+            "normalized": info.get("normalized"),
+            **({"warning": info["warning"]} if "warning" in info else {})}
 
 
 # ---------------------------------------------------------------- 健康检查
@@ -858,7 +892,7 @@ def _parse_index_entries(index_text):
     return entries
 
 
-def _parse_index_questions(index_text):
+def _parse_index_questions(index_text, plain_links=False):
     """从索引「已收录疑问」章节提取疑问条目（按出现顺序）。
 
     返回 `[{"question": 疑问文本, "links": [链接目标...]}]`：
@@ -868,6 +902,9 @@ def _parse_index_questions(index_text):
 
     只认 `## 已收录疑问` 到下一个二级标题之间的 `- ` 列表项；模板占位行
     （以"（"开头）不计入。
+
+    `plain_links=True`（有道）时链接是纯文本标题（用 `、` 分隔），按分隔符识别；
+    默认 False 时仅识别双链 / 标准 Markdown 链接，保持本地后端行为不变。
     """
     lines = index_text.splitlines()
     bounds = _find_section_bounds(lines, "已收录疑问")
@@ -891,7 +928,10 @@ def _parse_index_questions(index_text):
             question, tail = body, ""
         if not question:
             continue
-        items.append({"question": question, "links": _extract_links(tail)})
+        links = _extract_links(tail)
+        if not links and plain_links and tail:
+            links = [p.strip() for p in tail.split(_QUESTION_LINK_SEP) if p.strip()]
+        items.append({"question": question, "links": links})
     return items
 
 
@@ -1000,35 +1040,80 @@ def _prune_backups(note_name, key=None, keep=_BACKUP_KEEP):
             pass
 
 
-def _backup_file(target):
-    """把原文件备份到备份目录（用户主目录下），返回备份路径。
+def _backup_dest(name, key):
+    """在备份目录里为某笔记（名 + 路径短哈希）分配一个不冲突的备份文件路径。
 
-    备份名含基于完整路径的短哈希，避免跨分类同名笔记的备份互相混淆。
+    时间戳形如 20260101-120000；同一秒内多次备份追加 -1、-2 … 避免互相覆盖。
+    本地后端与有道后端共用本函数，保证两侧备份命名规则一致。
     """
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    key = _note_key(target)
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    base = f"{target.name}.{key}.{stamp}"
+    base = f"{name}.{key}.{stamp}"
     dest = BACKUP_DIR / f"{base}.bak"
     n = 1
     while dest.exists():
         dest = BACKUP_DIR / f"{base}-{n}.bak"
         n += 1
+    return dest
+
+
+def _backup_file(target):
+    """把原文件备份到备份目录（用户主目录下），返回备份路径。
+
+    备份名含基于完整路径的短哈希，避免跨分类同名笔记的备份互相混淆。
+    """
+    key = _note_key(target)
+    dest = _backup_dest(target.name, key)
     shutil.copy2(target, dest)
     _prune_backups(target.name, key)
     return dest
 
 
-def list_backups(note_path=None):
-    """列出备份版本。给了 note_path 只列该笔记的；否则列全部。
+def _collect_backup_candidates(name, key):
+    """收集某笔记（名 + 路径短哈希）的备份，返回 [(路径, 时间戳), ...]。
+
+    本地后端与有道后端共用；`key` 区分跨分类同名笔记。
+    """
+    candidates = []
+    if not BACKUP_DIR.is_dir():
+        return candidates
+    for p in BACKUP_DIR.iterdir():
+        if not p.is_file():
+            continue
+        parsed = _parse_backup_name(p.name, name)
+        if not parsed:
+            continue
+        bkey, stamp = parsed
+        if bkey is not None and bkey != key:
+            continue  # 同名但属于别的分类
+        candidates.append((p, stamp))
+    return candidates
+
+
+def _pick_backup_version(name, key, version):
+    """在备份里选一个版本，返回 (备份路径, 错误信息)。
+
+    无任何备份时返回 (None, None)；指定 version 但找不到时返回 (None, 错误)。
+    """
+    candidates = _collect_backup_candidates(name, key)
+    if not candidates:
+        return None, None
+    if version:
+        matches = [c for c in candidates if c[1] == version]
+        if not matches:
+            return None, f"未找到版本 {version}；用 list-backups 查看可用版本"
+        return matches[0][0], None
+    return max(candidates, key=lambda c: c[0].stat().st_mtime)[0], None
+
+
+def _list_backups_common(name, key):
+    """列出备份（本地与有道共用）：name 为空则列全部，否则只列该笔记。
 
     每条含 `file`、`stamp`（时间戳，取不到为 null）、`size`、`mtime`；
-    给了 note_path 时另含 `attributable`（是否能精确对应到该路径的笔记）。
+    给了 name 时另含 `attributable`（是否能精确对应到该笔记）。
     """
     if not BACKUP_DIR.is_dir():
         return {"ok": True, "backup_dir": str(BACKUP_DIR), "count": 0, "backups": []}
-    name = Path(note_path).name if note_path else None
-    key = _note_key(note_path) if note_path else None
     items = []
     for p in BACKUP_DIR.iterdir():
         if not p.is_file() or not p.name.endswith(".bak"):
@@ -1058,6 +1143,17 @@ def list_backups(note_path=None):
     return {"ok": True, "backup_dir": str(BACKUP_DIR), "count": len(items), "backups": items}
 
 
+def list_backups(note_path=None):
+    """列出备份版本。给了 note_path 只列该笔记的；否则列全部。
+
+    每条含 `file`、`stamp`（时间戳，取不到为 null）、`size`、`mtime`；
+    给了 note_path 时另含 `attributable`（是否能精确对应到该路径的笔记）。
+    """
+    name = Path(note_path).name if note_path else None
+    key = _note_key(note_path) if note_path else None
+    return _list_backups_common(name, key)
+
+
 def restore_note(note_path, version=None):
     """把笔记恢复到某个历史备份版本（缺省=最近一版）。
 
@@ -1069,29 +1165,11 @@ def restore_note(note_path, version=None):
         return {"ok": False, "error": f"只接受 Markdown 笔记文件: {target}"}
     name, key = target.name, _note_key(target)
 
-    candidates = []
-    if BACKUP_DIR.is_dir():
-        for p in BACKUP_DIR.iterdir():
-            if not p.is_file():
-                continue
-            parsed = _parse_backup_name(p.name, name)
-            if not parsed:
-                continue
-            bkey, stamp = parsed
-            if bkey is not None and bkey != key:
-                continue  # 同名但不同分类
-            candidates.append((p, stamp))
-    if not candidates:
+    chosen, err = _pick_backup_version(name, key, version)
+    if err:
+        return {"ok": False, "error": err}
+    if chosen is None:
         return {"ok": False, "error": f"没有找到该笔记的备份: {target}"}
-
-    if version:
-        matches = [c for c in candidates if c[1] == version]
-        if not matches:
-            return {"ok": False,
-                    "error": f"未找到版本 {version}；用 list-backups 查看可用版本"}
-        chosen = matches[0][0]
-    else:
-        chosen = max(candidates, key=lambda c: c[0].stat().st_mtime)[0]
 
     try:
         content = chosen.read_text(encoding="utf-8-sig")
@@ -1692,6 +1770,571 @@ def generate_moc(note_root, topic, tag=None, keyword=None, category=None, descri
     }
 
 
+# ---------------------------------------------------------------- 有道云笔记后端
+# 有道作为「唯一存储」时的云端后端：笔记正文只存在有道云端，本地只保留技能配置、
+# 临时草稿与滚动备份。所有读写都通过官方 youdaonote CLI 的
+# `call <tool> --args <json>` 完成（返回结构化 JSON，无需解析文本输出）。
+# 设计见 docs/智识沉淀-有道存储实现方案.md；书写规则见 references/youdao-best-practices.md。
+
+_YOUDAO_RETRY_ATTEMPTS = 3
+_YOUDAO_RETRY_BASE_DELAY = 1.0
+_YOUDAO_ROOT_PARENT = "0"
+# 有道笔记没有文件扩展名：索引笔记以「00-分类索引」为标题，匹配时按标题归一化键。
+_YOUDAO_INDEX_TITLE = DEFAULT_INDEX_FILE.rsplit(".", 1)[0]
+
+
+class YoudaoError(Exception):
+    """有道后端调用失败（CLI 缺失、认证失败、网络/限流、返回无法解析等）。"""
+
+
+def _youdao_guard(func, *args, **kwargs):
+    """调用有道入口函数并把 YoudaoError 收敛为错误字典，避免把异常抛给调用方。"""
+    try:
+        return func(*args, **kwargs)
+    except YoudaoError as e:
+        return {"ok": False, "error": str(e)}
+
+
+def _youdao_cli():
+    """youdaonote CLI 可执行名；测试或自定义安装可用环境变量覆盖。"""
+    return os.environ.get("KNOWLEDGE_DISTILL_YOUDAO_CLI") or "youdaonote"
+
+
+def _youdao_error_kind(message):
+    """把 CLI 错误归类，决定是否重试：auth / permanent 不重试，transient 退避重试。
+
+    - auth：认证失败（重试多少次都一样）；
+    - permanent：参数 / 用法 / 找不到等确定性错误（重试无意义）；
+    - transient：超时、网络、限流、服务端过载等（重试可能成功）。
+    """
+    low = str(message or "").lower()
+    if any(k in low for k in ("api key", "401", "unauthorized", "未配置", "认证")):
+        return "auth"
+    if any(k in low for k in ("unknown option", "unknown command", "invalid",
+                              "not found", "缺少", "参数", "required", "usage",
+                              "methodnotfound", "invalidparams")):
+        return "permanent"
+    return "transient"
+
+
+def _youdao_parse_output(text):
+    """解析 CLI 输出：优先整体 JSON，失败时截取首个 JSON 对象/数组。"""
+    s = (text or "").strip()
+    if not s:
+        return {}
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        pass
+    for opener, closer in (("{", "}"), ("[", "]")):
+        i, j = s.find(opener), s.rfind(closer)
+        if i != -1 and j > i:
+            try:
+                return json.loads(s[i:j + 1])
+            except json.JSONDecodeError:
+                continue
+    raise YoudaoError(f"无法解析 youdaonote 输出：{s[:200]}")
+
+
+def _youdao_run(tool, args=None, timeout=60, attempts=_YOUDAO_RETRY_ATTEMPTS):
+    """调用 `youdaonote call <tool> --args <json>`，返回解析后的结果。
+
+    瞬时失败（超时/网络/限流）按指数退避重试；认证/参数错误不重试、直接抛出。
+    端到端 JSON 形状需真实账号验证；单元测试通过替换本函数注入 mock。
+    """
+    cmd = [_youdao_cli(), "call", tool]
+    if args is not None:
+        cmd += ["--args", json.dumps(args, ensure_ascii=False)]
+    last_error = ""
+    for attempt in range(max(1, attempts)):
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True,
+                                  encoding="utf-8", errors="replace", timeout=timeout)
+        except FileNotFoundError:
+            raise YoudaoError(
+                "未找到 youdaonote CLI，请先安装并配置（见 references/youdao-best-practices.md）")
+        except subprocess.TimeoutExpired:
+            last_error = f"调用超时：{tool}"
+        except OSError as e:
+            last_error = f"调用 youdaonote 失败：{e}"
+        else:
+            if proc.returncode == 0:
+                return _youdao_parse_output(proc.stdout)
+            last_error = (proc.stderr or proc.stdout or "").strip() or f"退出码 {proc.returncode}"
+            kind = _youdao_error_kind(last_error)
+            if kind == "auth":
+                raise YoudaoError("有道认证失败：" + last_error)
+            if kind == "permanent":
+                raise YoudaoError("有道调用失败（不重试）：" + last_error)
+        if attempt < attempts - 1:
+            time.sleep(_YOUDAO_RETRY_BASE_DELAY * (2 ** attempt))
+    raise YoudaoError(last_error or "调用 youdaonote 失败")
+
+
+def _youdao_parts(path):
+    """把逻辑路径（`AI笔记/分类/标题.md`）切成路径段；兼容 `\\` 分隔符。"""
+    s = str(path or "").replace("\\", "/").strip().strip("/")
+    return [p for p in s.split("/") if p and p != "."]
+
+
+def _youdao_split_note(note_path):
+    """把笔记逻辑路径切成 (分类路径段, 标题)；标题去掉 .md/.markdown 扩展名。"""
+    parts = _youdao_parts(note_path)
+    if not parts:
+        return [], ""
+    title = re.sub(r"\.(md|markdown)$", "", parts[-1], flags=re.IGNORECASE)
+    return parts[:-1], title
+
+
+def _youdao_title_key(name):
+    """标题归一化键：去扩展名、去空白、小写，用于跨端按标题匹配。"""
+    return re.sub(r"\.(md|markdown)$", "", str(name or "").strip(),
+                  flags=re.IGNORECASE).casefold()
+
+
+def _youdao_id(entry):
+    """取条目的 id（兼容服务端可能用的几种键名）；取不到返回 None。"""
+    if not isinstance(entry, dict):
+        return None
+    for key in ("id", "fileId", "file_id", "nodeId", "node_id", "token"):
+        value = entry.get(key)
+        if value not in (None, ""):
+            return value
+    return None
+
+
+def _youdao_name(entry):
+    """取条目的名称（兼容 name / title）；取不到返回空串。"""
+    if not isinstance(entry, dict):
+        return ""
+    return str(entry.get("name") or entry.get("title") or "")
+
+
+def _youdao_is_dir(entry):
+    """判断列表项是否为文件夹（CLI 适配层用 `dir` 字段标记文件夹）。"""
+    if not isinstance(entry, dict):
+        return False
+    return bool(entry.get("dir")) or str(entry.get("type") or "").lower() in ("dir", "folder")
+
+
+def _youdao_entries(res):
+    """从 CLI 返回里提取条目列表，容忍 `{entries}` / `{data:{entries}}` 等包裹。"""
+    def pick(obj):
+        if isinstance(obj, list):
+            return obj
+        if isinstance(obj, dict):
+            for key in ("entries", "items", "nodes", "files", "children"):
+                if isinstance(obj.get(key), list):
+                    return obj[key]
+        return None
+
+    found = pick(res)
+    if found is not None:
+        return found
+    if isinstance(res, dict):
+        found = pick(res.get("data"))
+        if found is not None:
+            return found
+    return []
+
+
+def _youdao_content(res):
+    """从读笔记结果里取正文，容忍 `{content}` / `{data:{content}}` / 纯字符串。"""
+    if isinstance(res, str):
+        return res
+    if isinstance(res, dict):
+        if res.get("content") is not None:
+            return str(res.get("content"))
+        data = res.get("data")
+        if isinstance(data, dict) and data.get("content") is not None:
+            return str(data.get("content"))
+    return ""
+
+
+def _youdao_list(parent_id, max_pages=50):
+    """列出某文件夹下的条目（含子文件夹与笔记），按 cursor 翻页并去重。"""
+    entries, seen, cursor = [], set(), None
+    for _ in range(max_pages):
+        args = {"parentId": str(parent_id)}
+        if cursor is not None:
+            args["lastId"] = str(cursor)
+        batch = _youdao_entries(_youdao_run("listNotes", args))
+        if not batch:
+            break
+        fresh = [e for e in batch if str(_youdao_id(e)) not in seen]
+        if not fresh:
+            break
+        for e in fresh:
+            seen.add(str(_youdao_id(e)))
+        entries.extend(fresh)
+        last = _youdao_id(batch[-1])
+        if last is None:
+            break
+        cursor = last
+    return entries
+
+
+def _youdao_folder_id(folder_parts, create=False):
+    """按名字逐级解析文件夹 id；create=True 时缺失则创建。找不到返回 None。"""
+    parent = _YOUDAO_ROOT_PARENT
+    for name in folder_parts:
+        match = next((e for e in _youdao_list(parent)
+                      if _youdao_is_dir(e) and _youdao_name(e) == name), None)
+        if match is None and create:
+            _youdao_run("createDir", {"parentId": parent, "dirName": name})
+            match = next((e for e in _youdao_list(parent)
+                          if _youdao_is_dir(e) and _youdao_name(e) == name), None)
+        if match is None:
+            return None
+        parent = str(_youdao_id(match))
+    return parent
+
+
+def _youdao_find_note(folder_id, title):
+    key = _youdao_title_key(title)
+    for entry in _youdao_list(folder_id):
+        if not _youdao_is_dir(entry) and _youdao_title_key(_youdao_name(entry)) == key:
+            return entry
+    return None
+
+
+def _youdao_read_note(folder_id, title):
+    """读回一篇笔记，返回 (fileId, 正文)；不存在返回 (None, None)。"""
+    entry = _youdao_find_note(folder_id, title)
+    if entry is None:
+        return None, None
+    file_id = str(_youdao_id(entry))
+    content = _youdao_content(_youdao_run("getNoteTextContent", {"fileId": file_id}))
+    return file_id, content
+
+
+def _normalize_newlines(text):
+    """把 CRLF / CR 统一成 LF，用于"内容是否变化"的比较（避免换行差异被误判为改动）。"""
+    return str(text or "").replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _youdao_note_key(logical_path):
+    """有道笔记备份用的短哈希（基于归一化逻辑路径），作用同本地 `_note_key`。"""
+    norm = "/".join(_youdao_parts(logical_path)).casefold()
+    return hashlib.sha1(norm.encode("utf-8")).hexdigest()[:6]
+
+
+def _youdao_backup_name(logical_path):
+    """有道笔记备份用的文件名：逻辑路径末段，补 .md 扩展名以复用本地备份命名规则。"""
+    name = Path(str(logical_path).replace("\\", "/")).name
+    if not name.lower().endswith(NOTE_SUFFIXES):
+        name += ".md"
+    return name
+
+
+def _youdao_backup(logical_path, content):
+    """把改写前的旧正文存成本地滚动备份（安全网，不是第二份存储）。"""
+    if not content:
+        return None
+    name = _youdao_backup_name(logical_path)
+    key = _youdao_note_key(logical_path)
+    dest = _backup_dest(name, key)
+    dest.write_text(content, encoding="utf-8")
+    _prune_backups(name, key)
+    return str(dest)
+
+
+def _youdao_index_template(category_name):
+    """渲染有道用的分类索引：沿用模板但去掉 frontmatter，改为正文顶部一行元信息。"""
+    _, body = _split_frontmatter(_render_index_template(category_name))
+    meta = f"> 创建：{datetime.date.today().isoformat()} ｜ 来源：对话 ｜ 标签：分类索引"
+    return f"{meta}\n\n{body.strip()}\n"
+
+
+def _youdao_write_index(folder_id, content):
+    """把索引文本写回有道（存在则更新、否则新建）。"""
+    entry = _youdao_find_note(folder_id, _YOUDAO_INDEX_TITLE)
+    if entry is not None:
+        _youdao_run("updateMarkdownNote", {"fileId": str(_youdao_id(entry)),
+                                           "title": _YOUDAO_INDEX_TITLE, "content": content})
+    else:
+        _youdao_run("createAnyNote", {"title": _YOUDAO_INDEX_TITLE, "type": "md",
+                                      "content": content, "parentId": str(folder_id)})
+
+
+def youdao_ready():
+    """检测 youdaonote CLI 与认证是否就绪（首次配置 onboarding 用）。"""
+    try:
+        proc = subprocess.run([_youdao_cli(), "check", "--json"], capture_output=True,
+                              text=True, encoding="utf-8", errors="replace", timeout=30)
+    except FileNotFoundError:
+        return {"ok": False, "cli_installed": False,
+                "error": "未找到 youdaonote CLI，请先安装（见 references/youdao-best-practices.md）"}
+    except (OSError, subprocess.SubprocessError) as e:
+        # TimeoutExpired 属于 SubprocessError 而非 OSError：CLI 卡住时也要返回结构化结果，不能抛未捕获异常
+        return {"ok": False, "cli_installed": True, "error": f"调用 youdaonote 失败：{e}"}
+    checks = []
+    try:
+        data = _youdao_parse_output(proc.stdout)
+        if isinstance(data, dict) and isinstance(data.get("checks"), list):
+            checks = data["checks"]
+    except YoudaoError:
+        checks = []
+    failed = [c for c in checks if str(c.get("status")) == "fail"]
+    ok = proc.returncode == 0 and not failed
+    result = {"ok": ok, "cli_installed": True, "exit_code": proc.returncode, "checks": checks}
+    if not ok:
+        result["message"] = (proc.stderr or proc.stdout or "").strip()[:500]
+    return result
+
+
+def youdao_list_structure(note_root):
+    """有道版 list-structure：note_root 是笔记根文件夹的逻辑名（如 `AI笔记`）。"""
+    root_id = _youdao_folder_id(_youdao_parts(note_root))
+    if root_id is None:
+        return {"exists": False, "note_root": str(note_root), "categories": []}
+    categories = []
+    for entry in _youdao_list(root_id):
+        if not _youdao_is_dir(entry):
+            continue
+        children = _youdao_list(str(_youdao_id(entry)))
+        notes = [_youdao_name(n) for n in children if not _youdao_is_dir(n)]
+        has_index = any(_youdao_title_key(_youdao_name(n)) == _youdao_title_key(_YOUDAO_INDEX_TITLE)
+                        for n in children if not _youdao_is_dir(n))
+        categories.append({"name": _youdao_name(entry), "notes": notes, "has_index": has_index})
+    return {"exists": True, "note_root": str(note_root), "categories": categories}
+
+
+def youdao_list_index(category_dir):
+    logical = f"{str(category_dir).rstrip('/')}/{_YOUDAO_INDEX_TITLE}"
+    folder_id = _youdao_folder_id(_youdao_parts(category_dir))
+    if folder_id is None:
+        return {"exists": False, "index_file": logical, "content": ""}
+    _, content = _youdao_read_note(folder_id, _YOUDAO_INDEX_TITLE)
+    if content is None:
+        return {"exists": False, "index_file": logical, "content": ""}
+    return {"exists": True, "index_file": logical, "content": content}
+
+
+def youdao_list_questions(category_dir):
+    folder_id = _youdao_folder_id(_youdao_parts(category_dir))
+    if folder_id is None:
+        return {"ok": False, "error": f"分类不存在: {category_dir}"}
+    _, content = _youdao_read_note(folder_id, _YOUDAO_INDEX_TITLE)
+    if not content:
+        return {"ok": True, "exists": False, "count": 0, "questions": []}
+    items = _parse_index_questions(content, plain_links=True)
+    return {"ok": True, "exists": True, "count": len(items), "questions": items}
+
+
+def youdao_check_name(category_dir, title):
+    """有道版 check-name：标题不是文件名，故不做 Windows 文件名校验，只查重。"""
+    raw = str(title or "")
+    logical = f"{str(category_dir).rstrip('/')}/{raw}"
+    if not raw.strip():
+        return {"ok": False, "valid": False, "exists": False, "title": raw, "error": "标题为空"}
+    folder_id = _youdao_folder_id(_youdao_parts(category_dir))
+    if folder_id is None:
+        return {"ok": True, "valid": True, "exists": False, "path": logical}
+    entry = _youdao_find_note(folder_id, raw)
+    if entry is None:
+        return {"ok": True, "valid": True, "exists": False, "path": logical}
+    return {"ok": True, "valid": True, "exists": True, "path": logical,
+            "file_id": str(_youdao_id(entry)),
+            "suggestion": "向用户确认：覆盖 / 改名 / 合并进该笔记"}
+
+
+def youdao_write_note(note_path, content, backup=True):
+    """有道版 write-note：幂等写入（先按标题查、命中则整体覆盖），覆盖前本地备份。"""
+    folder_parts, title = _youdao_split_note(note_path)
+    if not title:
+        return {"ok": False, "error": f"无法解析笔记标题: {note_path}"}
+    new_text = content if content.endswith("\n") else content + "\n"
+    folder_id = _youdao_folder_id(folder_parts, create=True)
+    if folder_id is None:
+        return {"ok": False, "error": f"无法创建/定位分类目录: {note_path}"}
+
+    file_id, old = _youdao_read_note(folder_id, title)
+    if file_id is not None:
+        if _normalize_newlines(old or "") == _normalize_newlines(new_text):
+            return {"ok": True, "action": "unchanged", "path": str(note_path),
+                    "backup": None, "bytes": len(new_text.encode("utf-8"))}
+        backup_path = None
+        if backup and old:
+            try:
+                backup_path = _youdao_backup(note_path, old)
+            except OSError as e:
+                return {"ok": False, "error": f"备份原笔记失败（已中止写入）: {e}"}
+        _youdao_run("updateMarkdownNote", {"fileId": file_id, "title": title, "content": new_text})
+        return {"ok": True, "action": "overwritten", "path": str(note_path),
+                "backup": backup_path, "bytes": len(new_text.encode("utf-8"))}
+
+    result = _youdao_run("createAnyNote", {"title": title, "type": "md",
+                                           "content": new_text, "parentId": folder_id})
+    file_id = _youdao_id(result) if isinstance(result, dict) else None
+    return {"ok": True, "action": "created", "path": str(note_path), "backup": None,
+            "file_id": str(file_id) if file_id else None,
+            "bytes": len(new_text.encode("utf-8"))}
+
+
+def _youdao_index_context(category_dir):
+    """准备分类索引的读写上下文，返回 (folder_id, 索引文本, 是否新建)。
+
+    分类文件夹不存在则创建；索引不存在则按模板渲染（无 frontmatter、正文顶部元信息）。
+    文件夹定位/创建失败时 folder_id 为 None。两条 append-index-* 命令共用。
+    """
+    parts = _youdao_parts(category_dir)
+    cat_name = parts[-1] if parts else ""
+    folder_id = _youdao_folder_id(parts, create=True)
+    if folder_id is None:
+        return None, None, False
+    _, content = _youdao_read_note(folder_id, _YOUDAO_INDEX_TITLE)
+    created = not content
+    if created:
+        content = _youdao_index_template(cat_name)
+    return folder_id, content, created
+
+
+def youdao_append_index_entry(category_dir, title, summary, fmt=None):
+    """有道版 append-index-entry：读回索引 → 在内存 upsert 一行 → 整体写回。"""
+    folder_id, content, created = _youdao_index_context(category_dir)
+    if folder_id is None:
+        return {"ok": False, "error": f"无法创建/定位分类目录: {category_dir}"}
+    new_text, info = _upsert_index_entry(content, title, summary, fmt="youdao")
+    if info["action"] != "unchanged":
+        _youdao_write_index(folder_id, new_text)
+    return {"ok": True, "action": "created" if created else info["action"],
+            "index_file": f"{str(category_dir).rstrip('/')}/{_YOUDAO_INDEX_TITLE}",
+            "row": info["row"]}
+
+
+def youdao_append_index_question(category_dir, question, note_title, fmt=None):
+    """有道版 append-index-question：读回索引 → 在内存 upsert 一条疑问 → 整体写回。"""
+    question_text = flatten_text(question)
+    note_link_title = flatten_text(note_title)
+    if not question_text:
+        return {"ok": False, "error": "疑问内容不能为空"}
+    if not note_link_title:
+        return {"ok": False, "error": "笔记标题不能为空"}
+    folder_id, content, _ = _youdao_index_context(category_dir)
+    if folder_id is None:
+        return {"ok": False, "error": f"无法创建/定位分类目录: {category_dir}"}
+    new_text, info = _upsert_index_question(content, question_text, note_link_title,
+                                            fmt="youdao", plain_links=True)
+    if info["action"] != "unchanged":
+        _youdao_write_index(folder_id, new_text)
+    result = {"ok": True, "action": info["action"],
+              "index_file": f"{str(category_dir).rstrip('/')}/{_YOUDAO_INDEX_TITLE}",
+              "entry": info["entry"], "links": info.get("links"),
+              "normalized": info.get("normalized")}
+    if "warning" in info:
+        result["warning"] = info["warning"]
+    return result
+
+
+def youdao_search_notes(note_root, query, category=None, use_regex=False,
+                        max_snippets=3, context=60, full=False, max_candidates=25):
+    """有道版 search-notes：先用 searchNotes 拿候选，再逐篇读回正文做片段匹配。
+
+    降级：有道搜索只返回标题+id（无片段/正则/排序），故对候选逐篇读回后在本地做
+    与文件后端一致的片段/排序逻辑；候选数有上限，命中范围受有道搜索能力限制。
+    """
+    try:
+        pattern = re.compile(query if use_regex else re.escape(query), re.IGNORECASE)
+    except re.error as e:
+        return {"ok": False, "error": f"正则表达式无效: {e}"}
+
+    cat_folder_id = None
+    if category:
+        cat_folder_id = _youdao_folder_id(_youdao_parts(note_root) + _youdao_parts(category))
+        if cat_folder_id is None:
+            return {"ok": False, "error": f"分类不存在: {category}"}
+
+    entries = [e for e in _youdao_entries(_youdao_run("searchNotes",
+                                                      {"keyword": query, "startIndex": 0}))
+               if not _youdao_is_dir(e)]
+    if cat_folder_id is not None:
+        entries = [e for e in entries if str(e.get("parentId")) == str(cat_folder_id)]
+
+    hits = []
+    for entry in entries[:max_candidates]:
+        file_id = str(_youdao_id(entry))
+        name = _youdao_name(entry)
+        try:
+            text = _youdao_content(_youdao_run("getNoteTextContent", {"fileId": file_id}))
+        except YoudaoError:
+            continue
+        if not text:
+            continue
+        title = re.sub(r"\.(md|markdown)$", "", name, flags=re.IGNORECASE)
+        count = len(pattern.findall(text))
+        title_hit = bool(pattern.search(title))
+        if count == 0 and not title_hit:
+            continue
+        hit = {"category": category or "", "note": name,
+               "path": f"{str(note_root).rstrip('/')}/{name}",
+               "title_hit": title_hit, "date": "", "count": count}
+        if full:
+            hit["content"] = text
+            hit["snippets"] = []
+        else:
+            snippets, covered = [], -1
+            for m in pattern.finditer(text):
+                if len(snippets) >= max_snippets:
+                    break
+                start = max(0, m.start() - context)
+                if start < covered:
+                    continue
+                end = min(len(text), m.end() + context)
+                snippets.append({"match": m.group(0),
+                                 "snippet": text[start:end].replace("\n", " ").strip()})
+                covered = end
+            if not snippets:
+                continue
+            hit["snippets"] = snippets
+        hits.append(hit)
+
+    hits.sort(key=lambda h: h["note"].casefold())
+    hits.sort(key=lambda h: (h["title_hit"], h["count"], h["date"]), reverse=True)
+    return {"ok": True, "query": query, "use_regex": use_regex, "full": full,
+            "matched_notes": len(hits), "hits": hits}
+
+
+def youdao_list_backups(note_path=None):
+    """有道版 list-backups：按逻辑路径的短哈希匹配本地滚动备份。"""
+    name = _youdao_backup_name(note_path) if note_path else None
+    key = _youdao_note_key(note_path) if note_path else None
+    return _list_backups_common(name, key)
+
+
+def youdao_restore_note(note_path, version=None):
+    """有道版 restore-note：从本地备份取旧正文写回有道（写前再备份当前版本）。"""
+    folder_parts, title = _youdao_split_note(note_path)
+    if not title:
+        return {"ok": False, "error": f"无法解析笔记标题: {note_path}"}
+    name = _youdao_backup_name(note_path)
+    key = _youdao_note_key(note_path)
+    chosen, err = _pick_backup_version(name, key, version)
+    if err:
+        return {"ok": False, "error": err}
+    if chosen is None:
+        return {"ok": False, "error": f"没有找到该笔记的备份: {note_path}"}
+    try:
+        content = chosen.read_text(encoding="utf-8-sig")
+    except OSError as e:
+        return {"ok": False, "error": f"读取备份失败: {e}"}
+    folder_id = _youdao_folder_id(folder_parts, create=True)
+    if folder_id is None:
+        return {"ok": False, "error": f"无法定位分类目录: {note_path}"}
+    _, current = _youdao_read_note(folder_id, title)
+    backup_path = None
+    if current:
+        try:
+            backup_path = _youdao_backup(note_path, current)
+        except OSError as e:
+            return {"ok": False, "error": f"备份当前版本失败（已中止恢复）: {e}"}
+    result = youdao_write_note(note_path, content, backup=False)
+    if not result.get("ok"):
+        return result
+    return {"ok": True, "action": "restored", "path": str(note_path),
+            "from": str(chosen), "backup": backup_path, "bytes": result.get("bytes")}
+
+
 # ---------------------------------------------------------------- 命令行入口
 def main(argv=None):
     # 强制以 UTF-8 输出，避免 Windows 控制台默认编码（如 cp936）把中文 JSON 写乱。
@@ -1705,6 +2348,8 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("discover-vaults", help="发现本机 Obsidian vault")
+
+    sub.add_parser("youdao-check", help="检测有道云笔记 CLI 与认证是否就绪（首次配置用）")
 
     sub.add_parser("load-config", help="读取配置文件")
 
@@ -1743,7 +2388,9 @@ def main(argv=None):
 
     p_write = sub.add_parser("write-note",
                              help="事务化写入笔记：先备份、临时文件原子替换、内容相同则跳过")
-    p_write.add_argument("note_path", help="目标笔记的绝对路径（.md / .markdown）")
+    p_write.add_argument("note_path",
+                         help="目标笔记路径：本地格式为绝对路径（.md / .markdown）；"
+                              "有道为逻辑路径（如 AI笔记/分类/标题.md）")
     p_write.add_argument("--content-file", help="从文件读取笔记完整内容（推荐，避免长文本转义问题）")
     p_write.add_argument("--content", help="直接传入笔记完整内容（短内容可用）")
 
@@ -1751,7 +2398,9 @@ def main(argv=None):
     p_lb.add_argument("note_path", nargs="?", help="目标笔记路径；省略则列出全部备份")
 
     p_rn = sub.add_parser("restore-note", help="把笔记恢复到某个备份版本（缺省=最近一版）")
-    p_rn.add_argument("note_path", help="目标笔记的绝对路径（.md / .markdown）")
+    p_rn.add_argument("note_path",
+                      help="目标笔记路径：本地格式为绝对路径（.md / .markdown）；"
+                           "有道为逻辑路径")
     p_rn.add_argument("--version", help="要恢复的时间戳版本（用 list-backups 查看；缺省=最近一版）")
 
     p_moc = sub.add_parser("gen-moc", help="按主题生成/刷新 MOC 内容地图（根目录 MOC-<主题>.md）")
@@ -1777,12 +2426,20 @@ def main(argv=None):
                             help="链接写法，缺省读配置（obsidian=双链，markdown=标准链接）")
 
     args = parser.parse_args(argv)
+    # 有道后端（format=youdao）走云端 CLI；其余格式走本地文件，代码路径完全不变。
+    use_youdao = _is_youdao_format()
 
     if args.command == "discover-vaults":
         print(json.dumps({"vaults": discover_vaults()}, ensure_ascii=False, indent=2))
-    elif args.command == "load-config":
+        return 0
+    if args.command == "youdao-check":
+        result = _youdao_guard(youdao_ready)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result.get("ok") else 1
+    if args.command == "load-config":
         print(json.dumps(load_config(), ensure_ascii=False, indent=2))
-    elif args.command == "save-config":
+        return 0
+    if args.command == "save-config":
         if not args.config and not args.config_file:
             print(json.dumps({"ok": False, "error": "需提供 --config 或 --config-file"}, ensure_ascii=False))
             return 1
@@ -1800,28 +2457,49 @@ def main(argv=None):
                 return 1
         cfg = save_config(cfg)
         print(json.dumps({"ok": True, "config": cfg, "path": str(CONFIG_PATH)}, ensure_ascii=False, indent=2))
-    elif args.command == "list-structure":
-        print(json.dumps(list_structure(args.note_root), ensure_ascii=False, indent=2))
-    elif args.command == "list-index":
-        print(json.dumps(list_index(args.category_dir), ensure_ascii=False, indent=2))
-    elif args.command == "list-questions":
-        result = list_questions(args.category_dir)
+        return 0
+
+    # 有道后端暂不支持的命令（规划中）：明确报错，不误落到本地文件路径。
+    if use_youdao and args.command in ("lint-notes", "gen-moc"):
+        print(json.dumps({
+            "ok": False,
+            "error": f"有道后端暂不支持 {args.command}（规划中，见 docs/智识沉淀-有道存储实现方案.md）",
+        }, ensure_ascii=False, indent=2))
+        return 1
+
+    if args.command == "list-structure":
+        result = (_youdao_guard(youdao_list_structure, args.note_root) if use_youdao
+                  else list_structure(args.note_root))
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        if not result.get("ok"):
-            return 1
-    elif args.command == "check-name":
-        result = check_name(args.category_dir, args.title)
+        return 0 if result.get("ok", True) else 1
+    if args.command == "list-index":
+        result = (_youdao_guard(youdao_list_index, args.category_dir) if use_youdao
+                  else list_index(args.category_dir))
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        if not result.get("ok"):
-            return 1
-    elif args.command == "search-notes":
-        result = search_notes(args.note_root, args.query, category=args.category,
-                              use_regex=args.regex, max_snippets=args.max_snippets,
-                              context=args.context, full=args.full)
+        return 0 if result.get("ok", True) else 1
+    if args.command == "list-questions":
+        result = (_youdao_guard(youdao_list_questions, args.category_dir) if use_youdao
+                  else list_questions(args.category_dir))
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        if not result.get("ok"):
-            return 1
-    elif args.command == "write-note":
+        return 0 if result.get("ok") else 1
+    if args.command == "check-name":
+        result = (_youdao_guard(youdao_check_name, args.category_dir, args.title) if use_youdao
+                  else check_name(args.category_dir, args.title))
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result.get("ok") else 1
+    if args.command == "search-notes":
+        if use_youdao:
+            result = _youdao_guard(youdao_search_notes, args.note_root, args.query,
+                                 category=args.category, use_regex=args.regex,
+                                 max_snippets=args.max_snippets, context=args.context,
+                                 full=args.full)
+        else:
+            result = search_notes(args.note_root, args.query, category=args.category,
+                                  use_regex=args.regex, max_snippets=args.max_snippets,
+                                  context=args.context, full=args.full)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result.get("ok") else 1
+    if args.command == "write-note":
         if args.content_file and args.content is not None:
             print(json.dumps({"ok": False, "error": "--content-file 与 --content 只能给一个"}, ensure_ascii=False))
             return 1
@@ -1836,41 +2514,44 @@ def main(argv=None):
         else:
             print(json.dumps({"ok": False, "error": "需提供 --content-file 或 --content"}, ensure_ascii=False))
             return 1
-        result = write_note(args.note_path, content)
+        result = (_youdao_guard(youdao_write_note, args.note_path, content) if use_youdao
+                  else write_note(args.note_path, content))
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        if not result.get("ok"):
-            return 1
-    elif args.command == "list-backups":
-        print(json.dumps(list_backups(args.note_path), ensure_ascii=False, indent=2))
-    elif args.command == "restore-note":
-        result = restore_note(args.note_path, version=args.version)
+        return 0 if result.get("ok") else 1
+    if args.command == "list-backups":
+        result = (_youdao_guard(youdao_list_backups, args.note_path) if use_youdao
+                  else list_backups(args.note_path))
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        if not result.get("ok"):
-            return 1
-    elif args.command == "gen-moc":
+        return 0 if result.get("ok", True) else 1
+    if args.command == "restore-note":
+        result = (_youdao_guard(youdao_restore_note, args.note_path, version=args.version)
+                  if use_youdao else restore_note(args.note_path, version=args.version))
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result.get("ok") else 1
+    if args.command == "gen-moc":
         result = generate_moc(args.note_root, args.topic, tag=args.tag,
                               keyword=args.keyword, category=args.category,
                               description=args.description)
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        if not result.get("ok"):
-            return 1
-    elif args.command == "lint-notes":
+        return 0 if result.get("ok") else 1
+    if args.command == "lint-notes":
         result = lint_notes(args.note_root)
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        if not result.get("ok"):
-            return 1
-    elif args.command == "append-index-entry":
-        result = append_index_entry(args.category_dir, args.title, args.summary,
-                                    fmt=args.format)
+        return 0 if result.get("ok") else 1
+    if args.command == "append-index-entry":
+        result = (_youdao_guard(youdao_append_index_entry, args.category_dir, args.title, args.summary)
+                  if use_youdao
+                  else append_index_entry(args.category_dir, args.title, args.summary, fmt=args.format))
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        if not result.get("ok"):
-            return 1
-    elif args.command == "append-index-question":
-        result = append_index_question(args.category_dir, args.question, args.note_title,
-                                       fmt=args.format)
+        return 0 if result.get("ok") else 1
+    if args.command == "append-index-question":
+        result = (_youdao_guard(youdao_append_index_question, args.category_dir,
+                              args.question, args.note_title)
+                  if use_youdao
+                  else append_index_question(args.category_dir, args.question,
+                                             args.note_title, fmt=args.format))
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        if not result.get("ok"):
-            return 1
+        return 0 if result.get("ok") else 1
     return 0
 
 
