@@ -1646,7 +1646,13 @@ class YoudaoBackendTestCase(unittest.TestCase):
         self.assertIsNotNone(r["file_id"])
         cats = {c["name"]: c for c in t.youdao_list_structure("AI笔记")["categories"]}
         self.assertIn("示例分类", cats)
-        self.assertIn("示例笔记", cats["示例分类"]["notes"])
+        # 有道靠标题后缀区分笔记类型：创建时必须带 .md，否则客户端无法预览
+        self.assertIn("示例笔记.md", cats["示例分类"]["notes"])
+
+    def test_index_note_has_md_suffix(self):
+        t.youdao_append_index_entry("AI笔记/示例分类", "标题A", "摘要A")
+        names = [n["name"] for n in self.fake.nodes.values() if not n["dir"]]
+        self.assertIn("00-分类索引.md", names)
 
     def test_write_note_overwrite_backs_up_old_content(self):
         t.youdao_write_note("AI笔记/示例分类/笔记.md", "旧内容\n")

@@ -1892,6 +1892,16 @@ def _youdao_title_key(name):
                   flags=re.IGNORECASE).casefold()
 
 
+def _youdao_md_title(title):
+    """补成有道 Markdown 笔记标题：必须以 `.md` 结尾。
+
+    有道靠标题后缀区分笔记类型；缺后缀的条目会被客户端当成无法预览的文件
+    （官方 `save` 命令会自动补后缀，直接调 `createAnyNote` 时必须自行补）。
+    """
+    t = str(title or "").strip()
+    return t if t.lower().endswith(".md") else t + ".md"
+
+
 def _youdao_id(entry):
     """取条目的 id（兼容服务端可能用的几种键名）；取不到返回 None。"""
     if not isinstance(entry, dict):
@@ -2051,9 +2061,10 @@ def _youdao_write_index(folder_id, content):
     entry = _youdao_find_note(folder_id, _YOUDAO_INDEX_TITLE)
     if entry is not None:
         _youdao_run("updateMarkdownNote", {"fileId": str(_youdao_id(entry)),
-                                           "title": _YOUDAO_INDEX_TITLE, "content": content})
+                                           "title": _youdao_md_title(_YOUDAO_INDEX_TITLE),
+                                           "content": content})
     else:
-        _youdao_run("createAnyNote", {"title": _YOUDAO_INDEX_TITLE, "type": "md",
+        _youdao_run("createAnyNote", {"title": _youdao_md_title(_YOUDAO_INDEX_TITLE), "type": "md",
                                       "content": content, "parentId": str(folder_id)})
 
 
@@ -2160,11 +2171,12 @@ def youdao_write_note(note_path, content, backup=True):
                 backup_path = _youdao_backup(note_path, old)
             except OSError as e:
                 return {"ok": False, "error": f"备份原笔记失败（已中止写入）: {e}"}
-        _youdao_run("updateMarkdownNote", {"fileId": file_id, "title": title, "content": new_text})
+        _youdao_run("updateMarkdownNote", {"fileId": file_id, "title": _youdao_md_title(title),
+                                           "content": new_text})
         return {"ok": True, "action": "overwritten", "path": str(note_path),
                 "backup": backup_path, "bytes": len(new_text.encode("utf-8"))}
 
-    result = _youdao_run("createAnyNote", {"title": title, "type": "md",
+    result = _youdao_run("createAnyNote", {"title": _youdao_md_title(title), "type": "md",
                                            "content": new_text, "parentId": folder_id})
     file_id = _youdao_id(result) if isinstance(result, dict) else None
     return {"ok": True, "action": "created", "path": str(note_path), "backup": None,
