@@ -1779,8 +1779,12 @@ def generate_moc(note_root, topic, tag=None, keyword=None, category=None, descri
 _YOUDAO_RETRY_ATTEMPTS = 3
 _YOUDAO_RETRY_BASE_DELAY = 1.0
 _YOUDAO_ROOT_PARENT = "0"
-# 有道笔记没有文件扩展名：索引笔记以「00-分类索引」为标题，匹配时按标题归一化键。
+# 索引笔记标题（写入时补 .md 后缀，见 _youdao_md_title）；匹配时按标题归一化键。
 _YOUDAO_INDEX_TITLE = DEFAULT_INDEX_FILE.rsplit(".", 1)[0]
+
+# 技能自管的 CLI 安装目录：首次配置可自动下载到此处，脚本优先使用，无需改 PATH / 杀软白名单。
+_YOUDAO_BIN_DIR = Path.home() / ".knowledge-distill" / "bin"
+_YOUDAO_EXE_NAME = "youdaonote.exe" if os.name == "nt" else "youdaonote"
 
 
 class YoudaoError(Exception):
@@ -1796,8 +1800,18 @@ def _youdao_guard(func, *args, **kwargs):
 
 
 def _youdao_cli():
-    """youdaonote CLI 可执行名；测试或自定义安装可用环境变量覆盖。"""
-    return os.environ.get("KNOWLEDGE_DISTILL_YOUDAO_CLI") or "youdaonote"
+    """定位 youdaonote CLI：环境变量 > 技能自管安装目录 > PATH 上的 youdaonote。
+
+    技能自管目录（`~/.knowledge-distill/bin/`）让首次配置能自动下载安装，
+    不必改 PATH、也不触发杀软白名单；测试或自定义安装可用环境变量覆盖。
+    """
+    override = os.environ.get("KNOWLEDGE_DISTILL_YOUDAO_CLI")
+    if override:
+        return override
+    local = _YOUDAO_BIN_DIR / _YOUDAO_EXE_NAME
+    if local.exists():
+        return str(local)
+    return "youdaonote"
 
 
 def _youdao_error_kind(message):

@@ -27,15 +27,22 @@ youdaonote call createDir          --args '{"parentId":"0","dirName":"..."}'
 - **认证由 CLI 负责**：API Key 存 `~/.youdaonote.json`，或用环境变量 `YOUDAONOTE_API_KEY`；
   技能**不读取、不存储** Key。
 - 就绪自检：`python "<SKILL_DIR>/scripts/skill_tools.py" youdao-check`（内部调用 `youdaonote check --json`）。
-- 脚本调用 CLI 时可用环境变量 `KNOWLEDGE_DISTILL_YOUDAO_CLI` 指定可执行文件（默认 `youdaonote`）。
+- 脚本定位 CLI 的顺序：环境变量 `KNOWLEDGE_DISTILL_YOUDAO_CLI` > 技能自管目录 `~/.knowledge-distill/bin/` > PATH 上的 `youdaonote`。
 
-## 3. 首次配置（引导为主）
+## 3. 首次配置（自动装 CLI，只卡在 API Key）
 
-1. 安装 `youdaonote` CLI（官方下载包；涉及 PATH / 杀软，需用户自行完成）。
-2. 到 `mopen.163.com` 申请 API Key（**绑定手机号账号，技能无法代申请**）。
-3. 配置认证：`youdaonote config set apiKey`（或设 `YOUDAONOTE_API_KEY`）。
-4. 运行 `youdao-check` 确认就绪；就绪后 `list-structure "AI笔记"` 查看/创建根文件夹。
-5. 写入技能配置：`{"format": "youdao", "note_root": "AI笔记"}`。
+1. **自动安装 CLI**——本机没有 `youdaonote` 时由技能自己下载，用户无需手动装：
+   - 下载对应平台的官方压缩包，解压出**单文件可执行程序**（Windows 为 `youdaonote.exe`，其余为 `youdaonote`；自带运行时，无需 Node）；
+   - 放到技能自管目录 `~/.knowledge-distill/bin/`——脚本会自动优先使用它，**不必改 PATH、也不触发杀软白名单**；
+   - 下载 / 解压失败时，再退回引导用户手动安装。
+   - 官方下载地址（`…` = `https://artifact.lx.netease.com/download/youdaonote-cli`）：
+     - Windows x64：`…/youdaonote-cli-windows-x64.tar.gz`；arm64：`…/youdaonote-cli-windows-arm64.tar.gz`
+     - macOS arm64：`…/youdaonote-cli-darwin-arm64.tar.gz`；x64：`…/youdaonote-cli-darwin-x64.tar.gz`
+     - Linux x64：`…/youdaonote-cli-linux-x64.tar.gz`；arm64：`…/youdaonote-cli-linux-arm64.tar.gz`
+   - 官方未提供校验和；只从上述官方域名下载。
+2. **暂停，等用户提供 API Key**（技能无法代申请）：到 `https://mopen.163.com/#/dashboard` 申请，账号需绑定手机号。拿到后由技能配置：`youdaonote config set apiKey <KEY>`，或设环境变量 `YOUDAONOTE_API_KEY`，或写 `~/.youdaonote.json`。
+3. `youdao-check` 确认就绪；就绪后 `list-structure "AI笔记"` 查看 / 创建根文件夹。
+4. 写入技能配置：`{"format": "youdao", "note_root": "AI笔记"}`。
 
 ## 4. 内容模型（写入有道的笔记长什么样）
 

@@ -77,7 +77,7 @@ create_source: super-agent-skill-creator
 - **位置**：
   - Obsidian：运行 `python "<SKILL_DIR>/scripts/skill_tools.py" discover-vaults` 发现本机 vault——多个则列出让用户选一个，单个直接采用，未发现（未装 Obsidian / `obsidian.json` 不存在）则请用户给出 vault 绝对路径。
   - 普通 Markdown：请用户给出保存目录的绝对路径。
-  - **有道云笔记**：运行 `python "<SKILL_DIR>/scripts/skill_tools.py" youdao-check` 检测 CLI 与认证；未就绪则按 `references/youdao-best-practices.md` 引导用户配置（改配置前先征得同意）；就绪后用 `list-structure "AI笔记"` 查看/创建根文件夹。
+  - **有道云笔记**：运行 `python "<SKILL_DIR>/scripts/skill_tools.py" youdao-check` 检测 CLI 与认证。**CLI 缺失就自动下载安装**（步骤见 `references/youdao-best-practices.md`：下载对应平台包 → 解压出可执行文件 → 放到 `~/.knowledge-distill/bin/`，脚本会自动使用，不必改 PATH）；**只有申请 API Key 需要用户本人完成**——停下来指导用户到 `mopen.163.com` 申请、把 Key 交给技能配置；就绪后用 `list-structure "AI笔记"` 查看/创建根文件夹。
 - 笔记根目录名默认 `AI笔记`；所选位置下已有 `AI笔记` 则复用，否则保存时创建（有道下为同名文件夹）。
 - 写入配置（推荐用 `--config-file` 传 JSON 文件路径，避免命令行引号转义问题）：
 
@@ -369,11 +369,15 @@ python "<SKILL_DIR>/scripts/skill_tools.py" gen-moc "<note_root>" "<主题>" [--
 
 ## 配置修改
 
-用户要求修改保存位置/格式时，更新配置文件（Step 1 的 save-config），并告知新的保存位置。两点务必向用户说清：
+用户要求修改保存位置/格式时，**只更新配置文件**（Step 1 的 save-config），然后告知新的保存位置。
 
-- **只影响之后保存的位置**，已有笔记不会自动迁移；需要迁移请用户另行说明。
+**切换 = 只改配置：已有笔记留在原处、原样不动。** 本步只碰配置文件。迁移是**独立操作**，仅在用户明确说"把已有笔记迁过去 / 搬过去 / 转换过去"时才做，且要先给方案再执行；用户没这么说时，不要读取、统计、迁移或转换任何已有笔记。
+
+- **只影响之后保存的位置**。
 - **切到普通 Markdown 时**，已有 Obsidian 笔记正文里的 `[[双链]]` 在普通 Markdown 阅读器中会失效（反向改用 Obsidian 则无此问题）；需提示用户，并询问是否转换已有链接。
 - **切到有道时**：按 `references/youdao-best-practices.md` 的「能力对照与降级」如实告知用户差异，并说明需要官方 `youdaonote` CLI 与 API Key。
+
+**本步完成判据**：配置文件已更新、并告知用户新位置；除配置文件外没有改动任何已有笔记。
 
 ---
 

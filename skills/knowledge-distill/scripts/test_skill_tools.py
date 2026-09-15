@@ -1622,6 +1622,27 @@ class YoudaoBackendTestCase(unittest.TestCase):
         self.assertEqual(t.render_note_link("标题", fmt="youdao"), "标题")
         self.assertTrue(t._is_youdao_format())
 
+    # ------------------------------------------------------------ CLI 定位
+    def test_youdao_cli_env_override_wins(self):
+        with mock.patch.dict(t.os.environ, {"KNOWLEDGE_DISTILL_YOUDAO_CLI": "/custom/youdaonote"}):
+            self.assertEqual(t._youdao_cli(), "/custom/youdaonote")
+
+    def test_youdao_cli_falls_back_to_path(self):
+        env = {k: v for k, v in t.os.environ.items() if k != "KNOWLEDGE_DISTILL_YOUDAO_CLI"}
+        with mock.patch.dict(t.os.environ, env, clear=True), \
+                mock.patch.object(t, "_YOUDAO_BIN_DIR", self.sandbox / "missing"):
+            self.assertEqual(t._youdao_cli(), "youdaonote")
+
+    def test_youdao_cli_prefers_skill_managed_bin_dir(self):
+        bin_dir = self.sandbox / "bin"
+        bin_dir.mkdir()
+        exe = bin_dir / t._YOUDAO_EXE_NAME
+        exe.write_text("x", encoding="utf-8")
+        env = {k: v for k, v in t.os.environ.items() if k != "KNOWLEDGE_DISTILL_YOUDAO_CLI"}
+        with mock.patch.dict(t.os.environ, env, clear=True), \
+                mock.patch.object(t, "_YOUDAO_BIN_DIR", bin_dir):
+            self.assertEqual(t._youdao_cli(), str(exe))
+
     # ------------------------------------------------------------ 结构 / 查重
     def test_list_structure_missing_root(self):
         self.assertFalse(t.youdao_list_structure("AI笔记")["exists"])
