@@ -17,8 +17,9 @@ knowledge-distill 技能工具脚本
   - list-backups    : 列出笔记的备份版本（不带参数则列全部）
   - restore-note    : 把笔记恢复到某个备份版本（恢复前先备份当前版本）
   - gen-moc         : 按主题生成/刷新 MOC 内容地图（根目录 MOC-<主题>.md）
-  - append-index-entry    : 向分类索引的"笔记导航"表格追加/更新一行
-  - append-index-question : 向分类索引的"已收录疑问"追加/更新一条（链接可并列多个）
+  - append-index-entry    : 向根目录「总目录」的分类章节追加/更新一行笔记
+  - append-index-question : 向根目录「疑问」的分类章节追加/更新一条疑问（链接可并列多个）
+  - migrate-index   : 把旧版每分类索引迁移到根目录「总目录」+「疑问」
 
 用法示例:
   python skill_tools.py discover-vaults
@@ -64,7 +65,12 @@ BACKUP_DIR = Path.home() / ".knowledge-distill-backups"
 # 分类子目录，因此根目录下的 MOC 文件天然不会被误当作笔记）。
 MOC_PREFIX = "MOC-"
 
-DEFAULT_INDEX_FILE = "00-分类索引.md"
+DEFAULT_INDEX_FILE = "00-分类索引.md"   # 旧版每分类索引（仅迁移时读取）
+
+# 根目录索引（新结构）：全库「总目录」+「已收录疑问」，两份分开维护。
+# 分开是因为用途与读取时机不同：判合并/新建读总目录，疑问查重读疑问。
+TOC_FILE = "总目录.md"
+QUESTIONS_FILE = "疑问.md"
 
 # 笔记文件扩展名（唯一权威）：技能只认这两种为知识笔记。
 # 其它文件（含 .txt）一律视为附件，不参与笔记的列举、检索、索引与健康检查。
@@ -89,16 +95,14 @@ _SIMILAR_THRESHOLD = 2.0         # 达到该分才作为候选
 _SIMILAR_MAX_PAIRS = 50          # 最多返回的候选对数
 _SIMILAR_PER_NOTE = 5            # 每篇笔记最多参与几个候选对（保留高分）
 
-# 分类索引模板：脚本新建索引时按模板渲染，保证与 SKILL.md 走模板路径的产出结构一致
-# （含 frontmatter、"笔记导航"、"已收录疑问" 三个部分，避免两条路径产出不一致）
-INDEX_TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "assets" / "分类索引模板.md"
-_INDEX_FALLBACK_TEMPLATE = (
-    "# 分类索引 —— {{分类名}}\n\n"
-    "> 本文件为「智识沉淀」自动维护的分类目录文件，记录本分类下的笔记。\n"
-    "> 以「笔记」为单位导航，相似问题会合并进同一篇笔记，不重复收录。\n\n"
-    "## 笔记导航\n\n"
-    "| 笔记 | 主题摘要 | 链接 |\n| ---- | -------- | ---- |\n\n"
-    "## 已收录疑问\n"
+# 根目录索引的骨架（脚本保证结构，避免 LLM 手写漂移）
+TOC_HEADER = (
+    "# 总目录\n\n"
+    "> 本文件由「智识沉淀」自动维护，列出全库分类与笔记；请勿手工编辑（下次保存会覆盖）。\n"
+)
+QUESTIONS_HEADER = (
+    "# 已收录疑问\n\n"
+    "> 本文件由「智识沉淀」自动维护，记录已解答的疑问并链接到笔记；请勿手工编辑。\n"
 )
 
 # Windows 下不能出现在文件名中的字符。技能主要运行在 Windows，按更严格规则校验，
@@ -134,12 +138,17 @@ _MD_HREF_ESCAPE = {
 }
 
 
-def _md_href(title):
-    """把笔记标题转成标准 Markdown 链接的 href（相对同目录笔记，带 .md）。"""
+def _md_href(title, category=None):
+    """把笔记标题转成标准 Markdown 链接的 href（带 .md）。
+
+    根目录索引里链接指向 `分类/标题.md`，故 `category` 非空时加分类前缀；
+    同目录场景（如 MOC）不传 category。
+    """
     href = flatten_text(title)
     for ch, encoded in _MD_HREF_ESCAPE.items():
         href = href.replace(ch, encoded)
-    return f"{href}.md"
+    prefix = f"{flatten_text(category)}/" if category else ""
+    return f"{prefix}{href}.md"
 
 
 def _resolve_format(fmt=None):
@@ -160,23 +169,23 @@ def _is_youdao_format(fmt=None):
     return _resolve_format(fmt) == "youdao"
 
 
-def render_note_link(title, fmt=None, table_safe=True):
+def render_note_link(title, fmt=None, table_safe=True, category=None):
     """按笔记格式渲染索引里的笔记链接。
 
     - Obsidian：双链 `[[标题]]`（原生支持，可点击、可进图谱）。
-    - 普通 Markdown：标准链接 `[标题](标题.md)`（VSCode/Typora/GitHub 可点击，
-      双链语法在普通 Markdown 阅读器里只是纯文本）。
+    - 普通 Markdown：标准链接 `[标题](分类/标题.md)`（根索引里带分类前缀）。
     - 有道云笔记：**纯文本标题**（云端不支持 `[[wikilinks]]`，CLI 也给不出笔记 URL，
       链接不可点击；可点双链由用户在桌面端手工补）。
 
     table_safe=True 时按表格单元格转义竖线（用于索引表格）；
     列表场景（如 MOC）传 False——双链里的 `|` 是别名分隔符，转义反而破坏链接。
+    `category` 供根目录索引在 Markdown 链接里补分类前缀。
     """
     display = escape_table_cell(title) if table_safe else flatten_text(title)
     if _is_youdao_format(fmt):
         return display
     if _is_markdown_format(fmt):
-        return f"[{display}]({_md_href(title)})"
+        return f"[{display}]({_md_href(title, category)})"
     return f"[[{display}]]"
 
 
@@ -310,10 +319,10 @@ def _iter_notes(cat_dir):
 
 
 def list_structure(note_root):
-    """列出 AI 笔记根目录下一层分类（子目录）及每类下的笔记文件。
+    """列出笔记根目录下一层分类（子目录）及每类下的笔记文件。
 
-    分类索引文件（00-分类索引.md）是技能自维护的导航文件，不是知识笔记，
-    因此不计入 notes，改用 has_index 单独标记，避免调用方把它误判为可合并的笔记。
+    只把一层子目录视为分类；根目录下的索引文件（`总目录.md` / `疑问.md`）与 MOC
+    不是子目录，天然不参与。
     """
     root = Path(note_root)
     if not root.is_dir():
@@ -323,41 +332,50 @@ def list_structure(note_root):
     for entry in sorted(root.iterdir()):
         if not entry.is_dir():
             continue  # 只把一层子目录视为分类
-        has_index = any(p.is_file() and p.name.casefold() == DEFAULT_INDEX_FILE.casefold()
-                        for p in entry.iterdir())
         notes = [p.name for p in _iter_notes(entry)]
-        categories.append({"name": entry.name, "notes": notes, "has_index": has_index})
+        categories.append({"name": entry.name, "notes": notes})
     return {"exists": True, "note_root": str(root), "categories": categories}
 
 
-def list_index(category_dir):
-    """读取分类目录下的索引文件（00-分类索引.md）。"""
-    index_file = Path(category_dir) / DEFAULT_INDEX_FILE
-    if not index_file.exists():
-        return {"exists": False, "index_file": str(index_file), "content": ""}
-    return {"exists": True, "index_file": str(index_file),
-            "content": index_file.read_text(encoding="utf-8-sig")}
+def _slice_section(text, category):
+    """从索引文本里取出 `## <category>` 章节（含标题行）；找不到返回空串。"""
+    lines = text.splitlines()
+    bounds = _section_bounds(lines, category)
+    if bounds is None:
+        return ""
+    start, end = bounds
+    return "\n".join(lines[start:end]).rstrip("\n") + "\n"
 
 
-def list_questions(category_dir):
-    """列出分类索引「已收录疑问」章节的全部条目（结构化，供写入前查重）。
+def list_index(note_root, category=None):
+    """读取根目录「总目录」（`总目录.md`）；给 category 时只返回该分类章节。"""
+    path = Path(note_root) / TOC_FILE
+    if not path.exists():
+        return {"exists": False, "index_file": str(path), "content": ""}
+    content = path.read_text(encoding="utf-8-sig")
+    if category:
+        content = _slice_section(content, category)
+    return {"exists": True, "index_file": str(path), "content": content}
+
+
+def list_questions(note_root, category=None):
+    """列出根目录「疑问」（`疑问.md`）的条目（结构化，供写入前查重）。
 
     写入新疑问前先调用本命令，比对是否已存在**语义等价**的疑问：
     - 等价 -> 复用已有条目的原疑问文本再调用 append-index-question，脚本会命中
       该条并合并链接，避免"同义不同文"变成多条冗余；
     - 不等价 -> 作为新疑问写入。
 
-    返回每条疑问的原文与已并列的笔记链接（`links` 为空表示仍是未迁移的旧格式）。
+    每条含 `category` / `question` / `links`；给 category 时只返回该分类的条目。
     """
-    cat = Path(category_dir)
-    if not cat.is_dir():
-        return {"ok": False, "error": f"分类目录不存在: {cat}"}
-    index_file = cat / DEFAULT_INDEX_FILE
-    if not index_file.exists():
-        return {"ok": True, "exists": False, "index_file": str(index_file),
+    path = Path(note_root) / QUESTIONS_FILE
+    if not path.exists():
+        return {"ok": True, "exists": False, "index_file": str(path),
                 "count": 0, "questions": []}
-    items = _parse_index_questions(index_file.read_text(encoding="utf-8-sig"))
-    return {"ok": True, "exists": True, "index_file": str(index_file),
+    items = _parse_questions(path.read_text(encoding="utf-8-sig"))
+    if category:
+        items = [it for it in items if it["category"] == category]
+    return {"ok": True, "exists": True, "index_file": str(path),
             "count": len(items), "questions": items}
 
 
@@ -524,56 +542,63 @@ def _strip_aigc_watermark_line(text):
     return cleaned.rstrip("\n") + "\n" if cleaned.strip() else cleaned
 
 
-def _render_index_template(category_name):
-    """渲染分类索引模板：优先读 assets 模板，读取失败时用内置兜底模板。
+def _category_heading(category):
+    return f"## {flatten_text(category)}"
 
-    与 SKILL.md 中"复制模板为索引"的路径保持一致，含 frontmatter 与
-    "笔记导航""已收录疑问"两个章节，避免脚本新建的索引结构缺章节。
-    渲染前会剥离模板里的 AIGC 块与显式标识行——平台合规标识由客户端写入时
-    注入，技能不自带，保证换用其它客户端时不携带过期/重复的固定标识。
+
+def _section_bounds(lines, category):
+    """定位 `## <分类>` 章节，返回 (标题行号, 结束行号)；找不到返回 None。"""
+    for i, line in enumerate(lines):
+        if re.match(rf"^\s*##\s+{re.escape(category)}\s*$", line):
+            for j in range(i + 1, len(lines)):
+                if re.match(r"^\s*##\s+", lines[j]):
+                    return i, j
+            return i, len(lines)
+    return None
+
+
+def _ensure_section(lines, category):
+    """确保 `## <分类>` 章节存在（就地修改 lines），返回 (标题行号, 结束行号)。"""
+    bounds = _section_bounds(lines, category)
+    if bounds is not None:
+        return bounds
+    if lines and lines[-1].strip():
+        lines.append("")
+    lines.append(_category_heading(category))
+    return len(lines) - 1, len(lines)
+
+
+def _upsert_toc_row(text, category, title, summary, fmt=None):
+    """在「总目录」文本的分类章节里追加/更新一行笔记，返回 (新文本, 结果片段)。
+
+    纯文本操作，不碰文件——本地文件后端与有道云端后端共用同一套格式。
     """
-    template = ""
-    try:
-        template = INDEX_TEMPLATE_PATH.read_text(encoding="utf-8-sig")
-    except OSError:
-        template = _INDEX_FALLBACK_TEMPLATE
-    content = _strip_aigc_frontmatter_block(template)
-    content = _strip_aigc_watermark_line(content)
-    content = content.replace("{{分类名}}", category_name)
-    # 删除模板中的示例占位行（含其后的空行），真实疑问由后续流程补写
-    content = re.sub(r"^- （此处分点记录[^\n]*\n\n?", "", content, flags=re.MULTILINE)
-    return content if content.endswith("\n") else content + "\n"
-
-
-def _upsert_index_entry(text, title, summary, fmt=None):
-    """在索引文本中追加/更新一行「笔记导航」，返回 (新文本, 结果片段)。
-
-    纯文本操作，不碰文件——本地文件后端与有道云端后端共用同一套表格格式，
-    避免两条路径产出不一致（列格式与链接写法由脚本保证）。
-    """
+    lines = text.splitlines()
+    start, end = _ensure_section(lines, category)
     title_cell = escape_table_cell(title)
     summary_cell = escape_table_cell(summary)
-    row = f"| {title_cell} | {summary_cell} | {render_note_link(title, fmt)} |"
-    lines = text.splitlines()
+    row = f"| {title_cell} | {summary_cell} | {render_note_link(title, fmt, category=category)} |"
 
-    # 已存在同名条目 -> 更新摘要
-    prefix = f"| {title_cell} |"
-    for i, line in enumerate(lines):
-        if line.startswith(prefix):
-            if line.strip() == row:
+    # 分类章节内已有同名行 -> 更新
+    for i in range(start + 1, end):
+        if lines[i].startswith(f"| {title_cell} |"):
+            if lines[i].strip() == row:
                 return text, {"action": "unchanged", "row": row}
             lines[i] = row
             return "\n".join(lines) + "\n", {"action": "updated", "row": row}
 
-    # 不存在 -> 追加到表格末尾（找到表头分隔行后的最后一行表格）
+    # 分类章节内找表头；没有则补
     header_idx = None
-    for i, line in enumerate(lines):
-        if line.startswith("| 笔记") or (line.startswith("|") and "主题摘要" in line):
+    for i in range(start + 1, end):
+        if lines[i].startswith("| 笔记") or (lines[i].startswith("|") and "摘要" in lines[i]):
             header_idx = i
             break
     if header_idx is None:
-        lines.extend(["", "## 笔记导航", "", "| 笔记 | 主题摘要 | 链接 |", "| ---- | -------- | ---- |"])
-        header_idx = len(lines) - 3
+        insert_at = start + 1
+        while insert_at < len(lines) and not lines[insert_at].strip():
+            insert_at += 1
+        lines[insert_at:insert_at] = ["", "| 笔记 | 摘要 | 链接 |", "| ---- | ---- | ---- |"]
+        header_idx = insert_at + 1
 
     insert_at = header_idx + 2  # 表头 + 分隔行之后
     while insert_at < len(lines) and lines[insert_at].startswith("|"):
@@ -582,31 +607,25 @@ def _upsert_index_entry(text, title, summary, fmt=None):
     return "\n".join(lines) + "\n", {"action": "appended", "row": row}
 
 
-def append_index_entry(category_dir, title, summary, fmt=None):
-    """向分类索引的"笔记导航"表格追加一行（格式由脚本保证，避免 LLM 手写漂移）。
+def append_index_entry(note_root, category, title, summary, fmt=None):
+    """向根目录「总目录」的分类章节追加/更新一行笔记（格式由脚本保证）。
 
-    - 标题/摘要中的竖线与换行会被转义，避免破坏 Markdown 表格结构。
+    - 分类章节（`## <分类>`）不存在则创建；表格不存在则补表头。
     - 已存在同名条目则更新摘要，不重复追加。
-    - 表格不存在时自动补表头。
-    - 索引文件不存在时按模板新建（结构与 SKILL.md 的模板路径一致）。
-    - `fmt` 指定链接写法：obsidian（双链）/ markdown（标准链接）；缺省读配置。
+    - `fmt`：obsidian（双链）/ markdown（标准链接，href 带分类前缀）/ youdao（纯文本）。
     """
-    cat = Path(category_dir)
-    if not cat.is_dir():
-        return {"ok": False, "error": f"分类目录不存在: {cat}"}
-
-    index_file = cat / DEFAULT_INDEX_FILE
-    created = not index_file.exists()
-    if created:
-        index_file.write_text(_render_index_template(cat.name), encoding="utf-8")
-
-    text = index_file.read_text(encoding="utf-8-sig")
-    new_text, info = _upsert_index_entry(text, title, summary, fmt)
+    root = Path(note_root)
+    if not root.is_dir():
+        return {"ok": False, "error": f"笔记根目录不存在: {root}"}
+    toc = root / TOC_FILE
+    created = not toc.exists()
+    text = TOC_HEADER if created else toc.read_text(encoding="utf-8-sig")
+    new_text, info = _upsert_toc_row(text, category, title, summary, fmt)
     if info["action"] == "unchanged":
-        return {"ok": True, "action": "unchanged", "index_file": str(index_file), "row": info["row"]}
-    index_file.write_text(new_text, encoding="utf-8")
+        return {"ok": True, "action": "unchanged", "index_file": str(toc), "row": info["row"]}
+    toc.write_text(new_text, encoding="utf-8")
     return {"ok": True, "action": "created" if created else info["action"],
-            "index_file": str(index_file), "row": info["row"]}
+            "index_file": str(toc), "row": info["row"]}
 
 
 def _link_key(title):
@@ -621,36 +640,19 @@ def _render_question_entry(question, link_fragments, fmt=None):
     return f"- {flatten_text(question)} → {links}"
 
 
-def _find_section_bounds(lines, title):
-    """定位二级标题 `## <title>` 章节，返回 (标题行号, 结束行号)；找不到返回 None。
-
-    结束行号为下一个二级标题的行号，或文件末尾。标题与后续标题都容忍多余空格
-    （如 `##  已收录疑问  `），供写入与解析两处共用。
-    """
-    start = None
-    for i, line in enumerate(lines):
-        if re.match(rf"^\s*##\s+{re.escape(title)}\s*$", line):
-            start = i
-            break
-    if start is None:
-        return None
-    for i in range(start + 1, len(lines)):
-        if re.match(r"^\s*##\s+", lines[i]):
-            return start, i
-    return start, len(lines)
-
-
-def _upsert_index_question(text, question_text, note_link_title, fmt=None, plain_links=False):
-    """在索引文本中追加/更新一条「已收录疑问」，返回 (新文本, 结果片段)。
+def _upsert_question_row(text, category, question_text, note_link_title, fmt=None, plain_links=False):
+    """在「疑问」文本的分类章节里追加/更新一条疑问，返回 (新文本, 结果片段)。
 
     纯文本操作，不碰文件——本地文件后端与有道云端后端共用同一套格式。
     `plain_links=True`（有道）时链接是纯文本标题，用 `、` 分隔，需要按分隔符
     识别已有链接；本地格式（双链 / 标准链接）仍走 `_extract_links`。
     """
     lines = text.splitlines()
+    start, end = _ensure_section(lines, category)
 
-    # 已存在同一疑问 -> 合并链接：保留已有片段原样、按需追加新链接，不覆盖、不重复
-    for i, line in enumerate(lines):
+    # 分类章节内已有同一疑问 -> 合并链接：保留已有片段原样、按需追加新链接，不覆盖、不重复
+    for i in range(start + 1, end):
+        line = lines[i]
         if not line.startswith("- "):
             continue
         # 箭头两侧空格可有可无（兼容 `？→ 回答` 这类历史写法）
@@ -665,13 +667,11 @@ def _upsert_index_question(text, question_text, note_link_title, fmt=None, plain
         if not existing_links and plain_links and tail.strip():
             existing_links = [p.strip() for p in tail.split(_QUESTION_LINK_SEP) if p.strip()]
         # 旧格式（→ 后是纯文本回答、无任何链接）不保留回答文本，规范为仅链接
-        if existing_links:
-            parts = [p.strip() for p in tail.split(_QUESTION_LINK_SEP) if p.strip()]
-        else:
-            parts = []
+        parts = ([p.strip() for p in tail.split(_QUESTION_LINK_SEP) if p.strip()]
+                 if existing_links else [])
         merged_links = list(existing_links)
         if not any(_link_key(t) == _link_key(note_link_title) for t in existing_links):
-            parts.append(render_note_link(note_link_title, fmt))
+            parts.append(render_note_link(note_link_title, fmt, category=category))
             merged_links.append(note_link_title)
 
         entry = _render_question_entry(question_text, parts)
@@ -689,56 +689,36 @@ def _upsert_index_question(text, question_text, note_link_title, fmt=None, plain
         return text, info
 
     entry = _render_question_entry(
-        question_text, [render_note_link(note_link_title, fmt)])
+        question_text, [render_note_link(note_link_title, fmt, category=category)])
 
-    # 定位"已收录疑问"章节（容忍标题内的多余空格，如 `##  已收录疑问  `）
-    bounds = _find_section_bounds(lines, "已收录疑问")
-    if bounds is None:
-        # 章节不存在 -> 追加到文件末尾
-        if lines and lines[-1].strip():
-            lines.append("")
-        lines.extend(["## 已收录疑问", "", entry])
-        return "\n".join(lines) + "\n", {"action": "section_created", "entry": entry}
-
-    section_idx, section_end = bounds
-
-    # 章节内定位插入点：优先追加到最后一条疑问之后
+    # 分类章节内定位插入点：优先追加到最后一条疑问之后
     last_item = None
-    for i in range(section_idx + 1, section_end):
+    for i in range(start + 1, end):
         if lines[i].startswith("- "):
             last_item = i
-
     if last_item is not None:
         insert_at = last_item + 1
     else:
-        # 章节内还没有疑问条目：跳过标题后的前导空行
-        insert_at = section_idx + 1
-        while insert_at < section_end and not lines[insert_at].strip():
+        insert_at = start + 1
+        while insert_at < len(lines) and not lines[insert_at].strip():
             insert_at += 1
-
     lines.insert(insert_at, entry)
-    # 保证条目与后续内容（下一条疑问/引用块/下一章节）之间有空行分隔
+    # 保证条目与后续内容之间有空行分隔
     if insert_at + 1 < len(lines) and lines[insert_at + 1].strip():
         lines.insert(insert_at + 1, "")
-
     return "\n".join(lines) + "\n", {"action": "appended", "entry": entry}
 
 
-def append_index_question(category_dir, question, note_title, fmt=None):
-    """向分类索引的"已收录疑问"章节追加/更新一条疑问，并附指向笔记的链接。
+def append_index_question(note_root, category, question, note_title, fmt=None):
+    """向根目录「疑问」的分类章节追加/更新一条疑问，并附指向笔记的链接。
 
-    - 每条格式固定为 `- 疑问 → <链接>[、<链接>...]`，保证可点击跳转。
-    - 同一疑问再次写入时**合并链接**：保留已有链接、追加新链接、去重、保持顺序，
-      既不覆盖已有指向（避免丢信息），也不重复成多条。因此一条疑问可并列指向
-      多篇笔记——笔记按主题各自成篇时，疑问把相关笔记都列出来，读者按需跳转。
-    - 链接写法随格式变化：Obsidian 用双链，普通 Markdown 用标准链接。
-    - 旧格式条目（`→` 后是纯文本回答、没有链接）会被规范为链接格式：本技能按
-      "索引只负责导航"设计，回答正文保留在笔记里，索引不再重复承载。
-    - "已收录疑问"章节不存在时自动补建；索引文件不存在时按模板新建。
+    - 每条格式固定为 `- 疑问 → <链接>[、<链接>...]`，可并列多篇。
+    - 同一疑问再次写入时**合并链接**：保留已有链接、追加新链接、去重、保持顺序。
+    - 分类章节（`## <分类>`）不存在则创建；疑问文件不存在则新建。
     """
-    cat = Path(category_dir)
-    if not cat.is_dir():
-        return {"ok": False, "error": f"分类目录不存在: {cat}"}
+    root = Path(note_root)
+    if not root.is_dir():
+        return {"ok": False, "error": f"笔记根目录不存在: {root}"}
 
     question_text = flatten_text(question)
     note_link_title = flatten_text(note_title)
@@ -747,18 +727,86 @@ def append_index_question(category_dir, question, note_title, fmt=None):
     if not note_link_title:
         return {"ok": False, "error": "笔记标题不能为空"}
 
-    index_file = cat / DEFAULT_INDEX_FILE
-    if not index_file.exists():
-        index_file.write_text(_render_index_template(cat.name), encoding="utf-8")
-
-    text = index_file.read_text(encoding="utf-8-sig")
-    new_text, info = _upsert_index_question(text, question_text, note_link_title, fmt)
+    path = root / QUESTIONS_FILE
+    created = not path.exists()
+    text = QUESTIONS_HEADER if created else path.read_text(encoding="utf-8-sig")
+    new_text, info = _upsert_question_row(text, category, question_text, note_link_title,
+                                          fmt, plain_links=_is_youdao_format(fmt))
     if info["action"] != "unchanged":
-        index_file.write_text(new_text, encoding="utf-8")
-    return {"ok": True, "action": info["action"], "index_file": str(index_file),
-            "entry": info["entry"], "links": info.get("links"),
-            "normalized": info.get("normalized"),
-            **({"warning": info["warning"]} if "warning" in info else {})}
+        path.write_text(new_text, encoding="utf-8")
+    result = {"ok": True, "action": "created" if created else info["action"],
+              "index_file": str(path), "entry": info["entry"], "links": info.get("links"),
+              "normalized": info.get("normalized")}
+    if "warning" in info:
+        result["warning"] = info["warning"]
+    return result
+
+
+def migrate_index(note_root):
+    """一次性迁移：把旧版每分类索引（`00-分类索引.md`）聚合成根目录「总目录」+「疑问」。
+
+    只读旧索引、写新索引；不改笔记、不删旧索引文件（旧文件由用户确认后自行清理）。
+    返回迁移的分类、笔记数、疑问数。
+    """
+    root = Path(note_root)
+    if not root.is_dir():
+        return {"ok": False, "error": f"笔记根目录不存在: {root}"}
+    toc_lines = [TOC_HEADER.rstrip("\n")]
+    q_lines = [QUESTIONS_HEADER.rstrip("\n")]
+    migrated, n_notes, n_questions = [], 0, 0
+
+    for entry in sorted(root.iterdir()):
+        if not entry.is_dir():
+            continue
+        old = entry / DEFAULT_INDEX_FILE
+        if not old.exists():
+            continue
+        text = old.read_text(encoding="utf-8-sig", errors="replace")
+        migrated.append(entry.name)
+
+        # 旧「笔记导航」表格：`| 笔记 | 主题摘要 | 链接 |`
+        rows = []
+        for line in text.splitlines():
+            s = line.strip()
+            if not s.startswith("|"):
+                continue
+            cells = [c.strip() for c in s.strip("|").split("|")]
+            if not cells or not cells[0] or cells[0] == "笔记" or set(cells[0]) <= set("-: "):
+                continue
+            summary = cells[1] if len(cells) > 1 else ""
+            rows.append(f"| {escape_table_cell(cells[0])} | {escape_table_cell(summary)} | "
+                        f"{render_note_link(cells[0], category=entry.name)} |")
+        if rows:
+            toc_lines += ["", _category_heading(entry.name), "",
+                          "| 笔记 | 摘要 | 链接 |", "| ---- | ---- | ---- |"] + rows
+            n_notes += len(rows)
+
+        # 旧「已收录疑问」章节：`- 疑问 → <链接>...`（链接已渲染，原样保留）
+        in_q, q_entries = False, []
+        for line in text.splitlines():
+            if re.match(r"^\s*##\s+", line):
+                in_q = bool(re.match(r"^\s*##\s+已收录疑问\s*$", line))
+                continue
+            if not in_q:
+                continue
+            s = line.strip()
+            if not s.startswith("- "):
+                continue
+            body = s[2:].strip()
+            m = re.match(r"^(.*?)\s*→\s*(.*)$", body, re.DOTALL)
+            if m and m.group(1).strip() and not m.group(1).strip().startswith("（"):
+                q_entries.append(body)
+        if q_entries:
+            q_lines += ["", _category_heading(entry.name)] + [f"- {e}" for e in q_entries]
+            n_questions += len(q_entries)
+
+    toc = root / TOC_FILE
+    qpath = root / QUESTIONS_FILE
+    toc.write_text("\n".join(toc_lines) + "\n", encoding="utf-8")
+    qpath.write_text("\n".join(q_lines) + "\n", encoding="utf-8")
+    return {"ok": True, "action": "migrated", "categories": migrated,
+            "notes": n_notes, "questions": n_questions,
+            "index_file": str(toc), "questions_file": str(qpath)}
 
 
 # ---------------------------------------------------------------- 健康检查
@@ -855,67 +903,48 @@ def _extract_links(text):
     return targets
 
 
-def _parse_index_entries(index_text):
-    """从索引「笔记导航」表格提取已收录的笔记名（按出现顺序，不去重）。
+def _parse_toc(toc_text):
+    """从「总目录」文本提取条目，返回 [{category, title, summary}]（按出现顺序）。
 
-    兼容三种写法：`[[双链]]`、`[显示文字](笔记.md)`、以及未加链接的纯文本第一列，
-    这样 Obsidian 与普通 Markdown 两种索引都能被正确解析。
+    分类由 `## <分类>` 二级标题给出；每个分类下是 `| 笔记 | 摘要 | 链接 |` 表格。
+    标题取第一列；兼容双链 / 标准 Markdown / 纯文本三种链接写法。
     """
     entries = []
-    for line in index_text.splitlines():
+    category = None
+    for line in toc_text.splitlines():
         s = line.strip()
-        if not s.startswith("|"):
+        m = re.match(r"^##\s+(.+?)\s*$", s)
+        if m:
+            category = m.group(1).strip()
+            continue
+        if category is None or not s.startswith("|"):
             continue
         cells = [c.strip() for c in s.strip("|").split("|")]
         if not cells or not cells[0]:
             continue
         if cells[0] == "笔记" or set(cells[0]) <= set("-: "):
             continue  # 表头 / 分隔行
-        target = None
-        for cell in cells:
-            m = _LINK_RE.search(cell)
-            if m:
-                candidate = _normalize_link_target(m.group(1))
-                if candidate:
-                    target = candidate
-                    break
-            m = _MD_LINK_RE.search(cell)
-            if m and m.group(1) != "!":
-                candidate = _normalize_md_href(m.group(3))
-                if candidate:
-                    target = candidate
-                    break
-        if target is None:
-            target = cells[0]
-        if target:
-            entries.append(target)
+        entries.append({"category": category, "title": cells[0],
+                        "summary": cells[1] if len(cells) > 1 else ""})
     return entries
 
 
-def _parse_index_questions(index_text, plain_links=False):
-    """从索引「已收录疑问」章节提取疑问条目（按出现顺序）。
+def _parse_questions(questions_text):
+    """从「疑问」文本提取条目，返回 [{category, question, links}]（按出现顺序）。
 
-    返回 `[{"question": 疑问文本, "links": [链接目标...]}]`：
-    - `links` 为该条疑问并列的笔记链接，可多个；
-    - 旧格式条目（`→` 后是纯文本回答、不含链接）`links` 为空列表，便于调用方
-      识别并迁移。
-
-    只认 `## 已收录疑问` 到下一个二级标题之间的 `- ` 列表项；模板占位行
-    （以"（"开头）不计入。
-
-    `plain_links=True`（有道）时链接是纯文本标题（用 `、` 分隔），按分隔符识别；
-    默认 False 时仅识别双链 / 标准 Markdown 链接，保持本地后端行为不变。
+    分类由 `## <分类>` 二级标题给出；每条是 `- 疑问 → 链接[、链接...]`。
+    `links` 为该条疑问并列的笔记链接（可为空）。链接识别兼容双链 / 标准 Markdown；
+    识别不到时按 `、` 分隔兜底（有道下链接是纯文本标题）。
     """
-    lines = index_text.splitlines()
-    bounds = _find_section_bounds(lines, "已收录疑问")
-    if bounds is None:
-        return []
-    start, end = bounds
-
     items = []
-    for line in lines[start + 1:end]:
+    category = None
+    for line in questions_text.splitlines():
         s = line.strip()
-        if not s.startswith("- "):
+        m = re.match(r"^##\s+(.+?)\s*$", s)
+        if m:
+            category = m.group(1).strip()
+            continue
+        if category is None or not s.startswith("- "):
             continue
         body = s[2:].strip()
         if not body or body.startswith("（"):
@@ -929,9 +958,9 @@ def _parse_index_questions(index_text, plain_links=False):
         if not question:
             continue
         links = _extract_links(tail)
-        if not links and plain_links and tail:
+        if not links and tail:
             links = [p.strip() for p in tail.split(_QUESTION_LINK_SEP) if p.strip()]
-        items.append({"question": question, "links": links})
+        items.append({"category": category, "question": question, "links": links})
     return items
 
 
@@ -1298,22 +1327,23 @@ def find_similar_notes(note_root):
             for t in outlinks:
                 _add(link_index, t, nid)
 
-        # 同列于一条疑问：从该分类索引的「已收录疑问」读取
-        index_file = cat_dir / DEFAULT_INDEX_FILE
-        if not index_file.exists():
-            continue
+    # 同列于一条疑问：从根目录「疑问」读取（疑问可跨分类并列多篇笔记）
+    by_stem = {}
+    for nid, n in enumerate(notes):
+        by_stem.setdefault(n["stem"].casefold(), []).append(nid)
+    questions_path = root / QUESTIONS_FILE
+    if questions_path.exists():
         try:
-            idx_text = index_file.read_text(encoding="utf-8-sig", errors="replace")
+            q_text = questions_path.read_text(encoding="utf-8-sig", errors="replace")
         except OSError:
-            continue
-        for item in _parse_index_questions(idx_text):
+            q_text = ""
+        for item in _parse_questions(q_text):
             q = (item.get("question") or "").strip().casefold()
             if not q:
                 continue
-            ids = [by_cat_stem.get((cat_dir.name, _link_basename(t).casefold()))
-                   for t in item.get("links", [])]
-            for nid in [x for x in ids if x is not None]:
-                _add(question_index, q, nid)
+            for target in item.get("links", []):
+                for nid in by_stem.get(_link_basename(target).casefold(), []):
+                    _add(question_index, q, nid)
 
     # 候选对：只比较共享某个索引键的笔记，避免 O(n²) 全量两两比
     pair_ids = set()
@@ -1383,7 +1413,7 @@ def lint_notes(note_root):
     链接结构问题（原有五类）：
     - index_orphans   ：索引收录但文件不存在（笔记被删后索引未同步）
     - broken_links    ：笔记内双链指向不存在的笔记
-    - unindexed_notes ：笔记存在但所在分类索引未收录（分类无索引时全部计入）
+    - unindexed_notes ：笔记存在但未被根目录「总目录」收录
     - orphan_notes    ：既无入链、也未被索引收录（写了但找不到）
     - question_orphans：索引「已收录疑问」里的链接指向不存在的笔记
 
@@ -1391,7 +1421,7 @@ def lint_notes(note_root):
     - missing_frontmatter：Obsidian 笔记缺 frontmatter 或必填字段（tags/created/source）。
                           仅当用户已配置为 Obsidian 格式时检查——普通 Markdown 无此要求。
     - empty_sections     ：有标题、标题下却没有任何正文的章节（骨架写了没填）
-    - stale_index        ：笔记比其分类索引更新（改了笔记但索引摘要未同步）
+    - stale_index        ：笔记比根目录「总目录」更新（改了笔记但索引摘要未同步）
     """
     root = Path(note_root)
     if not root.is_dir():
@@ -1407,27 +1437,26 @@ def lint_notes(note_root):
     for entry in sorted(root.iterdir()):
         if not entry.is_dir():
             continue
-        notes = list(_iter_notes(entry))
-        index_file = entry / DEFAULT_INDEX_FILE
-        index_text = index_file.read_text(encoding="utf-8-sig", errors="replace") if index_file.exists() else ""
-        entries = _parse_index_entries(index_text)
-        categories.append({
-            "dir": entry,
-            "notes": notes,
-            "has_index": index_file.exists(),
-            "index_file": index_file,
-            "index_text": index_text,
-            "index_entries": entries,
-            "indexed_stems": {_link_basename(e).casefold() for e in entries if _link_basename(e)},
-        })
+        categories.append({"dir": entry, "name": entry.name,
+                           "notes": list(_iter_notes(entry))})
 
-    # 2. 全库笔记名索引，用于判断双链目标是否存在
+    # 2. 根目录索引：总目录（导航）+ 疑问
+    toc_path = root / TOC_FILE
+    toc_text = toc_path.read_text(encoding="utf-8-sig", errors="replace") if toc_path.exists() else ""
+    toc_entries = _parse_toc(toc_text)
+    indexed = {(e["category"].casefold(), _link_basename(e["title"]).casefold())
+               for e in toc_entries if _link_basename(e["title"])}
+    questions_path = root / QUESTIONS_FILE
+    questions_text = (questions_path.read_text(encoding="utf-8-sig", errors="replace")
+                      if questions_path.exists() else "")
+
+    # 3. 全库笔记名索引，用于判断链接目标是否存在
     all_stems = set()
     rel_stems = set()
     for cat in categories:
         for note in cat["notes"]:
             all_stems.add(note.stem.casefold())
-            rel_stems.add(f"{cat['dir'].name}/{note.stem}".casefold())
+            rel_stems.add(f"{cat['name']}/{note.stem}".casefold())
 
     def target_exists(target):
         base = _link_basename(target).casefold()
@@ -1437,44 +1466,45 @@ def lint_notes(note_root):
             return True
         return target.replace("\\", "/").casefold() in rel_stems
 
-    # 3. 初始化入链计数（键：分类名, 笔记名小写）
+    # 4. 初始化入链计数（键：分类名, 笔记名小写）
     inlink_counts = {}
     for cat in categories:
         for note in cat["notes"]:
-            inlink_counts[(cat["dir"].name, note.stem.casefold())] = 0
+            inlink_counts[(cat["name"].casefold(), note.stem.casefold())] = 0
 
     index_orphans, broken_links, unindexed_notes, question_orphans = [], [], [], []
     missing_frontmatter, empty_sections, stale_index = [], [], []
 
-    # 4. 逐分类检查：索引孤儿、疑问断链、未收录笔记、断链，并累计入链
+    # 5. 索引孤儿：总目录收录但笔记不存在
+    for e in toc_entries:
+        base = _link_basename(e["title"]).casefold()
+        if not base:
+            continue
+        if not (base in all_stems or f"{e['category']}/{base}".casefold() in rel_stems):
+            index_orphans.append({"category": e["category"], "target": e["title"],
+                                  "index_file": str(toc_path)})
+
+    # 6. 疑问孤儿：疑问链接指向不存在的笔记
+    for item in _parse_questions(questions_text):
+        for target in item["links"]:
+            if not target_exists(target):
+                question_orphans.append({"category": item["category"],
+                                         "question": item["question"], "target": target,
+                                         "index_file": str(questions_path)})
+
+    # 7. 逐笔记：未收录、断链、入链、内容质量、索引时效
+    toc_mtime = toc_path.stat().st_mtime if toc_path.exists() else None
     for cat in categories:
-        cat_name = cat["dir"].name
-
-        for entry in cat["index_entries"]:
-            if not _link_basename(entry):
-                continue
-            if not target_exists(entry):
-                index_orphans.append({"category": cat_name, "target": entry,
-                                      "index_file": str(cat["index_file"])})
-
-        for item in _parse_index_questions(cat["index_text"]):
-            for target in item["links"]:
-                if not target_exists(target):
-                    question_orphans.append({"category": cat_name,
-                                             "question": item["question"],
-                                             "target": target,
-                                             "index_file": str(cat["index_file"])})
-
+        cat_name = cat["name"]
         for note in cat["notes"]:
-            if note.stem.casefold() not in cat["indexed_stems"]:
-                unindexed_notes.append({"category": cat_name, "note": note.name,
-                                        "path": str(note), "has_index": cat["has_index"]})
+            key = (cat_name.casefold(), note.stem.casefold())
+            if key not in indexed:
+                unindexed_notes.append({"category": cat_name, "note": note.name, "path": str(note)})
             try:
                 text = note.read_text(encoding="utf-8-sig", errors="replace")
             except OSError:
                 continue
 
-            # 内容质量检查：frontmatter 完整度、空章节、索引时效
             fm_text, body = _split_frontmatter(text)
             if check_frontmatter:
                 if not fm_text.strip():
@@ -1489,12 +1519,11 @@ def lint_notes(note_root):
             for section in _find_empty_sections(body):
                 empty_sections.append({"category": cat_name, "note": note.name,
                                        "path": str(note), "section": section})
-            if cat["has_index"] and note.stem.casefold() in cat["indexed_stems"]:
+            if toc_mtime is not None and key in indexed:
                 try:
-                    if note.stat().st_mtime > cat["index_file"].stat().st_mtime + 1.0:
+                    if note.stat().st_mtime > toc_mtime + 1.0:
                         stale_index.append({"category": cat_name, "note": note.name,
-                                            "path": str(note),
-                                            "index_file": str(cat["index_file"])})
+                                            "path": str(note), "index_file": str(toc_path)})
                 except OSError:
                     pass
 
@@ -1510,15 +1539,15 @@ def lint_notes(note_root):
                 for other in categories:
                     for other_note in other["notes"]:
                         if other_note.stem.casefold() == base:
-                            inlink_counts[(other["dir"].name, base)] += 1
+                            inlink_counts[(other["name"].casefold(), base)] += 1
 
-    # 5. 孤立笔记：无入链 且 未被索引收录
+    # 8. 孤立笔记：无入链 且 未被总目录收录
     orphan_notes = []
     for cat in categories:
         for note in cat["notes"]:
-            key = (cat["dir"].name, note.stem.casefold())
-            if inlink_counts.get(key, 0) == 0 and note.stem.casefold() not in cat["indexed_stems"]:
-                orphan_notes.append({"category": cat["dir"].name, "note": note.name,
+            key = (cat["name"].casefold(), note.stem.casefold())
+            if inlink_counts.get(key, 0) == 0 and key not in indexed:
+                orphan_notes.append({"category": cat["name"], "note": note.name,
                                      "path": str(note)})
 
     structure_issues = (len(index_orphans) + len(broken_links)
@@ -1779,8 +1808,9 @@ def generate_moc(note_root, topic, tag=None, keyword=None, category=None, descri
 _YOUDAO_RETRY_ATTEMPTS = 3
 _YOUDAO_RETRY_BASE_DELAY = 1.0
 _YOUDAO_ROOT_PARENT = "0"
-# 索引笔记标题（写入时补 .md 后缀，见 _youdao_md_title）；匹配时按标题归一化键。
-_YOUDAO_INDEX_TITLE = DEFAULT_INDEX_FILE.rsplit(".", 1)[0]
+# 根目录索引笔记标题（写入时补 .md 后缀，见 _youdao_md_title）；匹配时按标题归一化键。
+_YOUDAO_TOC_TITLE = TOC_FILE.rsplit(".", 1)[0]              # 总目录
+_YOUDAO_QUESTIONS_TITLE = QUESTIONS_FILE.rsplit(".", 1)[0]  # 疑问
 
 # 技能自管的 CLI 安装目录：首次配置可自动下载到此处，脚本优先使用，无需改 PATH / 杀软白名单。
 _YOUDAO_BIN_DIR = Path.home() / ".knowledge-distill" / "bin"
@@ -2063,23 +2093,15 @@ def _youdao_backup(logical_path, content):
     return str(dest)
 
 
-def _youdao_index_template(category_name):
-    """渲染有道用的分类索引：沿用模板但去掉 frontmatter，改为正文顶部一行元信息。"""
-    _, body = _split_frontmatter(_render_index_template(category_name))
-    meta = f"> 创建：{datetime.date.today().isoformat()} ｜ 来源：对话 ｜ 标签：分类索引"
-    return f"{meta}\n\n{body.strip()}\n"
-
-
-def _youdao_write_index(folder_id, content):
-    """把索引文本写回有道（存在则更新、否则新建）。"""
-    entry = _youdao_find_note(folder_id, _YOUDAO_INDEX_TITLE)
+def _youdao_write_root_note(root_id, title, content):
+    """把根目录索引笔记（总目录 / 疑问）写回有道（存在则更新、否则新建）。"""
+    entry = _youdao_find_note(root_id, title)
     if entry is not None:
         _youdao_run("updateMarkdownNote", {"fileId": str(_youdao_id(entry)),
-                                           "title": _youdao_md_title(_YOUDAO_INDEX_TITLE),
-                                           "content": content})
+                                           "title": _youdao_md_title(title), "content": content})
     else:
-        _youdao_run("createAnyNote", {"title": _youdao_md_title(_YOUDAO_INDEX_TITLE), "type": "md",
-                                      "content": content, "parentId": str(folder_id)})
+        _youdao_run("createAnyNote", {"title": _youdao_md_title(title), "type": "md",
+                                      "content": content, "parentId": str(root_id)})
 
 
 def youdao_ready():
@@ -2119,31 +2141,35 @@ def youdao_list_structure(note_root):
             continue
         children = _youdao_list(str(_youdao_id(entry)))
         notes = [_youdao_name(n) for n in children if not _youdao_is_dir(n)]
-        has_index = any(_youdao_title_key(_youdao_name(n)) == _youdao_title_key(_YOUDAO_INDEX_TITLE)
-                        for n in children if not _youdao_is_dir(n))
-        categories.append({"name": _youdao_name(entry), "notes": notes, "has_index": has_index})
+        categories.append({"name": _youdao_name(entry), "notes": notes})
     return {"exists": True, "note_root": str(note_root), "categories": categories}
 
 
-def youdao_list_index(category_dir):
-    logical = f"{str(category_dir).rstrip('/')}/{_YOUDAO_INDEX_TITLE}"
-    folder_id = _youdao_folder_id(_youdao_parts(category_dir))
-    if folder_id is None:
+def youdao_list_index(note_root, category=None):
+    """有道版 list-index：读根文件夹下的「总目录」笔记；给 category 时只返回该分类章节。"""
+    logical = f"{str(note_root).rstrip('/')}/{TOC_FILE}"
+    root_id = _youdao_folder_id(_youdao_parts(note_root))
+    if root_id is None:
         return {"exists": False, "index_file": logical, "content": ""}
-    _, content = _youdao_read_note(folder_id, _YOUDAO_INDEX_TITLE)
+    _, content = _youdao_read_note(root_id, _YOUDAO_TOC_TITLE)
     if content is None:
         return {"exists": False, "index_file": logical, "content": ""}
+    if category:
+        content = _slice_section(content, category)
     return {"exists": True, "index_file": logical, "content": content}
 
 
-def youdao_list_questions(category_dir):
-    folder_id = _youdao_folder_id(_youdao_parts(category_dir))
-    if folder_id is None:
-        return {"ok": False, "error": f"分类不存在: {category_dir}"}
-    _, content = _youdao_read_note(folder_id, _YOUDAO_INDEX_TITLE)
+def youdao_list_questions(note_root, category=None):
+    """有道版 list-questions：读根文件夹下的「疑问」笔记。"""
+    root_id = _youdao_folder_id(_youdao_parts(note_root))
+    if root_id is None:
+        return {"ok": False, "error": f"笔记根目录不存在: {note_root}"}
+    _, content = _youdao_read_note(root_id, _YOUDAO_QUESTIONS_TITLE)
     if not content:
         return {"ok": True, "exists": False, "count": 0, "questions": []}
-    items = _parse_index_questions(content, plain_links=True)
+    items = _parse_questions(content)
+    if category:
+        items = [it for it in items if it["category"] == category]
     return {"ok": True, "exists": True, "count": len(items), "questions": items}
 
 
@@ -2198,54 +2224,46 @@ def youdao_write_note(note_path, content, backup=True):
             "bytes": len(new_text.encode("utf-8"))}
 
 
-def _youdao_index_context(category_dir):
-    """准备分类索引的读写上下文，返回 (folder_id, 索引文本, 是否新建)。
-
-    分类文件夹不存在则创建；索引不存在则按模板渲染（无 frontmatter、正文顶部元信息）。
-    文件夹定位/创建失败时 folder_id 为 None。两条 append-index-* 命令共用。
-    """
-    parts = _youdao_parts(category_dir)
-    cat_name = parts[-1] if parts else ""
-    folder_id = _youdao_folder_id(parts, create=True)
-    if folder_id is None:
+def _youdao_root_index_context(note_root, title, header):
+    """读回根目录索引笔记（总目录 / 疑问），返回 (root_id, 文本, 是否新建)。"""
+    root_id = _youdao_folder_id(_youdao_parts(note_root), create=True)
+    if root_id is None:
         return None, None, False
-    _, content = _youdao_read_note(folder_id, _YOUDAO_INDEX_TITLE)
+    _, content = _youdao_read_note(root_id, title)
     created = not content
-    if created:
-        content = _youdao_index_template(cat_name)
-    return folder_id, content, created
+    return root_id, (header if created else content), created
 
 
-def youdao_append_index_entry(category_dir, title, summary, fmt=None):
-    """有道版 append-index-entry：读回索引 → 在内存 upsert 一行 → 整体写回。"""
-    folder_id, content, created = _youdao_index_context(category_dir)
-    if folder_id is None:
-        return {"ok": False, "error": f"无法创建/定位分类目录: {category_dir}"}
-    new_text, info = _upsert_index_entry(content, title, summary, fmt="youdao")
+def youdao_append_index_entry(note_root, category, title, summary, fmt=None):
+    """有道版 append-index-entry：读回「总目录」→ 在内存 upsert 一行 → 整体写回。"""
+    root_id, content, created = _youdao_root_index_context(note_root, _YOUDAO_TOC_TITLE, TOC_HEADER)
+    if root_id is None:
+        return {"ok": False, "error": f"无法创建/定位笔记根目录: {note_root}"}
+    new_text, info = _upsert_toc_row(content, category, title, summary, fmt="youdao")
     if info["action"] != "unchanged":
-        _youdao_write_index(folder_id, new_text)
+        _youdao_write_root_note(root_id, _YOUDAO_TOC_TITLE, new_text)
     return {"ok": True, "action": "created" if created else info["action"],
-            "index_file": f"{str(category_dir).rstrip('/')}/{_YOUDAO_INDEX_TITLE}",
-            "row": info["row"]}
+            "index_file": f"{str(note_root).rstrip('/')}/{TOC_FILE}", "row": info["row"]}
 
 
-def youdao_append_index_question(category_dir, question, note_title, fmt=None):
-    """有道版 append-index-question：读回索引 → 在内存 upsert 一条疑问 → 整体写回。"""
+def youdao_append_index_question(note_root, category, question, note_title, fmt=None):
+    """有道版 append-index-question：读回「疑问」→ 在内存 upsert 一条 → 整体写回。"""
     question_text = flatten_text(question)
     note_link_title = flatten_text(note_title)
     if not question_text:
         return {"ok": False, "error": "疑问内容不能为空"}
     if not note_link_title:
         return {"ok": False, "error": "笔记标题不能为空"}
-    folder_id, content, _ = _youdao_index_context(category_dir)
-    if folder_id is None:
-        return {"ok": False, "error": f"无法创建/定位分类目录: {category_dir}"}
-    new_text, info = _upsert_index_question(content, question_text, note_link_title,
-                                            fmt="youdao", plain_links=True)
+    root_id, content, created = _youdao_root_index_context(
+        note_root, _YOUDAO_QUESTIONS_TITLE, QUESTIONS_HEADER)
+    if root_id is None:
+        return {"ok": False, "error": f"无法创建/定位笔记根目录: {note_root}"}
+    new_text, info = _upsert_question_row(content, category, question_text, note_link_title,
+                                          fmt="youdao", plain_links=True)
     if info["action"] != "unchanged":
-        _youdao_write_index(folder_id, new_text)
-    result = {"ok": True, "action": info["action"],
-              "index_file": f"{str(category_dir).rstrip('/')}/{_YOUDAO_INDEX_TITLE}",
+        _youdao_write_root_note(root_id, _YOUDAO_QUESTIONS_TITLE, new_text)
+    result = {"ok": True, "action": "created" if created else info["action"],
+              "index_file": f"{str(note_root).rstrip('/')}/{QUESTIONS_FILE}",
               "entry": info["entry"], "links": info.get("links"),
               "normalized": info.get("normalized")}
     if "warning" in info:
@@ -2386,12 +2404,14 @@ def main(argv=None):
     p_list = sub.add_parser("list-structure", help="列出笔记根目录结构")
     p_list.add_argument("note_root")
 
-    p_index = sub.add_parser("list-index", help="读取分类索引文件")
-    p_index.add_argument("category_dir")
+    p_index = sub.add_parser("list-index", help="读取根目录「总目录」（可只取某分类）")
+    p_index.add_argument("note_root")
+    p_index.add_argument("--category", help="只返回该分类章节")
 
     p_questions = sub.add_parser("list-questions",
-                                 help="列出分类索引「已收录疑问」条目（写入前语义查重用）")
-    p_questions.add_argument("category_dir")
+                                 help="列出根目录「疑问」条目（写入前语义查重用）")
+    p_questions.add_argument("note_root")
+    p_questions.add_argument("--category", help="只返回该分类的条目")
 
     p_check = sub.add_parser("check-name", help="写入前检查同名笔记，避免误覆盖")
     p_check.add_argument("category_dir")
@@ -2437,19 +2457,25 @@ def main(argv=None):
     p_moc.add_argument("--category", help="仅聚合该分类下的笔记")
     p_moc.add_argument("--description", help="自定义 MOC 说明文字")
 
-    p_append = sub.add_parser("append-index-entry", help="向分类索引追加/更新一行笔记导航")
-    p_append.add_argument("category_dir")
+    p_append = sub.add_parser("append-index-entry", help="向根目录「总目录」追加/更新一行笔记")
+    p_append.add_argument("note_root")
+    p_append.add_argument("category")
     p_append.add_argument("title")
     p_append.add_argument("summary")
     p_append.add_argument("--format", choices=["obsidian", "markdown"],
                           help="链接写法，缺省读配置（obsidian=双链，markdown=标准链接）")
 
-    p_question = sub.add_parser("append-index-question", help="向分类索引追加/更新一条已收录疑问")
-    p_question.add_argument("category_dir")
+    p_question = sub.add_parser("append-index-question", help="向根目录「疑问」追加/更新一条疑问")
+    p_question.add_argument("note_root")
+    p_question.add_argument("category")
     p_question.add_argument("question")
     p_question.add_argument("note_title")
     p_question.add_argument("--format", choices=["obsidian", "markdown"],
                             help="链接写法，缺省读配置（obsidian=双链，markdown=标准链接）")
+
+    p_migrate = sub.add_parser("migrate-index",
+                               help="把旧版每分类索引迁移到根目录「总目录」+「疑问」")
+    p_migrate.add_argument("note_root")
 
     args = parser.parse_args(argv)
     # 有道后端（format=youdao）走云端 CLI；其余格式走本地文件，代码路径完全不变。
@@ -2499,13 +2525,15 @@ def main(argv=None):
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("ok", True) else 1
     if args.command == "list-index":
-        result = (_youdao_guard(youdao_list_index, args.category_dir) if use_youdao
-                  else list_index(args.category_dir))
+        result = (_youdao_guard(youdao_list_index, args.note_root, category=args.category)
+                  if use_youdao
+                  else list_index(args.note_root, category=args.category))
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("ok", True) else 1
     if args.command == "list-questions":
-        result = (_youdao_guard(youdao_list_questions, args.category_dir) if use_youdao
-                  else list_questions(args.category_dir))
+        result = (_youdao_guard(youdao_list_questions, args.note_root, category=args.category)
+                  if use_youdao
+                  else list_questions(args.note_root, category=args.category))
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("ok") else 1
     if args.command == "check-name":
@@ -2565,17 +2593,23 @@ def main(argv=None):
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("ok") else 1
     if args.command == "append-index-entry":
-        result = (_youdao_guard(youdao_append_index_entry, args.category_dir, args.title, args.summary)
+        result = (_youdao_guard(youdao_append_index_entry, args.note_root, args.category,
+                                args.title, args.summary)
                   if use_youdao
-                  else append_index_entry(args.category_dir, args.title, args.summary, fmt=args.format))
+                  else append_index_entry(args.note_root, args.category, args.title,
+                                          args.summary, fmt=args.format))
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("ok") else 1
     if args.command == "append-index-question":
-        result = (_youdao_guard(youdao_append_index_question, args.category_dir,
-                              args.question, args.note_title)
+        result = (_youdao_guard(youdao_append_index_question, args.note_root, args.category,
+                                args.question, args.note_title)
                   if use_youdao
-                  else append_index_question(args.category_dir, args.question,
+                  else append_index_question(args.note_root, args.category, args.question,
                                              args.note_title, fmt=args.format))
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result.get("ok") else 1
+    if args.command == "migrate-index":
+        result = migrate_index(args.note_root)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("ok") else 1
     return 0

@@ -84,7 +84,6 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         root, _ = self._make_category()
         cats = {c["name"]: c for c in t.list_structure(str(root))["categories"]}
         self.assertNotIn("00-分类索引.md", cats["示例分类"]["notes"])
-        self.assertTrue(cats["示例分类"]["has_index"])
 
     def test_list_structure_keeps_real_notes(self):
         root, _ = self._make_category()
@@ -102,7 +101,6 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         root = self.sandbox / "AI笔记"
         (root / "空分类").mkdir(parents=True)
         cats = {c["name"]: c for c in t.list_structure(str(root))["categories"]}
-        self.assertFalse(cats["空分类"]["has_index"])
         self.assertEqual(cats["空分类"]["notes"], [])
 
     def test_list_structure_missing_root(self):
@@ -110,10 +108,12 @@ class KnowledgeDistillTestCase(unittest.TestCase):
 
     # ------------------------------------------------------------ 索引读取
     def test_list_index_reads_content(self):
-        _, cat = self._make_category()
-        result = t.list_index(str(cat))
+        root, _ = self._make_category()
+        t.append_index_entry(str(root), "示例分类", "示例笔记标题", "摘要")
+        result = t.list_index(str(root))
         self.assertTrue(result["exists"])
-        self.assertIn("index", result["content"])
+        self.assertIn("示例笔记标题", result["content"])
+        self.assertIn("## 示例分类", result["content"])
 
     def test_list_index_missing_returns_empty(self):
         empty = self.sandbox / "空"
@@ -195,58 +195,56 @@ class KnowledgeDistillTestCase(unittest.TestCase):
 
     # ------------------------------------------------------------ 索引写入
     def test_append_index_entry_creates_file(self):
-        cat = self.sandbox / "AI笔记" / "示例分类"
-        cat.mkdir(parents=True)
-        result = t.append_index_entry(str(cat), "示例笔记标题", "示例摘要")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        result = t.append_index_entry(str(root), "示例分类", "示例笔记标题", "示例摘要")
         self.assertTrue(result["ok"])
         self.assertEqual(result["action"], "created")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
+        content = (root / "总目录.md").read_text(encoding="utf-8")
+        self.assertIn("## 示例分类", content)
         self.assertIn("| 示例笔记标题 | 示例摘要 | [[示例笔记标题]] |", content)
 
     def test_append_index_entry_appends_row(self):
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        t.append_index_entry(str(cat), "笔记A", "摘要A")
-        result = t.append_index_entry(str(cat), "笔记B", "摘要B")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_entry(str(root), "分类", "笔记A", "摘要A")
+        result = t.append_index_entry(str(root), "分类", "笔记B", "摘要B")
         self.assertEqual(result["action"], "appended")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
+        content = (root / "总目录.md").read_text(encoding="utf-8")
         self.assertIn("| 笔记A | 摘要A | [[笔记A]] |", content)
         self.assertIn("| 笔记B | 摘要B | [[笔记B]] |", content)
 
     def test_append_index_entry_updates_existing(self):
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        t.append_index_entry(str(cat), "笔记A", "旧摘要")
-        result = t.append_index_entry(str(cat), "笔记A", "新摘要")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_entry(str(root), "分类", "笔记A", "旧摘要")
+        result = t.append_index_entry(str(root), "分类", "笔记A", "新摘要")
         self.assertEqual(result["action"], "updated")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
+        content = (root / "总目录.md").read_text(encoding="utf-8")
         self.assertIn("新摘要", content)
         self.assertNotIn("旧摘要", content)
         self.assertEqual(content.count("| 笔记A |"), 1)
 
     def test_append_index_entry_unchanged(self):
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        t.append_index_entry(str(cat), "笔记A", "摘要")
-        result = t.append_index_entry(str(cat), "笔记A", "摘要")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_entry(str(root), "分类", "笔记A", "摘要")
+        result = t.append_index_entry(str(root), "分类", "笔记A", "摘要")
         self.assertEqual(result["action"], "unchanged")
 
     def test_append_index_entry_preserves_existing_content(self):
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        index = cat / "00-分类索引.md"
-        index.write_text("---\ntags:\n  - 测试\n---\n\n# 分类索引 —— 分类\n\n"
-                         "## 笔记导航\n\n| 笔记 | 主题摘要 | 链接 |\n| ---- | -------- | ---- |\n\n"
-                         "## 已收录疑问\n\n- 疑问A → [[笔记A]]\n", encoding="utf-8")
-        t.append_index_entry(str(cat), "笔记B", "摘要B")
-        content = index.read_text(encoding="utf-8")
-        self.assertIn("tags:", content)
-        self.assertIn("## 已收录疑问", content)
-        self.assertIn("- 疑问A → [[笔记A]]", content)
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        toc = root / "总目录.md"
+        toc.write_text("# 总目录\n\n## 分类\n\n| 笔记 | 摘要 | 链接 |\n| ---- | ---- | ---- |\n"
+                       "| 笔记A | 摘要A | [[笔记A]] |\n", encoding="utf-8")
+        t.append_index_entry(str(root), "分类", "笔记B", "摘要B")
+        content = toc.read_text(encoding="utf-8")
+        self.assertIn("| 笔记A | 摘要A | [[笔记A]] |", content)
         self.assertIn("| 笔记B | 摘要B | [[笔记B]] |", content)
 
-    def test_append_index_entry_missing_category(self):
-        result = t.append_index_entry(str(self.sandbox / "不存在"), "标题", "摘要")
+    def test_append_index_entry_missing_root(self):
+        result = t.append_index_entry(str(self.sandbox / "不存在"), "分类", "标题", "摘要")
         self.assertFalse(result["ok"])
 
     # ------------------------------------------------------------ 表格转义
@@ -257,11 +255,11 @@ class KnowledgeDistillTestCase(unittest.TestCase):
 
     def test_append_index_entry_escapes_pipe_in_title_and_summary(self):
         """标题/摘要含竖线时不得破坏表格结构。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        result = t.append_index_entry(str(cat), "含|竖线的标题", "摘要含|竖线")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        result = t.append_index_entry(str(root), "分类", "含|竖线的标题", "摘要含|竖线")
         self.assertTrue(result["ok"])
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
+        content = (root / "总目录.md").read_text(encoding="utf-8")
         row = "| 含\\|竖线的标题 | 摘要含\\|竖线 | [[含\\|竖线的标题]] |"
         self.assertIn(row, content)
         # 该行应恰好有 4 个未转义竖线（3 个单元格的边界），未被内容中的竖线切碎
@@ -270,10 +268,10 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         self.assertEqual(unescaped, 4)
 
     def test_append_index_entry_escapes_newline_in_summary(self):
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        t.append_index_entry(str(cat), "标题", "第一行\n第二行")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_entry(str(root), "分类", "标题", "第一行\n第二行")
+        content = (root / "总目录.md").read_text(encoding="utf-8")
         self.assertIn("| 标题 | 第一行 第二行 | [[标题]] |", content)
 
     # ------------------------------------------------------------ 标题校验
@@ -319,16 +317,14 @@ class KnowledgeDistillTestCase(unittest.TestCase):
 
     # ------------------------------------------------------------ 索引结构一致
     def test_created_index_matches_template_structure(self):
-        """脚本新建的索引应与模板结构一致（含章节与标题，但不自带 AIGC 标识）。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        t.append_index_entry(str(cat), "笔记A", "摘要A")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
-        self.assertIn("## 笔记导航", content)
-        self.assertIn("## 已收录疑问", content)
-        self.assertIn("# 分类索引 —— 分类", content)
-        self.assertNotIn("{{分类名}}", content)
-        self.assertNotIn("（此处分点记录", content)
+        """脚本新建的根目录「总目录」应含标题与分类章节。"""
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_entry(str(root), "分类", "笔记A", "摘要A")
+        content = (root / "总目录.md").read_text(encoding="utf-8")
+        self.assertIn("# 总目录", content)
+        self.assertIn("## 分类", content)
+        self.assertIn("| 笔记 | 摘要 | 链接 |", content)
         # 技能不自带合规标识：由平台写入时注入，换用其它客户端不应携带
         self.assertNotIn("AIGC:", content)
         self.assertNotIn("ContentProducer", content)
@@ -362,30 +358,6 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         self.assertFalse(cleaned.startswith("---"))
         self.assertIn("# 标题", cleaned)
 
-    def test_render_index_template_strips_injected_aigc(self):
-        """模板被 hook 注入 AIGC 后，渲染结果仍不应携带该标识。"""
-        injected = ("---\n"
-                    "AIGC:\n"
-                    "  ContentProducer: '001191110102MAD55U9H0F10002'\n"
-                    "  ProduceID: 'deadbeef-dead-beef-dead-beefdeadbeef'\n"
-                    "  Label: '1'\n"
-                    "---\n\n"
-                    "# 分类索引 —— {{分类名}}\n\n"
-                    "## 笔记导航\n\n| 笔记 | 主题摘要 | 链接 |\n| ---- | -------- | ---- |\n\n"
-                    "## 已收录疑问\n\n> AI生成\n")
-        original = t.INDEX_TEMPLATE_PATH
-        t.INDEX_TEMPLATE_PATH = self.sandbox / "被注入的模板.md"
-        t.INDEX_TEMPLATE_PATH.write_text(injected, encoding="utf-8")
-        try:
-            rendered = t._render_index_template("测试")
-            self.assertNotIn("AIGC", rendered)
-            self.assertNotIn("ProduceID", rendered)
-            self.assertNotIn("AI生成", rendered)
-            self.assertIn("# 分类索引 —— 测试", rendered)
-            self.assertIn("## 笔记导航", rendered)
-        finally:
-            t.INDEX_TEMPLATE_PATH = original
-
     def test_strip_aigc_watermark_line(self):
         """末尾 `> AI生成` 显式标识行应被剥离，正文保留。"""
         text = "# 标题\n\n正文\n\n> AI生成\n"
@@ -401,222 +373,161 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         self.assertIn("> 这是正常的引用", cleaned)
         self.assertNotIn("AI生成", cleaned)
 
-    def test_created_index_falls_back_when_template_missing(self):
-        """模板文件缺失时应使用内置兜底模板，仍保证两个章节存在。"""
-        original = t.INDEX_TEMPLATE_PATH
-        t.INDEX_TEMPLATE_PATH = self.sandbox / "不存在模板.md"
-        try:
-            cat = self.sandbox / "AI笔记" / "兜底分类"
-            cat.mkdir(parents=True)
-            result = t.append_index_entry(str(cat), "笔记A", "摘要A")
-            self.assertTrue(result["ok"])
-            content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
-            self.assertIn("# 分类索引 —— 兜底分类", content)
-            self.assertIn("## 笔记导航", content)
-            self.assertIn("## 已收录疑问", content)
-            self.assertIn("| 笔记A | 摘要A | [[笔记A]] |", content)
-        finally:
-            t.INDEX_TEMPLATE_PATH = original
-
-    def test_created_index_keeps_question_section_after_row(self):
-        """追加行后「已收录疑问」章节仍位于表格之后。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        t.append_index_entry(str(cat), "笔记A", "摘要A")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
-        self.assertLess(content.index("| 笔记A |"), content.index("## 已收录疑问"))
-
     # ------------------------------------------------------------ 已收录疑问
     def test_append_index_question_creates_and_formats(self):
         """疑问条目必须统一为 `- 疑问 → [[笔记标题]]` 双链格式。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        result = t.append_index_question(str(cat), "示例疑问？", "示例笔记标题")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        result = t.append_index_question(str(root), "分类", "示例疑问？", "示例笔记标题")
         self.assertTrue(result["ok"])
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
+        content = (root / "疑问.md").read_text(encoding="utf-8")
         self.assertIn("- 示例疑问？ → [[示例笔记标题]]", content)
 
     def test_append_index_question_appends_to_section(self):
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        t.append_index_question(str(cat), "疑问一", "笔记A")
-        result = t.append_index_question(str(cat), "疑问二", "笔记B")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_question(str(root), "分类", "疑问一", "笔记A")
+        result = t.append_index_question(str(root), "分类", "疑问二", "笔记B")
         self.assertEqual(result["action"], "appended")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
+        content = (root / "疑问.md").read_text(encoding="utf-8")
         self.assertIn("- 疑问一 → [[笔记A]]", content)
         self.assertIn("- 疑问二 → [[笔记B]]", content)
-        # 两条疑问都应位于「已收录疑问」章节内
-        self.assertLess(content.index("## 已收录疑问"), content.index("- 疑问一"))
+        # 两条疑问都应位于「分类」章节内，且顺序保持
+        self.assertLess(content.index("## 分类"), content.index("- 疑问一"))
         self.assertLess(content.index("- 疑问一"), content.index("- 疑问二"))
 
     def test_append_index_question_merges_multiple_links(self):
         """同一疑问指向不同笔记时**合并**链接：保留旧的、追加新的，不覆盖、不重复。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        t.append_index_question(str(cat), "同一个疑问", "笔记A")
-        result = t.append_index_question(str(cat), "同一个疑问", "笔记B")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_question(str(root), "分类", "同一个疑问", "笔记A")
+        result = t.append_index_question(str(root), "分类", "同一个疑问", "笔记B")
         self.assertEqual(result["action"], "updated")
         self.assertEqual(result["links"], ["笔记A", "笔记B"])
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
+        content = (root / "疑问.md").read_text(encoding="utf-8")
         self.assertIn("- 同一个疑问 → [[笔记A]]、[[笔记B]]", content)
         self.assertEqual(content.count("- 同一个疑问"), 1)
 
     def test_append_index_question_unchanged(self):
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        t.append_index_question(str(cat), "疑问", "笔记A")
-        result = t.append_index_question(str(cat), "疑问", "笔记A")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_question(str(root), "分类", "疑问", "笔记A")
+        result = t.append_index_question(str(root), "分类", "疑问", "笔记A")
         self.assertEqual(result["action"], "unchanged")
 
     def test_append_index_question_creates_missing_section(self):
-        """索引缺少「已收录疑问」章节时自动补建。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        (cat / "00-分类索引.md").write_text(
-            "# 分类索引 —— 分类\n\n## 笔记导航\n\n| 笔记 | 主题摘要 | 链接 |\n"
-            "| ---- | -------- | ---- |\n", encoding="utf-8")
-        result = t.append_index_question(str(cat), "新疑问", "笔记A")
-        self.assertEqual(result["action"], "section_created")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
-        self.assertIn("## 已收录疑问", content)
+        """疑问文件不存在时自动新建，并写入分类章节。"""
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        result = t.append_index_question(str(root), "分类", "新疑问", "笔记A")
+        self.assertEqual(result["action"], "created")
+        content = (root / "疑问.md").read_text(encoding="utf-8")
+        self.assertIn("## 分类", content)
         self.assertIn("- 新疑问 → [[笔记A]]", content)
 
     def test_append_index_question_rejects_empty(self):
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        self.assertFalse(t.append_index_question(str(cat), "   ", "笔记A")["ok"])
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        self.assertFalse(t.append_index_question(str(root), "分类", "   ", "笔记A")["ok"])
 
-    def test_append_index_question_missing_category(self):
-        self.assertFalse(t.append_index_question(str(self.sandbox / "不存在"), "疑问", "笔记A")["ok"])
+    def test_append_index_question_missing_root(self):
+        self.assertFalse(t.append_index_question(str(self.sandbox / "不存在"), "分类", "疑问", "笔记A")["ok"])
 
     def test_append_index_question_section_title_with_extra_spaces(self):
-        """章节标题带多余空格时仍应识别为已有章节，而不是重复创建。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        (cat / "00-分类索引.md").write_text(
-            "# 索引\n\n##  已收录疑问  \n\n- 旧疑问 → [[旧笔记]]\n", encoding="utf-8")
-        result = t.append_index_question(str(cat), "新疑问", "笔记A")
+        """分类标题带多余空格时仍应识别为已有章节，而不是重复创建。"""
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        (root / "疑问.md").write_text(
+            "# 疑问\n\n##  分类  \n\n- 旧疑问 → [[旧笔记]]\n", encoding="utf-8")
+        result = t.append_index_question(str(root), "分类", "新疑问", "笔记A")
         self.assertEqual(result["action"], "appended")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
-        self.assertEqual(content.count("已收录疑问"), 1)
+        content = (root / "疑问.md").read_text(encoding="utf-8")
+        self.assertEqual(content.count("##  分类  "), 1)
         self.assertIn("- 新疑问 → [[笔记A]]", content)
 
     def test_append_index_question_flattens_newlines(self):
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        t.append_index_question(str(cat), "疑问\n换行", "笔记A")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_question(str(root), "分类", "疑问\n换行", "笔记A")
+        content = (root / "疑问.md").read_text(encoding="utf-8")
         self.assertIn("- 疑问 换行 → [[笔记A]]", content)
 
     def test_append_index_question_does_not_break_navigation(self):
-        """疑问写入后，笔记导航表格结构保持完整。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        t.append_index_entry(str(cat), "笔记A", "摘要A")
-        t.append_index_question(str(cat), "疑问一", "笔记A")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
-        self.assertIn("| 笔记A | 摘要A | [[笔记A]] |", content)
-        self.assertLess(content.index("| 笔记A |"), content.index("## 已收录疑问"))
-        self.assertLess(content.index("## 已收录疑问"), content.index("- 疑问一"))
-
-    def test_append_index_question_blank_line_before_trailing_quote(self):
-        """疑问条目与末尾引用块之间必须有空行，避免 Markdown 渲染粘连。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        (cat / "00-分类索引.md").write_text(
-            "# 索引\n\n## 已收录疑问\n\n> AI生成\n", encoding="utf-8")
-        t.append_index_question(str(cat), "疑问一", "笔记A")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
-        self.assertIn("- 疑问一 → [[笔记A]]\n\n> AI生成", content)
-
-    def test_append_index_question_keeps_blank_between_entries_and_quote(self):
-        """连续追加多条疑问时条目之间不插空行；已有引用块前保留空行。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        (cat / "00-分类索引.md").write_text(
-            "# 索引\n\n## 已收录疑问\n\n> AI生成\n", encoding="utf-8")
-        t.append_index_question(str(cat), "疑问一", "笔记A")
-        t.append_index_question(str(cat), "疑问二", "笔记B")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
-        self.assertIn("- 疑问一 → [[笔记A]]\n- 疑问二 → [[笔记B]]", content)
-        self.assertIn("- 疑问二 → [[笔记B]]\n\n> AI生成", content)
-
-    def test_append_index_question_next_section_with_extra_spaces(self):
-        """后续章节标题带多余空格时仍应被识别为边界，疑问不得写入该章节。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        (cat / "00-分类索引.md").write_text(
-            "# 索引\n\n## 已收录疑问\n\n- 旧疑问 → [[旧笔记]]\n\n"
-            "##  其他章节  \n\n- 别的内容\n", encoding="utf-8")
-        t.append_index_question(str(cat), "新疑问", "笔记A")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
-        self.assertLess(content.index("- 新疑问"), content.index("##  其他章节"))
+        """疑问写入后，总目录的笔记导航表格结构保持完整。"""
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_entry(str(root), "分类", "笔记A", "摘要A")
+        t.append_index_question(str(root), "分类", "疑问一", "笔记A")
+        toc = (root / "总目录.md").read_text(encoding="utf-8")
+        self.assertIn("| 笔记A | 摘要A | [[笔记A]] |", toc)
+        q = (root / "疑问.md").read_text(encoding="utf-8")
+        self.assertIn("- 疑问一 → [[笔记A]]", q)
 
     def test_append_index_question_merge_is_idempotent(self):
         """重复写入同一（疑问, 笔记）组合不应产生重复链接。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        t.append_index_question(str(cat), "疑问", "笔记A")
-        t.append_index_question(str(cat), "疑问", "笔记B")
-        result = t.append_index_question(str(cat), "疑问", "笔记A")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_question(str(root), "分类", "疑问", "笔记A")
+        t.append_index_question(str(root), "分类", "疑问", "笔记B")
+        result = t.append_index_question(str(root), "分类", "疑问", "笔记A")
         self.assertEqual(result["action"], "unchanged")
         self.assertEqual(result["links"], ["笔记A", "笔记B"])
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
+        content = (root / "疑问.md").read_text(encoding="utf-8")
         self.assertEqual(content.count("[[笔记A]]"), 1)
 
     def test_append_index_question_link_order_preserved(self):
         """合并链接时保持首次写入顺序，新链接追加在末尾。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        t.append_index_question(str(cat), "疑问", "笔记A")
-        t.append_index_question(str(cat), "疑问", "笔记B")
-        t.append_index_question(str(cat), "疑问", "笔记C")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_question(str(root), "分类", "疑问", "笔记A")
+        t.append_index_question(str(root), "分类", "疑问", "笔记B")
+        t.append_index_question(str(root), "分类", "疑问", "笔记C")
+        content = (root / "疑问.md").read_text(encoding="utf-8")
         self.assertIn("- 疑问 → [[笔记A]]、[[笔记B]]、[[笔记C]]", content)
 
     def test_append_index_question_warns_when_too_many_links(self):
         """一条疑问指向超过 3 篇笔记时给出 warning，但不拦截写入。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
         for title in ("笔记A", "笔记B", "笔记C"):
-            t.append_index_question(str(cat), "疑问", title)
-        result = t.append_index_question(str(cat), "疑问", "笔记D")
+            t.append_index_question(str(root), "分类", "疑问", title)
+        result = t.append_index_question(str(root), "分类", "疑问", "笔记D")
         self.assertTrue(result["ok"])
         self.assertIn("warning", result)
         self.assertEqual(len(result["links"]), 4)
 
     def test_append_index_question_normalizes_legacy_plain_answer(self):
         """旧格式（→ 后是纯文本回答）命中时规范为链接格式，回答不再重复承载。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        (cat / "00-分类索引.md").write_text(
-            "# 索引\n\n## 已收录疑问\n\n- 旧疑问？→ 这是一句旧回答。\n", encoding="utf-8")
-        result = t.append_index_question(str(cat), "旧疑问？", "笔记A")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        (root / "疑问.md").write_text(
+            "# 疑问\n\n## 分类\n\n- 旧疑问？→ 这是一句旧回答。\n", encoding="utf-8")
+        result = t.append_index_question(str(root), "分类", "旧疑问？", "笔记A")
         self.assertEqual(result["action"], "updated")
         self.assertTrue(result["normalized"])
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
+        content = (root / "疑问.md").read_text(encoding="utf-8")
         self.assertIn("- 旧疑问？ → [[笔记A]]", content)
         self.assertNotIn("这是一句旧回答", content)
 
     def test_append_index_question_matches_legacy_arrow_without_space(self):
         """历史写法的 `？→ 回答`（箭头前无空格）也能被识别为同一疑问。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        (cat / "00-分类索引.md").write_text(
-            "# 索引\n\n## 已收录疑问\n\n- 旧疑问？→ 旧回答\n", encoding="utf-8")
-        t.append_index_question(str(cat), "旧疑问？", "笔记A")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        (root / "疑问.md").write_text(
+            "# 疑问\n\n## 分类\n\n- 旧疑问？→ 旧回答\n", encoding="utf-8")
+        t.append_index_question(str(root), "分类", "旧疑问？", "笔记A")
+        content = (root / "疑问.md").read_text(encoding="utf-8")
         self.assertEqual(content.count("- 旧疑问？"), 1)
 
     # ------------------------------------------------------------ 疑问查重
     def test_list_questions_parses_questions_and_links(self):
         """list-questions 应解析出疑问原文与已并列的笔记链接。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        t.append_index_question(str(cat), "疑问一", "笔记A")
-        t.append_index_question(str(cat), "疑问一", "笔记B")
-        t.append_index_question(str(cat), "疑问二", "笔记C")
-        result = t.list_questions(str(cat))
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_question(str(root), "分类", "疑问一", "笔记A")
+        t.append_index_question(str(root), "分类", "疑问一", "笔记B")
+        t.append_index_question(str(root), "分类", "疑问二", "笔记C")
+        result = t.list_questions(str(root))
         self.assertTrue(result["ok"])
         self.assertEqual(result["count"], 2)
         self.assertEqual(result["questions"][0]["question"], "疑问一")
@@ -624,34 +535,36 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         self.assertEqual(result["questions"][1]["links"], ["笔记C"])
 
     def test_list_questions_flags_legacy_entry_without_links(self):
-        """旧格式条目的 links 为空，便于识别并迁移。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        (cat / "00-分类索引.md").write_text(
-            "# 索引\n\n## 已收录疑问\n\n- 旧疑问？→ 旧回答\n", encoding="utf-8")
-        result = t.list_questions(str(cat))
+        """旧格式条目的链接识别不到时，按顿号兜底解析。"""
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        (root / "疑问.md").write_text(
+            "# 疑问\n\n## 分类\n\n- 旧疑问？→ 旧回答\n", encoding="utf-8")
+        result = t.list_questions(str(root))
         self.assertEqual(result["questions"][0]["question"], "旧疑问？")
-        self.assertEqual(result["questions"][0]["links"], [])
+        self.assertEqual(result["questions"][0]["links"], ["旧回答"])
 
     def test_list_questions_missing_index(self):
-        """分类目录存在但尚无索引文件时，返回空列表而非报错。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        result = t.list_questions(str(cat))
+        """根目录存在但尚无疑问文件时，返回空列表而非报错。"""
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        result = t.list_questions(str(root))
         self.assertTrue(result["ok"])
         self.assertFalse(result["exists"])
         self.assertEqual(result["count"], 0)
 
-    def test_list_questions_missing_category(self):
-        self.assertFalse(t.list_questions(str(self.sandbox / "不存在"))["ok"])
+    def test_list_questions_missing_root(self):
+        result = t.list_questions(str(self.sandbox / "不存在"))
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["exists"])
 
     def test_list_questions_ignores_template_placeholder(self):
-        """模板占位行（以"（"开头）不应被当成真实疑问。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        (cat / "00-分类索引.md").write_text(
-            "# 索引\n\n## 已收录疑问\n\n- （此处分点记录关键疑问）\n", encoding="utf-8")
-        result = t.list_questions(str(cat))
+        """占位行（以"（"开头）不应被当成真实疑问。"""
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        (root / "疑问.md").write_text(
+            "# 疑问\n\n## 分类\n\n- （此处分点记录关键疑问）\n", encoding="utf-8")
+        result = t.list_questions(str(root))
         self.assertEqual(result["count"], 0)
 
     # ------------------------------------------------------------ 健康检查
@@ -662,20 +575,19 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         cat.mkdir(parents=True)
         return root, cat
 
-    def _write_index(self, cat, rows):
-        """写入含指定笔记导航行的索引文件；rows 为 (标题, 链接目标) 列表。"""
-        lines = ["# 分类索引", "", "## 笔记导航", "",
-                 "| 笔记 | 主题摘要 | 链接 |", "| ---- | -------- | ---- |"]
+    def _write_index(self, root, rows):
+        """写根目录「总目录」，含分类A下的若干笔记行；rows 为 (标题, 链接目标) 列表。"""
+        lines = ["# 总目录", "", "## 分类A", "",
+                 "| 笔记 | 摘要 | 链接 |", "| ---- | ---- | ---- |"]
         for title, target in rows:
             lines.append(f"| {title} | 摘要 | [[{target}]] |")
-        lines.extend(["", "## 已收录疑问", ""])
-        (cat / "00-分类索引.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        (root / "总目录.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     def test_lint_notes_healthy_library(self):
         """索引与笔记一致、无断链时应报告 0 问题。"""
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n\n内容\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertTrue(result["ok"])
         self.assertEqual(result["summary"]["issues"], 0)
@@ -687,7 +599,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
     def test_lint_notes_detects_index_orphan(self):
         """索引收录但文件已删除 -> index_orphans。"""
         root, cat = self._make_root()
-        self._write_index(cat, [("已删笔记", "已删笔记")])
+        self._write_index(root, [("已删笔记", "已删笔记")])
         result = t.lint_notes(str(root))
         self.assertEqual(len(result["index_orphans"]), 1)
         self.assertEqual(result["index_orphans"][0]["target"], "已删笔记")
@@ -696,7 +608,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         """双链指向不存在的笔记 -> broken_links。"""
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n\n见 [[不存在的笔记]]\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual(len(result["broken_links"]), 1)
         self.assertEqual(result["broken_links"][0]["target"], "不存在的笔记")
@@ -706,7 +618,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n", encoding="utf-8")
         (cat / "笔记B.md").write_text("# 笔记B\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         names = [x["note"] for x in result["unindexed_notes"]]
         self.assertEqual(names, ["笔记B.md"])
@@ -715,7 +627,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         """无入链且未收录 -> orphan_notes（同时也会计入 unindexed_notes）。"""
         root, cat = self._make_root()
         (cat / "孤儿.md").write_text("# 孤儿\n", encoding="utf-8")
-        self._write_index(cat, [])
+        self._write_index(root, [])
         result = t.lint_notes(str(root))
         self.assertEqual([x["note"] for x in result["orphan_notes"]], ["孤儿.md"])
         self.assertEqual([x["note"] for x in result["unindexed_notes"]], ["孤儿.md"])
@@ -724,8 +636,8 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         """「已收录疑问」里的链接指向不存在的笔记 -> question_orphans。"""
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
-        t.append_index_question(str(cat), "疑问一", "已删笔记")
+        self._write_index(root, [("笔记A", "笔记A")])
+        t.append_index_question(str(root), "分类A", "疑问一", "已删笔记")
         result = t.lint_notes(str(root))
         self.assertEqual(len(result["question_orphans"]), 1)
         self.assertEqual(result["question_orphans"][0]["target"], "已删笔记")
@@ -735,29 +647,29 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         """疑问链接指向存在的笔记时不应报告问题。"""
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
-        t.append_index_question(str(cat), "疑问一", "笔记A")
+        self._write_index(root, [("笔记A", "笔记A")])
+        t.append_index_question(str(root), "分类A", "疑问一", "笔记A")
         result = t.lint_notes(str(root))
         self.assertEqual(result["question_orphans"], [])
         self.assertEqual(result["summary"]["issues"], 0)
 
     def test_lint_notes_detects_broken_markdown_question_link(self):
-        """普通 Markdown 索引里的疑问链接失效也应被检出。"""
+        """普通 Markdown 疑问文件里的链接失效也应被检出。"""
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n", encoding="utf-8")
-        (cat / "00-分类索引.md").write_text(
-            "# 索引\n\n## 笔记导航\n\n| 笔记 | 主题摘要 | 链接 |\n"
-            "| ---- | -------- | ---- |\n| 笔记A | 摘要 | [笔记A](笔记A.md) |\n\n"
-            "## 已收录疑问\n\n- 疑问一 → [已删笔记](已删笔记.md)\n", encoding="utf-8")
+        self._write_index(root, [("笔记A", "笔记A")])
+        (root / "疑问.md").write_text(
+            "# 疑问\n\n## 分类A\n\n- 疑问一 → [已删笔记](分类A/已删笔记.md)\n",
+            encoding="utf-8")
         result = t.lint_notes(str(root))
         self.assertEqual(len(result["question_orphans"]), 1)
-        self.assertEqual(result["question_orphans"][0]["target"], "已删笔记")
+        self.assertEqual(t._link_basename(result["question_orphans"][0]["target"]), "已删笔记")
 
     def test_lint_notes_question_orphan_counts_into_total(self):
         """question_orphans 应计入 summary.issues 总数。"""
         root, cat = self._make_root()
-        self._write_index(cat, [])
-        t.append_index_question(str(cat), "疑问一", "已删笔记")
+        self._write_index(root, [])
+        t.append_index_question(str(root), "分类A", "疑问一", "已删笔记")
         result = t.lint_notes(str(root))
         expected = (len(result["index_orphans"]) + len(result["broken_links"])
                     + len(result["unindexed_notes"]) + len(result["orphan_notes"])
@@ -769,7 +681,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         """被索引收录的笔记不算孤立，即使没有入链。"""
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["orphan_notes"], [])
 
@@ -778,7 +690,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n\n见 [[笔记B]]\n", encoding="utf-8")
         (cat / "笔记B.md").write_text("# 笔记B\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["orphan_notes"], [])
         self.assertEqual([x["note"] for x in result["unindexed_notes"]], ["笔记B.md"])
@@ -789,7 +701,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         (cat / "笔记A.md").write_text(
             "# 笔记A\n\n双链 `[[笔记名]]` 与 `[[笔记]]` 的写法：\n\n"
             "```\n[[代码里的链接]]\n```\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["broken_links"], [])
 
@@ -799,7 +711,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         (cat / "笔记A.md").write_text(
             "# 笔记A\n\n[[笔记B|自定义文字]] 和 [[笔记B#章节]]\n", encoding="utf-8")
         (cat / "笔记B.md").write_text("# 笔记B\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A"), ("笔记B", "笔记B")])
+        self._write_index(root, [("笔记A", "笔记A"), ("笔记B", "笔记B")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["broken_links"], [])
 
@@ -808,7 +720,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n\n[[分类A/笔记B]]\n", encoding="utf-8")
         (cat / "笔记B.md").write_text("# 笔记B\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A"), ("笔记B", "笔记B")])
+        self._write_index(root, [("笔记A", "笔记A"), ("笔记B", "笔记B")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["broken_links"], [])
 
@@ -816,7 +728,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         """自链接不计入入链，笔记未被索引收录时仍应算孤立。"""
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n\n[[笔记A]]\n", encoding="utf-8")
-        self._write_index(cat, [])
+        self._write_index(root, [])
         result = t.lint_notes(str(root))
         self.assertEqual([x["note"] for x in result["orphan_notes"]], ["笔记A.md"])
 
@@ -824,17 +736,16 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         """索引文件本身不是笔记，不得计入 unindexed_notes 或孤立笔记。"""
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["summary"]["notes"], 1)
         self.assertEqual(result["unindexed_notes"], [])
 
     def test_lint_notes_missing_index_counts_all_unindexed(self):
-        """分类没有索引文件时，其中所有笔记都应计入未收录。"""
+        """根目录没有总目录时，其中所有笔记都应计入未收录。"""
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n", encoding="utf-8")
         result = t.lint_notes(str(root))
-        self.assertFalse(result["unindexed_notes"][0]["has_index"])
         self.assertEqual(len(result["unindexed_notes"]), 1)
 
     def test_lint_notes_missing_root_fails(self):
@@ -846,19 +757,19 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         """健康检查是只读操作，不得改动任何文件内容。"""
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n\n[[断链]]\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A"), ("幽灵", "幽灵")])
+        self._write_index(root, [("笔记A", "笔记A"), ("幽灵", "幽灵")])
         before = {p: p.read_text(encoding="utf-8") for p in root.rglob("*") if p.is_file()}
         t.lint_notes(str(root))
         after = {p: p.read_text(encoding="utf-8") for p in root.rglob("*") if p.is_file()}
         self.assertEqual(before, after)
 
     def test_lint_notes_parses_index_without_link(self):
-        """索引行未写双链时，退回第一列文本判断收录，避免误报未收录。"""
+        """总目录行未写链接时，退回第一列文本判断收录，避免误报未收录。"""
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n", encoding="utf-8")
-        (cat / "00-分类索引.md").write_text(
-            "# 索引\n\n## 笔记导航\n\n| 笔记 | 主题摘要 | 链接 |\n"
-            "| ---- | -------- | ---- |\n| 笔记A | 摘要 |  |\n", encoding="utf-8")
+        (root / "总目录.md").write_text(
+            "# 总目录\n\n## 分类A\n\n| 笔记 | 摘要 | 链接 |\n"
+            "| ---- | ---- | ---- |\n| 笔记A | 摘要 |  |\n", encoding="utf-8")
         result = t.lint_notes(str(root))
         self.assertEqual(result["unindexed_notes"], [])
         self.assertEqual(result["index_orphans"], [])
@@ -867,7 +778,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         """summary 应正确统计分类数、笔记数、问题总数。"""
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n\n[[断链]]\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A"), ("幽灵", "幽灵")])
+        self._write_index(root, [("笔记A", "笔记A"), ("幽灵", "幽灵")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["summary"]["categories"], 1)
         self.assertEqual(result["summary"]["notes"], 1)
@@ -892,33 +803,33 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         self.assertEqual(link, "[含 空格(括号)](含%20空格%28括号%29.md)")
 
     def test_append_index_entry_markdown_format(self):
-        """普通 Markdown 下索引应生成标准链接，而非双链。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        result = t.append_index_entry(str(cat), "笔记A", "摘要A", fmt="markdown")
+        """普通 Markdown 下索引应生成标准链接（带分类前缀），而非双链。"""
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        result = t.append_index_entry(str(root), "分类", "笔记A", "摘要A", fmt="markdown")
         self.assertTrue(result["ok"])
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
-        self.assertIn("| 笔记A | 摘要A | [笔记A](笔记A.md) |", content)
+        content = (root / "总目录.md").read_text(encoding="utf-8")
+        self.assertIn("| 笔记A | 摘要A | [笔记A](分类/笔记A.md) |", content)
         self.assertNotIn("[[笔记A]]", content)
 
     def test_append_index_question_markdown_format(self):
         """普通 Markdown 下疑问条目也应使用标准链接。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        result = t.append_index_question(str(cat), "如何排查？", "笔记A", fmt="markdown")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        result = t.append_index_question(str(root), "分类", "如何排查？", "笔记A", fmt="markdown")
         self.assertTrue(result["ok"])
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
-        self.assertIn("- 如何排查？ → [笔记A](笔记A.md)", content)
+        content = (root / "疑问.md").read_text(encoding="utf-8")
+        self.assertIn("- 如何排查？ → [笔记A](分类/笔记A.md)", content)
 
     def test_append_index_question_markdown_multi_links(self):
         """普通 Markdown 下多链接也用标准链接，以顿号分隔。"""
-        cat = self.sandbox / "AI笔记" / "分类"
-        cat.mkdir(parents=True)
-        t.append_index_question(str(cat), "如何排查？", "笔记A", fmt="markdown")
-        t.append_index_question(str(cat), "如何排查？", "笔记B", fmt="markdown")
-        content = (cat / "00-分类索引.md").read_text(encoding="utf-8")
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_question(str(root), "分类", "如何排查？", "笔记A", fmt="markdown")
+        t.append_index_question(str(root), "分类", "如何排查？", "笔记B", fmt="markdown")
+        content = (root / "疑问.md").read_text(encoding="utf-8")
         self.assertIn(
-            "- 如何排查？ → [笔记A](笔记A.md)、[笔记B](笔记B.md)", content)
+            "- 如何排查？ → [笔记A](分类/笔记A.md)、[笔记B](分类/笔记B.md)", content)
 
     def test_lint_notes_recognizes_markdown_links(self):
         """标准 Markdown 链接应被识别为入链，不误报断链或孤立。"""
@@ -926,19 +837,19 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         (cat / "笔记A.md").write_text("# 笔记A\n", encoding="utf-8")
         (cat / "笔记B.md").write_text(
             "# 笔记B\n\n见 [笔记A](笔记A.md)。\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A"), ("笔记B", "笔记B")])
+        self._write_index(root, [("笔记A", "笔记A"), ("笔记B", "笔记B")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["broken_links"], [])
         self.assertEqual(result["orphan_notes"], [])
         self.assertEqual(result["unindexed_notes"], [])
 
     def test_lint_notes_markdown_index_parsed(self):
-        """索引里的标准 Markdown 链接应被正确解析为收录条目。"""
+        """总目录里的标准 Markdown 链接应被正确解析为收录条目。"""
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n", encoding="utf-8")
-        (cat / "00-分类索引.md").write_text(
-            "# 索引\n\n## 笔记导航\n\n| 笔记 | 主题摘要 | 链接 |\n"
-            "| ---- | -------- | ---- |\n| 笔记A | 摘要 | [笔记A](笔记A.md) |\n",
+        (root / "总目录.md").write_text(
+            "# 总目录\n\n## 分类A\n\n| 笔记 | 摘要 | 链接 |\n"
+            "| ---- | ---- | ---- |\n| 笔记A | 摘要 | [笔记A](分类A/笔记A.md) |\n",
             encoding="utf-8")
         result = t.lint_notes(str(root))
         self.assertEqual(result["unindexed_notes"], [])
@@ -949,7 +860,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text(
             "# 笔记A\n\n见 [不存在的笔记](不存在的笔记.md)。\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual(len(result["broken_links"]), 1)
         self.assertEqual(result["broken_links"][0]["target"], "不存在的笔记")
@@ -961,7 +872,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
             "# 笔记A\n\n![图](img.png)\n\n[官网](https://example.com)\n\n"
             "[跳转](#章节)\n\n[文件](data.xlsx)\n",
             encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["broken_links"], [])
 
@@ -971,7 +882,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         (cat / "笔记A.md").write_text(
             "# 笔记A\n\n```markdown\n[示例](不存在.md)\n```\n\n"
             "行内 `[示例](也不存在.md)` 同理。\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["broken_links"], [])
 
@@ -981,7 +892,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         (cat / "笔记A.md").write_text("# 笔记A\n", encoding="utf-8")
         (cat / "笔记B.md").write_text(
             "# 笔记B\n\n[[笔记A]]\n\n[笔记A](笔记A.md)\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A"), ("笔记B", "笔记B")])
+        self._write_index(root, [("笔记A", "笔记A"), ("笔记B", "笔记B")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["broken_links"], [])
         self.assertEqual(result["orphan_notes"], [])
@@ -1153,7 +1064,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         t.save_config({"format": "obsidian"})
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n\n正文\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual(len(result["missing_frontmatter"]), 1)
         self.assertEqual(result["missing_frontmatter"][0]["missing"], ["frontmatter"])
@@ -1164,7 +1075,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         root, cat = self._make_root()
         self._obsidian_note(cat, "笔记A.md", "# 笔记A\n",
                             fm="tags: [测试]\ncreated: 2026-01-01")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["missing_frontmatter"][0]["missing"], ["source"])
 
@@ -1173,7 +1084,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         t.save_config({"format": "markdown"})
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n\n正文\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["missing_frontmatter"], [])
 
@@ -1181,7 +1092,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         """未配置（setUp 状态）时不做 frontmatter 检查，避免误报。"""
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n\n正文\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["missing_frontmatter"], [])
 
@@ -1190,7 +1101,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text(
             "# 笔记A\n\n## 空章节\n\n## 有内容\n\n正文\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual([e["section"] for e in result["empty_sections"]], ["空章节"])
 
@@ -1199,7 +1110,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text(
             "# 笔记A\n\n## 章节\n\n```\n# 不是标题\n```\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["empty_sections"], [])
 
@@ -1208,7 +1119,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text(
             "# 笔记A\n\n## 父章节\n\n### 子章节\n\n正文\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual(result["empty_sections"], [])
 
@@ -1217,7 +1128,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text(
             "# 笔记A\n\n## 父章节\n\n### 空子章节\n\n## 有内容\n\n正文\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         result = t.lint_notes(str(root))
         self.assertEqual([e["section"] for e in result["empty_sections"]], ["空子章节"])
 
@@ -1225,9 +1136,9 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         """笔记比索引新 -> stale_index。"""
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n\n正文\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         old = time.time() - 100
-        os.utime(cat / "00-分类索引.md", (old, old))
+        os.utime(root / "总目录.md", (old, old))
         result = t.lint_notes(str(root))
         self.assertEqual(len(result["stale_index"]), 1)
         self.assertEqual(result["stale_index"][0]["note"], "笔记A.md")
@@ -1237,9 +1148,9 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text("# 笔记A\n\n正文\n", encoding="utf-8")
         (cat / "笔记B.md").write_text("# 笔记B\n\n正文\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A")])
+        self._write_index(root, [("笔记A", "笔记A")])
         old = time.time() - 100
-        os.utime(cat / "00-分类索引.md", (old, old))
+        os.utime(root / "总目录.md", (old, old))
         result = t.lint_notes(str(root))
         self.assertEqual([s["note"] for s in result["stale_index"]], ["笔记A.md"])
 
@@ -1248,7 +1159,7 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         root, cat = self._make_root()
         (cat / "笔记A.md").write_text(
             "# 笔记A\n\n## 空章节\n\n## 有内容\n\n见 [[缺失笔记]]\n", encoding="utf-8")
-        self._write_index(cat, [("笔记A", "笔记A"), ("已删笔记", "已删笔记")])
+        self._write_index(root, [("笔记A", "笔记A"), ("已删笔记", "已删笔记")])
         result = t.lint_notes(str(root))
         summary = result["summary"]
         self.assertEqual(summary["issues"],
@@ -1505,9 +1416,9 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         root, cat = self._similar_lib()
         (cat / "排查记录.md").write_text("# 排查记录\n", encoding="utf-8")
         (cat / "网关处理.md").write_text("# 网关处理\n", encoding="utf-8")
-        (cat / "00-分类索引.md").write_text(
-            "# 分类索引 —— 运维\n\n## 笔记导航\n\n| 笔记 | 主题摘要 | 链接 |\n| ---- | -------- | ---- |\n\n"
-            "## 已收录疑问\n\n- 如何排查 502？ → [[排查记录]]、[[网关处理]]\n", encoding="utf-8")
+        (root / "疑问.md").write_text(
+            "# 疑问\n\n## 运维\n\n- 如何排查 502？ → [[排查记录]]、[[网关处理]]\n",
+            encoding="utf-8")
         result = t.find_similar_notes(str(root))
         self.assertEqual(result["count"], 1)
         self.assertTrue(any("同列于疑问" in r for r in result["pairs"][0]["reasons"]))
@@ -1671,9 +1582,9 @@ class YoudaoBackendTestCase(unittest.TestCase):
         self.assertIn("示例笔记.md", cats["示例分类"]["notes"])
 
     def test_index_note_has_md_suffix(self):
-        t.youdao_append_index_entry("AI笔记/示例分类", "标题A", "摘要A")
+        t.youdao_append_index_entry("AI笔记", "示例分类", "标题A", "摘要A")
         names = [n["name"] for n in self.fake.nodes.values() if not n["dir"]]
-        self.assertIn("00-分类索引.md", names)
+        self.assertIn("总目录.md", names)
 
     def test_write_note_overwrite_backs_up_old_content(self):
         t.youdao_write_note("AI笔记/示例分类/笔记.md", "旧内容\n")
@@ -1695,32 +1606,31 @@ class YoudaoBackendTestCase(unittest.TestCase):
 
     # ------------------------------------------------------------ 索引
     def test_append_index_entry_creates_then_updates(self):
-        r1 = t.youdao_append_index_entry("AI笔记/示例分类", "标题A", "摘要A")
+        r1 = t.youdao_append_index_entry("AI笔记", "示例分类", "标题A", "摘要A")
         self.assertEqual(r1["action"], "created")
-        idx = t.youdao_list_index("AI笔记/示例分类")
+        idx = t.youdao_list_index("AI笔记")
         self.assertTrue(idx["exists"])
-        self.assertFalse(idx["content"].startswith("---"))  # 无 frontmatter
-        self.assertIn("创建：", idx["content"])
+        self.assertIn("## 示例分类", idx["content"])
         self.assertIn("标题A", idx["content"])
-        r2 = t.youdao_append_index_entry("AI笔记/示例分类", "标题A", "摘要B")
+        r2 = t.youdao_append_index_entry("AI笔记", "示例分类", "标题A", "摘要B")
         self.assertEqual(r2["action"], "updated")
-        self.assertIn("摘要B", t.youdao_list_index("AI笔记/示例分类")["content"])
+        self.assertIn("摘要B", t.youdao_list_index("AI笔记")["content"])
 
     def test_append_index_question_plain_links_and_merge(self):
-        r1 = t.youdao_append_index_question("AI笔记/示例分类", "疑问？", "笔记A")
+        r1 = t.youdao_append_index_question("AI笔记", "示例分类", "疑问？", "笔记A")
         self.assertTrue(r1["ok"])
         self.assertIn("笔记A", r1["entry"])
-        r2 = t.youdao_append_index_question("AI笔记/示例分类", "疑问？", "笔记B")
+        r2 = t.youdao_append_index_question("AI笔记", "示例分类", "疑问？", "笔记B")
         self.assertIn("笔记A", r2["entry"])
         self.assertIn("笔记B", r2["entry"])
-        r3 = t.youdao_append_index_question("AI笔记/示例分类", "疑问？", "笔记B")
+        r3 = t.youdao_append_index_question("AI笔记", "示例分类", "疑问？", "笔记B")
         self.assertEqual(r3["action"], "unchanged")
-        qs = t.youdao_list_questions("AI笔记/示例分类")
+        qs = t.youdao_list_questions("AI笔记")
         self.assertEqual(qs["count"], 1)
         self.assertEqual(set(qs["questions"][0]["links"]), {"笔记A", "笔记B"})
 
     def test_append_index_question_rejects_empty(self):
-        self.assertFalse(t.youdao_append_index_question("AI笔记/示例分类", "  ", "笔记A")["ok"])
+        self.assertFalse(t.youdao_append_index_question("AI笔记", "示例分类", "  ", "笔记A")["ok"])
 
     # ------------------------------------------------------------ 检索
     def test_search_notes_finds_body_and_snippet(self):
@@ -1836,10 +1746,11 @@ class YoudaoBackendTestCase(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertTrue(result["cli_installed"])
 
-    def test_index_meta_line_at_top(self):
-        t.youdao_append_index_entry("AI笔记/示例分类", "标题A", "摘要A")
-        content = t.youdao_list_index("AI笔记/示例分类")["content"]
-        self.assertTrue(content.splitlines()[0].startswith("> 创建："))
+    def test_youdao_toc_has_category_section(self):
+        t.youdao_append_index_entry("AI笔记", "示例分类", "标题A", "摘要A")
+        content = t.youdao_list_index("AI笔记")["content"]
+        self.assertTrue(content.splitlines()[0].startswith("# 总目录"))
+        self.assertIn("## 示例分类", content)
 
     def test_parse_output_tolerates_surrounding_text(self):
         self.assertEqual(t._youdao_parse_output('提示: {"a": 1} 结束'), {"a": 1})
