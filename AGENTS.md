@@ -4,7 +4,7 @@
 
 ## 目录约定
 
-- **调研报告**（`research` 技能产出）→ `docs/<skill>/research/`（如 `docs/knowledge-distill/research/`；仅本地留存）
+- **调研报告**（`research` 技能产出）→ `docs/<skill>/research/`（如 `docs/knowledge-distill/research/`）
 - **技能需求文档** → `docs/<skill>/requirements/`（如 `docs/knowledge-distill/requirements/`）
 - **写技能需求 / 生成后复审技能** → 技能 `skills/shy-skill-suite`
 
