@@ -1774,7 +1774,7 @@ def generate_moc(note_root, topic, tag=None, keyword=None, category=None, descri
 # 有道作为「唯一存储」时的云端后端：笔记正文只存在有道云端，本地只保留技能配置、
 # 临时草稿与滚动备份。所有读写都通过官方 youdaonote CLI 的
 # `call <tool> --args <json>` 完成（返回结构化 JSON，无需解析文本输出）。
-# 设计见 docs/智识沉淀-有道存储实现方案.md；书写规则见 references/youdao-best-practices.md。
+# 书写规则见 references/youdao-best-practices.md。
 
 _YOUDAO_RETRY_ATTEMPTS = 3
 _YOUDAO_RETRY_BASE_DELAY = 1.0
@@ -2489,7 +2489,7 @@ def main(argv=None):
     if use_youdao and args.command in ("lint-notes", "gen-moc"):
         print(json.dumps({
             "ok": False,
-            "error": f"有道后端暂不支持 {args.command}（规划中，见 docs/智识沉淀-有道存储实现方案.md）",
+            "error": f"有道后端暂不支持 {args.command}（规划中）",
         }, ensure_ascii=False, indent=2))
         return 1
 
