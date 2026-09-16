@@ -36,6 +36,8 @@
 
 生成 / 改写技能文件，按增量推进；**每完成一个增量就进入复审**，而不是全部写完再审。
 
+动笔时按 [`writing-skills.md`](writing-skills.md) 的 lever 写（description 作指针、信息层级与按需披露、leading word、剪枝、完成判据……）。
+
 新建技能时用 `python "<SKILL_DIR>/scripts/scaffold_skill.py" <name> --description "<触发描述>"` 起骨架——**轻量，只生成 `SKILL.md`**（不建子目录、不生成 REQ），内容靠后续迭代补。改完后先跑 `python "<SKILL_DIR>/scripts/validate_skill.py" <skill_dir>` 做结构与规范校验，再进入复审。
 
 ### 3 · 复审
