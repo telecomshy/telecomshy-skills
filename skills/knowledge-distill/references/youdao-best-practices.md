@@ -9,7 +9,7 @@
 
 - 选择有道后，**笔记正文只存在有道云端**，不再落本地笔记文件。
 - 本地只保留**小状态**：技能配置（`~/.knowledge-distill-config.json`）、临时草稿、滚动备份（`~/.knowledge-distill-backups/`）。
-- 概念映射：**分类 = 有道文件夹**；`AI笔记` 是笔记根文件夹；**索引 / MOC = 有道里的一篇笔记**。
+- 概念映射：**分类 = 有道文件夹**；`AI笔记` 是笔记根文件夹；**索引 = 有道里的一篇笔记**。
 
 ## 2. 依赖：官方 `youdaonote` CLI
 
@@ -65,12 +65,11 @@ youdaonote call createDir          --args '{"parentId":"0","dirName":"..."}'
 | ---- | -------- |
 | 原生 Markdown | ✅ |
 | 分类 / 索引 | ✅（文件夹 + 笔记） |
-| 内容地图 MOC | ❌ 暂不支持（v2） |
 | 标签 tags | ❌ 无原生标签、无 API → 只进正文元信息行 |
 | 双链 / 反链 | ❌ 技能不写；桌面端可手工加（反链、图谱可用） |
 | 版本回退 | ⚠️ 无版本 API → 靠**本地滚动备份**（写前自动备份，保留最近 10 份）+ 桌面端「历史版本」手工兜底 |
 | 全文检索 | ⚠️ 有道搜索只返回标题+id；技能对候选逐篇读回后在本地做片段匹配，**命中范围受有道搜索能力限制** |
-| 健康检查 lint | ❌ 暂不支持（v2）：无时间戳做不了 `stale_index`，无 frontmatter / 反链 |
+| 健康检查 lint | ⚠️ 支持部分：可查 `index_orphans` / `unindexed_notes` / `question_orphans` / `empty_sections`；`stale_index` / `missing_frontmatter` / `orphan_notes` / `broken_links` 有道无对应能力、不检查 |
 | 命名查重 | ✅ 按标题匹配（标题不是文件名，不做 Windows 文件名校验） |
 | 幂等写入 | ✅ 先按标题查、命中则整体覆盖；`createAnyNote` 是纯新建、不 upsert |
 

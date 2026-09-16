@@ -1167,105 +1167,6 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         self.assertEqual(summary["content_issues"], 1)
         self.assertEqual(summary["structure_issues"], 2)
 
-    # ------------------------------------------------------------ 内容地图（MOC）
-    def _make_moc_lib(self):
-        """建一个含两个空分类的笔记根目录，返回 (root, 分类A, 分类B)。"""
-        root = self.sandbox / "AI笔记"
-        a = root / "分类A"
-        b = root / "分类B"
-        a.mkdir(parents=True)
-        b.mkdir(parents=True)
-        return root, a, b
-
-    def test_generate_moc_by_tag_cross_category(self):
-        """按标签跨分类聚合，产出根目录 MOC-<主题>.md。"""
-        root, a, b = self._make_moc_lib()
-        self._obsidian_note(a, "共识算法.md", "# 共识算法\n\n正文\n",
-                            fm="tags: [分布式]\ncreated: 2026-01-01\nsource: 对话总结")
-        self._obsidian_note(b, "存储选型.md", "# 存储选型\n\n正文\n",
-                            fm="tags: [分布式]\ncreated: 2026-01-01\nsource: 对话总结")
-        self._obsidian_note(a, "无关笔记.md", "# 无关\n\n正文\n",
-                            fm="tags: [其它]\ncreated: 2026-01-01\nsource: 对话总结")
-        result = t.generate_moc(str(root), "分布式", tag="分布式")
-        self.assertTrue(result["ok"])
-        self.assertEqual(result["matched_notes"], 2)
-        moc = root / "MOC-分布式.md"
-        self.assertTrue(moc.exists())
-        content = moc.read_text(encoding="utf-8")
-        self.assertIn("[[共识算法]]", content)
-        self.assertIn("[[存储选型]]", content)
-        self.assertNotIn("无关笔记", content)
-        self.assertEqual([g["category"] for g in result["groups"]], ["分类A", "分类B"])
-
-    def test_generate_moc_by_keyword_in_body(self):
-        """未给标签时按关键词在正文中命中。"""
-        root, a, b = self._make_moc_lib()
-        (a / "笔记X.md").write_text("# 笔记X\n\n讨论了分布式事务。\n", encoding="utf-8")
-        (b / "笔记Y.md").write_text("# 笔记Y\n\n别的内容。\n", encoding="utf-8")
-        result = t.generate_moc(str(root), "分布式")
-        self.assertEqual(result["matched_notes"], 1)
-        self.assertIn("[[笔记X]]", (root / "MOC-分布式.md").read_text(encoding="utf-8"))
-
-    def test_generate_moc_no_match_still_writes_note(self):
-        """无命中时仍生成文件，并注明暂无匹配笔记。"""
-        root, a, b = self._make_moc_lib()
-        (a / "笔记X.md").write_text("# 笔记X\n\n内容\n", encoding="utf-8")
-        result = t.generate_moc(str(root), "不存在的主题")
-        self.assertTrue(result["ok"])
-        self.assertEqual(result["matched_notes"], 0)
-        content = (root / "MOC-不存在的主题.md").read_text(encoding="utf-8")
-        self.assertIn("暂无匹配笔记", content)
-
-    def test_generate_moc_excludes_index_file(self):
-        """分类索引文件不参与聚合，即使其内容命中关键词。"""
-        root, a, b = self._make_moc_lib()
-        (a / "00-分类索引.md").write_text(
-            "# 索引\n\n## 笔记导航\n\n分布式\n", encoding="utf-8")
-        result = t.generate_moc(str(root), "分布式")
-        self.assertEqual(result["matched_notes"], 0)
-
-    def test_generate_moc_category_filter(self):
-        """--category 限定只聚合该分类。"""
-        root, a, b = self._make_moc_lib()
-        (a / "笔记X.md").write_text("# 笔记X\n\n分布式\n", encoding="utf-8")
-        (b / "笔记Y.md").write_text("# 笔记Y\n\n分布式\n", encoding="utf-8")
-        result = t.generate_moc(str(root), "分布式", category="分类A")
-        self.assertEqual(result["matched_notes"], 1)
-        self.assertEqual(result["groups"][0]["category"], "分类A")
-
-    def test_generate_moc_missing_category_fails(self):
-        """指定不存在的分类应失败。"""
-        root, a, b = self._make_moc_lib()
-        result = t.generate_moc(str(root), "分布式", category="不存在的分类")
-        self.assertFalse(result["ok"])
-
-    def test_generate_moc_missing_root_fails(self):
-        """笔记根目录不存在应失败。"""
-        result = t.generate_moc(str(self.sandbox / "没有这个目录"), "主题")
-        self.assertFalse(result["ok"])
-
-    def test_generate_moc_description_override(self):
-        """自定义说明文字写入页面。"""
-        root, a, b = self._make_moc_lib()
-        (a / "笔记X.md").write_text("# 笔记X\n\n分布式\n", encoding="utf-8")
-        t.generate_moc(str(root), "分布式", description="自定义说明ABC")
-        self.assertIn("自定义说明ABC",
-                      (root / "MOC-分布式.md").read_text(encoding="utf-8"))
-
-    def test_generate_moc_refresh_idempotent_then_backs_up(self):
-        """内容不变时刷新返回 unchanged；新增匹配笔记后覆盖并备份。"""
-        root, a, b = self._make_moc_lib()
-        (a / "笔记X.md").write_text("# 笔记X\n\n分布式\n", encoding="utf-8")
-        first = t.generate_moc(str(root), "分布式")
-        self.assertEqual(first["action"], "created")
-        again = t.generate_moc(str(root), "分布式")
-        self.assertEqual(again["action"], "unchanged")
-        (b / "笔记Y.md").write_text("# 笔记Y\n\n分布式\n", encoding="utf-8")
-        third = t.generate_moc(str(root), "分布式")
-        self.assertEqual(third["action"], "overwritten")
-        self.assertTrue(third["backup"])
-
-    # ------------------------------------------------------------ 全文检索
     def test_search_notes_full_returns_content(self):
         """--full：命中笔记返回完整正文，不再截片段。"""
         root, cat = self._make_root()
@@ -1287,51 +1188,10 @@ class KnowledgeDistillTestCase(unittest.TestCase):
 
     # ------------------------------------------------------------ 链接渲染（表格/列表）
     def test_render_note_link_table_safe_toggle(self):
-        """表格场景转义竖线；列表场景（MOC）保留竖线（双链别名语义）。"""
+        """表格场景转义竖线；列表场景保留竖线（双链别名语义）。"""
         self.assertEqual(t.render_note_link("含|竖线", "obsidian"), "[[含\\|竖线]]")
         self.assertEqual(t.render_note_link("含|竖线", "obsidian", table_safe=False),
                          "[[含|竖线]]")
-
-    # ------------------------------------------------------------ MOC 摘要提取
-    def test_note_summary_prefers_quote_over_paragraph(self):
-        """开头概述引用优先于正文段落（技能生成笔记的固定结构）。"""
-        body = ("# 标题\n\n> 本篇记录技能的完整设计过程。\n\n## 一、章节\n\n"
-                "- 列表项\n\n某段正文说明。\n")
-        self.assertEqual(t._note_summary(body), "本篇记录技能的完整设计过程。")
-
-    def test_note_summary_uses_paragraph_without_quote(self):
-        """没有可用引用时取普通段落，不取标题或列表项。"""
-        body = "# 标题\n\n## 章节\n\n- 列表项一\n- 列表项二\n\n这是正文段落。\n"
-        self.assertEqual(t._note_summary(body), "这是正文段落。")
-
-    def test_note_summary_skips_callout_and_meta_quote(self):
-        """callout 标记行与"创建/来源"元信息行不作为摘要。"""
-        body = "# 标题\n\n> [!note] 提示\n> 创建：2026-01-01　来源：对话总结\n\n正文段落。\n"
-        self.assertEqual(t._note_summary(body), "正文段落。")
-
-    def test_note_summary_skips_code_block(self):
-        """代码块内容不作为摘要。"""
-        body = "# 标题\n\n```python\nprint('x')\n```\n\n真正的正文。\n"
-        self.assertEqual(t._note_summary(body), "真正的正文。")
-
-    def test_note_summary_empty_when_nothing_usable(self):
-        """只有标题与列表时返回空，不硬凑。"""
-        self.assertEqual(t._note_summary("# 标题\n\n- 列表项\n"), "")
-
-    def test_note_summary_clips_at_punctuation(self):
-        """超长摘要在标点处收尾。"""
-        body = "第一句话很短。第二句话也不长。\n"
-        self.assertEqual(t._note_summary(body, limit=8), "第一句话很短。")
-
-    def test_generate_moc_uses_sentence_summary(self):
-        """生成的 MOC 里摘要应来自正文句子，而非列表项。"""
-        root, a, b = self._make_moc_lib()
-        (a / "笔记X.md").write_text(
-            "# 笔记X\n\n## 章节\n\n- 列表项一\n\n分布式事务的正文说明。\n", encoding="utf-8")
-        t.generate_moc(str(root), "分布式", keyword="分布式")
-        content = (root / "MOC-分布式.md").read_text(encoding="utf-8")
-        self.assertIn("分布式事务的正文说明。", content)
-        self.assertNotIn("列表项一", content)
 
     # ------------------------------------------------------------ 检索排序
     def test_search_notes_ranks_title_hit_first(self):
@@ -1751,6 +1611,19 @@ class YoudaoBackendTestCase(unittest.TestCase):
         content = t.youdao_list_index("AI笔记")["content"]
         self.assertTrue(content.splitlines()[0].startswith("# 总目录"))
         self.assertIn("## 示例分类", content)
+
+    def test_youdao_lint_notes(self):
+        t.youdao_write_note("AI笔记/示例分类/笔记A.md", "# 笔记A\n\n正文\n")
+        t.youdao_append_index_entry("AI笔记", "示例分类", "笔记A", "摘要")
+        r = t.youdao_lint_notes("AI笔记")
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["unindexed_notes"], [])
+        self.assertEqual(r["index_orphans"], [])
+        self.assertIn("stale_index", r["not_checked"])
+        # 新增未收录笔记 -> 被检出
+        t.youdao_write_note("AI笔记/示例分类/笔记B.md", "# 笔记B\n")
+        r2 = t.youdao_lint_notes("AI笔记")
+        self.assertEqual([x["note"] for x in r2["unindexed_notes"]], ["笔记B.md"])
 
     def test_parse_output_tolerates_surrounding_text(self):
         self.assertEqual(t._youdao_parse_output('提示: {"a": 1} 结束'), {"a": 1})

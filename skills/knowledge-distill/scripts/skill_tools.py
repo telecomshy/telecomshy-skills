@@ -16,7 +16,6 @@ knowledge-distill 技能工具脚本
   - write-note      : 事务化写入笔记（写入前备份、临时文件原子替换）
   - list-backups    : 列出笔记的备份版本（不带参数则列全部）
   - restore-note    : 把笔记恢复到某个备份版本（恢复前先备份当前版本）
-  - gen-moc         : 按主题生成/刷新 MOC 内容地图（根目录 MOC-<主题>.md）
   - append-index-entry    : 向根目录「总目录」的分类章节追加/更新一行笔记
   - append-index-question : 向根目录「疑问」的分类章节追加/更新一条疑问（链接可并列多个）
   - migrate-index   : 把旧版每分类索引迁移到根目录「总目录」+「疑问」
@@ -34,7 +33,6 @@ knowledge-distill 技能工具脚本
   python skill_tools.py write-note "D:\\vault\\AI笔记\\示例分类\\标题.md" --content-file draft.md
   python skill_tools.py list-backups "D:\\vault\\AI笔记\\示例分类\\标题.md"
   python skill_tools.py restore-note "D:\\vault\\AI笔记\\示例分类\\标题.md" --version 20260101-120000
-  python skill_tools.py gen-moc "D:\\vault\\AI笔记" "分布式系统" --tag 分布式
   python skill_tools.py append-index-entry "D:\\vault\\AI笔记\\示例分类" "标题" "摘要"
   python skill_tools.py append-index-question "D:\\vault\\AI笔记\\示例分类" "示例疑问？" "标题"
 """
@@ -59,11 +57,6 @@ CONFIG_PATH = Path.home() / ".knowledge-distill-config.json"
 # 笔记备份目录：放在用户主目录下（笔记库之外），既不污染笔记库、
 # 也不会被 list-structure / lint-notes / search-notes 扫到。
 BACKUP_DIR = Path.home() / ".knowledge-distill-backups"
-
-# MOC（内容地图）文件前缀：MOC 统一放在笔记根目录下、以该前缀命名，
-# 与分类子目录区分开（list-structure / lint-notes / search-notes 只处理
-# 分类子目录，因此根目录下的 MOC 文件天然不会被误当作笔记）。
-MOC_PREFIX = "MOC-"
 
 DEFAULT_INDEX_FILE = "00-分类索引.md"   # 旧版每分类索引（仅迁移时读取）
 
@@ -142,7 +135,7 @@ def _md_href(title, category=None):
     """把笔记标题转成标准 Markdown 链接的 href（带 .md）。
 
     根目录索引里链接指向 `分类/标题.md`，故 `category` 非空时加分类前缀；
-    同目录场景（如 MOC）不传 category。
+    同目录场景不传 category。
     """
     href = flatten_text(title)
     for ch, encoded in _MD_HREF_ESCAPE.items():
@@ -178,7 +171,7 @@ def render_note_link(title, fmt=None, table_safe=True, category=None):
       链接不可点击；可点双链由用户在桌面端手工补）。
 
     table_safe=True 时按表格单元格转义竖线（用于索引表格）；
-    列表场景（如 MOC）传 False——双链里的 `|` 是别名分隔符，转义反而破坏链接。
+    列表场景传 False——双链里的 `|` 是别名分隔符，转义反而破坏链接。
     `category` 供根目录索引在 Markdown 链接里补分类前缀。
     """
     display = escape_table_cell(title) if table_safe else flatten_text(title)
@@ -308,7 +301,7 @@ def _iter_notes(cat_dir):
     """按名称顺序产出分类目录下的**知识笔记**文件。
 
     排除索引文件（00-分类索引.md）与非笔记扩展名（如 .txt、图片）——
-    这是"什么算一篇笔记"的唯一判定点，供 list-structure / search / lint / MOC 共用。
+    这是"什么算一篇笔记"的唯一判定点，供 list-structure / search / lint 共用。
     """
     for p in sorted(Path(cat_dir).iterdir()):
         if not p.is_file() or p.suffix.lower() not in NOTE_SUFFIXES:
@@ -321,7 +314,7 @@ def _iter_notes(cat_dir):
 def list_structure(note_root):
     """列出笔记根目录下一层分类（子目录）及每类下的笔记文件。
 
-    只把一层子目录视为分类；根目录下的索引文件（`总目录.md` / `疑问.md`）与 MOC
+    只把一层子目录视为分类；根目录下的索引文件（`总目录.md` / `疑问.md`）
     不是子目录，天然不参与。
     """
     root = Path(note_root)
@@ -1658,147 +1651,6 @@ def _jaccard(a, b):
     return inter / len(a | b)
 
 
-def _clip_summary(text, limit):
-    """按长度截断摘要，尽量断在标点处，避免截出半句话。"""
-    if len(text) <= limit:
-        return text
-    cut = text[:limit]
-    for i in range(len(cut) - 1, max(0, len(cut) - 20), -1):
-        if cut[i] in "。！？；，、）)":
-            return cut[:i + 1]
-    return cut + "…"
-
-
-def _note_summary(body, limit=60):
-    """取笔记正文的一句话作为摘要。
-
-    优先级：**开头的概述引用**（本技能生成的笔记结构为「标题 + 引用概述」，
-    这句最贴题）→ 第一个**普通段落**。以下都不适合当摘要，一律跳过：
-    标题、列表项、表格行、代码块、callout 标记行、以及"创建/来源/更新"这类
-    元信息行。这么设计是为避免出现"摘要 = 第一个列表项"或无关章节正文。
-    """
-    first_quote = ""
-    first_para = ""
-    in_code = False
-    for line in body.splitlines():
-        s = line.strip()
-        if s.startswith("```") or s.startswith("~~~"):
-            in_code = not in_code
-            continue
-        if in_code or not s:
-            continue
-        if s[0] == ">":
-            text = s.lstrip(">").strip()
-            if not text or text.startswith("[!"):
-                continue  # callout 标记行不是正文
-            text = re.sub(r"[*_`\[\]]", "", text).strip()
-            if (text and not first_quote
-                    and not re.match(r"^(创建|来源|更新)\s*[:：]", text)):
-                first_quote = _clip_summary(text, limit)
-            continue
-        if s[0] in "#|" or re.match(r"^([-*+]|\d+[.、)])\s+", s):
-            continue
-        text = re.sub(r"[*_`\[\]]", "", s).strip()
-        if text and not first_para:
-            first_para = _clip_summary(text, limit)
-    return first_quote or first_para
-
-
-def generate_moc(note_root, topic, tag=None, keyword=None, category=None, description=None):
-    """生成/刷新一篇 MOC（内容地图）：把散在各分类、同一主题的笔记聚成一页链接清单。
-
-    用途：分类目录回答"笔记放在哪个抽屉"，MOC 回答"关于这个主题我知道些什么"——
-    同一主题的笔记可能分属不同分类，MOC 把它们跨分类聚到一页，便于一次找齐。
-
-    - 匹配规则：给了 tag 按 frontmatter 标签精确匹配；否则用 keyword（缺省为 topic）
-      在标题、frontmatter、正文中做关键词命中。
-    - 输出：写到笔记根目录下的 `MOC-<主题>.md`；走 write_note 事务化写入
-      （已存在则先备份、原子替换），因此可反复重新生成以刷新内容。
-    - 位置说明：放在笔记根目录（与分类子目录同级），而 list-structure / lint-notes /
-      search-notes 只处理分类子目录，所以 MOC 不会被误当作笔记或报未收录。
-    """
-    root = Path(note_root)
-    if not root.is_dir():
-        return {"ok": False, "error": f"笔记根目录不存在: {root}"}
-
-    kw = (keyword or topic).strip()
-    tag_key = tag.strip().lower() if tag else None
-    pattern = re.compile(re.escape(kw), re.IGNORECASE) if kw else None
-
-    cat_dirs = sorted([d for d in root.iterdir() if d.is_dir()])
-    if category:
-        cat_dirs = [d for d in cat_dirs if d.name == category]
-        if not cat_dirs:
-            return {"ok": False, "error": f"分类不存在: {category}"}
-
-    groups = []
-    total = 0
-    for cat_dir in cat_dirs:
-        items = []
-        for note in _iter_notes(cat_dir):
-            try:
-                text = note.read_text(encoding="utf-8-sig", errors="replace")
-            except OSError:
-                continue
-            fm_text, body = _split_frontmatter(text)
-            if tag_key:
-                hit = tag_key in [x.lower() for x in _frontmatter_tags(fm_text)]
-            elif pattern:
-                hit = bool(pattern.search(note.stem) or pattern.search(fm_text)
-                           or pattern.search(body))
-            else:
-                hit = False
-            if hit:
-                items.append({"title": note.stem, "summary": _note_summary(body)})
-        if items:
-            groups.append({"category": cat_dir.name, "items": items})
-            total += len(items)
-
-    today = datetime.date.today().isoformat()
-    desc = (description or "").strip() or f"自动聚合「{topic}」相关的笔记（跨分类），便于一次找齐。"
-    lines = [
-        "---",
-        f"tags: [MOC, {topic}]",
-        f"created: {today}",
-        "source: 智识沉淀生成",
-        "---",
-        "",
-        f"# 知识地图 —— {topic}",
-        "",
-        f"> {desc}",
-        ">",
-        "> 本页由「智识沉淀」按需生成，可重新生成以刷新；请勿手工编辑（下次生成会覆盖）。",
-        "",
-    ]
-    for g in groups:
-        lines.append(f"## {g['category']}")
-        lines.append("")
-        for it in g["items"]:
-            entry = f"- {render_note_link(it['title'], table_safe=False)}"
-            if it["summary"]:
-                entry += f" — {it['summary']}"
-            lines.append(entry)
-        lines.append("")
-    if total == 0:
-        lines.extend(["> **暂无匹配笔记**：可更换标签或关键词后重新生成。", ""])
-    lines.append(f"共 {total} 篇笔记。")
-    lines.append("")
-    content = "\n".join(lines)
-
-    moc_name = MOC_PREFIX + sanitize_title(topic)
-    write_result = write_note(str(root / f"{moc_name}.md"), content)
-    if not write_result.get("ok"):
-        return write_result
-    return {
-        "ok": True,
-        "path": write_result["path"],
-        "action": write_result["action"],
-        "backup": write_result.get("backup"),
-        "matched_notes": total,
-        "groups": [{"category": g["category"], "count": len(g["items"])} for g in groups],
-    }
-
-
 # ---------------------------------------------------------------- 有道云笔记后端
 # 有道作为「唯一存储」时的云端后端：笔记正文只存在有道云端，本地只保留技能配置、
 # 临时草稿与滚动备份。所有读写都通过官方 youdaonote CLI 的
@@ -2379,6 +2231,81 @@ def youdao_restore_note(note_path, version=None):
             "from": str(chosen), "backup": backup_path, "bytes": result.get("bytes")}
 
 
+def youdao_lint_notes(note_root):
+    """有道版 lint-notes：只做可确定性检查（索引孤儿 / 未收录 / 疑问孤儿 / 空章节）。
+
+    有道无笔记时间戳、无 frontmatter、无反链 API，故 stale_index / missing_frontmatter /
+    orphan_notes / broken_links **无法检查**——输出里如实列出未检查项，不误报。
+    """
+    root_id = _youdao_folder_id(_youdao_parts(note_root))
+    if root_id is None:
+        return {"ok": False, "error": f"笔记根目录不存在: {note_root}"}
+
+    categories, all_stems = [], set()
+    for entry in _youdao_list(root_id):
+        if not _youdao_is_dir(entry):
+            continue
+        fid = str(_youdao_id(entry))
+        notes = []
+        for n in _youdao_list(fid):
+            if _youdao_is_dir(n):
+                continue
+            stem = _youdao_title_key(_youdao_name(n))
+            notes.append({"id": str(_youdao_id(n)), "name": _youdao_name(n), "stem": stem})
+            all_stems.add(stem)
+        categories.append({"name": _youdao_name(entry), "notes": notes})
+
+    _, toc_text = _youdao_read_note(root_id, _YOUDAO_TOC_TITLE)
+    toc_entries = _parse_toc(toc_text or "")
+    indexed = {(e["category"].casefold(), _link_basename(e["title"]).casefold())
+               for e in toc_entries if _link_basename(e["title"])}
+    _, q_text = _youdao_read_note(root_id, _YOUDAO_QUESTIONS_TITLE)
+    question_items = _parse_questions(q_text or "")
+
+    index_orphans, unindexed_notes, question_orphans, empty_sections = [], [], [], []
+
+    for e in toc_entries:
+        base = _link_basename(e["title"]).casefold()
+        if base and base not in all_stems:
+            index_orphans.append({"category": e["category"], "target": e["title"]})
+
+    for item in question_items:
+        for target in item["links"]:
+            if _link_basename(target).casefold() not in all_stems:
+                question_orphans.append({"category": item["category"],
+                                         "question": item["question"], "target": target})
+
+    for cat in categories:
+        for note in cat["notes"]:
+            if (cat["name"].casefold(), note["stem"]) not in indexed:
+                unindexed_notes.append({"category": cat["name"], "note": note["name"]})
+            try:
+                text = _youdao_content(_youdao_run("getNoteTextContent", {"fileId": note["id"]}))
+            except YoudaoError:
+                continue
+            _, body = _split_frontmatter(text or "")
+            for section in _find_empty_sections(body):
+                empty_sections.append({"category": cat["name"], "note": note["name"],
+                                       "section": section})
+
+    structure_issues = len(index_orphans) + len(unindexed_notes) + len(question_orphans)
+    content_issues = len(empty_sections)
+    return {
+        "ok": True, "note_root": str(note_root),
+        "summary": {"categories": len(categories),
+                    "notes": sum(len(c["notes"]) for c in categories),
+                    "issues": structure_issues + content_issues,
+                    "structure_issues": structure_issues, "content_issues": content_issues,
+                    "similar_notes": 0},
+        "index_orphans": index_orphans, "unindexed_notes": unindexed_notes,
+        "question_orphans": question_orphans, "empty_sections": empty_sections,
+        "orphan_notes": [], "broken_links": [], "missing_frontmatter": [], "stale_index": [],
+        "similar_notes": [],
+        "not_checked": ["stale_index", "missing_frontmatter", "orphan_notes", "broken_links"],
+        "note": "有道无笔记时间戳 / frontmatter / 反链 API，上述四类未检查。",
+    }
+
+
 # ---------------------------------------------------------------- 命令行入口
 def main(argv=None):
     # 强制以 UTF-8 输出，避免 Windows 控制台默认编码（如 cp936）把中文 JSON 写乱。
@@ -2449,14 +2376,6 @@ def main(argv=None):
                            "有道为逻辑路径")
     p_rn.add_argument("--version", help="要恢复的时间戳版本（用 list-backups 查看；缺省=最近一版）")
 
-    p_moc = sub.add_parser("gen-moc", help="按主题生成/刷新 MOC 内容地图（根目录 MOC-<主题>.md）")
-    p_moc.add_argument("note_root", help="笔记根目录（MOC 写在其下）")
-    p_moc.add_argument("topic", help="MOC 主题（用于文件名与标题）")
-    p_moc.add_argument("--tag", help="按 frontmatter 标签精确匹配笔记（优先于关键词）")
-    p_moc.add_argument("--keyword", help="按关键词匹配标题/frontmatter/正文，缺省用主题")
-    p_moc.add_argument("--category", help="仅聚合该分类下的笔记")
-    p_moc.add_argument("--description", help="自定义 MOC 说明文字")
-
     p_append = sub.add_parser("append-index-entry", help="向根目录「总目录」追加/更新一行笔记")
     p_append.add_argument("note_root")
     p_append.add_argument("category")
@@ -2510,14 +2429,6 @@ def main(argv=None):
         cfg = save_config(cfg)
         print(json.dumps({"ok": True, "config": cfg, "path": str(CONFIG_PATH)}, ensure_ascii=False, indent=2))
         return 0
-
-    # 有道后端暂不支持的命令（规划中）：明确报错，不误落到本地文件路径。
-    if use_youdao and args.command in ("lint-notes", "gen-moc"):
-        print(json.dumps({
-            "ok": False,
-            "error": f"有道后端暂不支持 {args.command}（规划中）",
-        }, ensure_ascii=False, indent=2))
-        return 1
 
     if args.command == "list-structure":
         result = (_youdao_guard(youdao_list_structure, args.note_root) if use_youdao
@@ -2582,14 +2493,9 @@ def main(argv=None):
                   if use_youdao else restore_note(args.note_path, version=args.version))
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("ok") else 1
-    if args.command == "gen-moc":
-        result = generate_moc(args.note_root, args.topic, tag=args.tag,
-                              keyword=args.keyword, category=args.category,
-                              description=args.description)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-        return 0 if result.get("ok") else 1
     if args.command == "lint-notes":
-        result = lint_notes(args.note_root)
+        result = (_youdao_guard(youdao_lint_notes, args.note_root) if use_youdao
+                  else lint_notes(args.note_root))
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("ok") else 1
     if args.command == "append-index-entry":
