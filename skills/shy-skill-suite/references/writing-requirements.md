@@ -1,6 +1,6 @@
 # 技能需求文档 · 操作规范
 
-> 本文件规定 `docs/requirements/` 下**每个技能需求文档**的命名、结构与写作原则，供 AI 落盘、供人后期审核。
+> 本文件规定 `docs/<skill>/requirements/` 下**每个技能需求文档**的命名、结构与写作原则，供 AI 落盘、供人后期审核。
 > 配套：技能落地后的复审见 [`reviewing-skills.md`](reviewing-skills.md)。
 > 依据见 §7。
 
@@ -15,7 +15,7 @@
 
 ## 2. 文件与命名
 
-- 位置：`docs/requirements/`
+- 位置：`docs/<skill>/requirements/`
 - 文件名：`REQ-NNNN-<slug>.md`
   - `NNNN`：四位序号，从 `0001` 起递增，**永不复用**。
   - `<slug>`：短横线连接的英文小写 slug（ASCII，便于检索与跨平台）。

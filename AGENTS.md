@@ -4,9 +4,9 @@
 
 ## 目录约定
 
-- **调研报告**（`research` 技能产出）→ `docs/research/`
-- **技能需求文档** → `docs/requirements/`（先按 `docs/guides/writing-skill-requirements.md` 的规范落盘）
-- **AI 生成 / 改写技能后复审** → `docs/guides/reviewing-skills.md`
+- **调研报告**（`research` 技能产出）→ `docs/<skill>/research/`（如 `docs/knowledge-distill/research/`；仅本地留存）
+- **技能需求文档** → `docs/<skill>/requirements/`（如 `docs/knowledge-distill/requirements/`）
+- **写技能需求 / 生成后复审技能** → 技能 `skills/shy-skill-suite`
 
 ## 技能必须自包含
 

@@ -20,7 +20,6 @@ TeleAgent 技能集合仓库（Agent Skills for TeleAgent）。
 | 技能 | 文件夹 | 说明 |
 | ---- | ------ | ---- |
 | 智识沉淀 (knowledge-distill) | [`skills/knowledge-distill`](skills/knowledge-distill) | 把对话沉淀为可检索、可关联、可长期复用的知识库笔记（Obsidian / 普通 Markdown / 有道云笔记） |
-| 回答风格 (answer-style) | [`skills/answer-style`](skills/answer-style) | 按指令切换回答的讲解风格：更通俗地做知识拓展式讲解，或更专业严谨，也可恢复默认 |
 | 技能开发套件 (shy-skill-suite) | [`skills/shy-skill-suite`](skills/shy-skill-suite) | 技能全流程操作规范：写技能需求文档（REQ-NNNN），以及生成/改写后复审技能、提出改进并迭代 |
 
 ## 目录结构
@@ -31,9 +30,9 @@ telecomshy-skills/
 ├── AGENTS.md            # 面向 agent 的仓库约定（目录约定等）
 ├── LICENSE              # MIT 许可证
 ├── docs/
-│   ├── research/        # 调研报告（research 技能产出）
-│   ├── requirements/    # 技能需求文档（REQ-NNNN-*.md）
-│   └── guides/          # 操作指导手册（写需求、复审技能等最佳实践）
+│   └── knowledge-distill/
+│       ├── research/        # 调研报告（research 技能产出，仅本地留存）
+│       └── requirements/    # 技能需求文档（REQ-NNNN-*.md）
 └── skills/              # 所有技能存放于此
     └── knowledge-distill/
         ├── SKILL.md
@@ -74,24 +73,11 @@ telecomshy-skills/
 
 > 完整指令、触发条件与配置详见 [`skills/knowledge-distill/SKILL.md`](skills/knowledge-distill/SKILL.md)。
 
-### 回答风格（answer-style）
-
-按用户指令切换回答的**讲解风格与深度**，把回答从"换个说法"升级为"知识拓展式讲解"。
-
-关键能力：
-
-- **通俗模式（`/answer-more-clear`）**：术语换日常说法（首次出现先解释）、补齐前置知识、补背景动机、给可复现实例、类比限量并回映射（说清哪里像/不像）、末尾附常见误解与自检小结。
-- **专业模式（`/answer-more-pro`）**：结论先行，给依据、前提、边界与权衡，术语精确、省去铺垫。
-- **恢复默认（`/answer-default`）**：停止叠加风格，回到默认呈现。
-- **会话级保持**：切换后持续生效直到复位；风格只作用于讲解文字，代码、命令、参数保持精确原样。
-
-> 完整指令与触发条件详见 [`skills/answer-style/SKILL.md`](skills/answer-style/SKILL.md)。
-
 ### 技能开发套件（shy-skill-suite）
 
 面向"技能"这一产物本身的操作规范，覆盖 **需求 → 生成 → 复审 → 迭代** 的生命周期。两条分支按用户意图路由：
 
-- **写技能需求文档**：落盘 `docs/requirements/REQ-NNNN-<slug>.md`——命名、frontmatter、正文各节、验收标准、状态词表与模板。
+- **写技能需求文档**：落盘 `docs/<skill>/requirements/REQ-NNNN-<slug>.md`——命名、frontmatter、正文各节、验收标准、状态词表与模板。
 - **复审技能**：AI 生成 / 改写技能后，按"触发 + 有效性"两问给出有证据的判断（真实轨迹、有/无技能对照基线、预算视角 no-op/cache/sprawl/sediment），并产出带优先级的改进清单。
 
 > 完整规范见 [`skills/shy-skill-suite/SKILL.md`](skills/shy-skill-suite/SKILL.md) 及其 `references/`。
