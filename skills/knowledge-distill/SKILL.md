@@ -34,7 +34,10 @@ create_source: super-agent-skill-creator
 
 本技能所有脚本命令**一律用绝对路径调用**（如 `python "<SKILL_DIR>/scripts/skill_tools.py" <子命令>`）——技能的运行工作目录通常是用户的会话目录，而非技能目录，相对路径会直接失败。
 
-**技能目录解析**：`$TELEAGENT_CONFIG_DIR/skills/knowledge-distill`（`TELEAGENT_CONFIG_DIR` 缺省为 `~/.config/TeleAgent`）。本文档后续用 `<SKILL_DIR>` 代指该目录。
+**`<SKILL_DIR>` 解析**（本文档后续用它代指技能目录；按序取第一个命中的）：
+1. 平台注入的技能基础目录（prompt 里的 `Base directory`）；
+2. TeleAgent 用户级布局 `$TELEAGENT_CONFIG_DIR/users/*/skills/knowledge-distill`（`TELEAGENT_CONFIG_DIR` 缺省 `~/.config/TeleAgent`）；
+3. 文件搜索 `skill_tools.py`——命中多个取 **mtime 最新**的那个（`.backup/` 下是历史副本，不用）。
 
 **路径参数一律用绝对路径**：`<note_root>`、`<分类目录>` 等是传给脚本的路径参数，脚本按**当前工作目录**解析——相对路径会报 `笔记根目录不存在`，`list-index` 更会静默返回空。`<note_root>` 指配置里 `vault`（普通 Markdown 用 `directory`）与 `note_root` 拼成的绝对路径；`<分类目录>` 指 `<note_root>\<分类名>`。
 
@@ -46,10 +49,8 @@ create_source: super-agent-skill-creator
   python "<SKILL_DIR>/scripts/skill_tools.py" <子命令> [参数]
   ```
 
-  例：`python "C:\Users\<用户>\.config\TeleAgent\skills\knowledge-distill\scripts\skill_tools.py" load-config`
 - 脚本自带 UTF-8 输出，中文路径与内容无需额外环境变量。
 - 路径含空格时必须加引号。
-- 若不确定技能目录位置，先用文件搜索定位 `skill_tools.py`，再使用其绝对路径。
 - 各子命令按上文对应 Step 的场景使用；**命令与参数的权威列表以 `python "<SKILL_DIR>/scripts/skill_tools.py" --help` 为准**。
 
 ---
@@ -70,7 +71,7 @@ create_source: super-agent-skill-creator
 
 #### Step 1：确认格式与保存位置，并写入配置
 
-一次性问清**格式**与**保存位置**两件事，再写入配置——不要拆成两轮追问。
+一次性问清**格式**与**保存位置**两件事，再写入配置。
 
 - **格式**三选一：**Obsidian**（推荐）/ **普通 Markdown** / **有道云笔记**。
 - **位置**：
@@ -142,6 +143,8 @@ create_source: super-agent-skill-creator
    - 若发现已有分类明显重复或命名混乱，可在方案表中**建议**用户合并或重命名，但**不擅自改动**已有目录（改名/合并会牵动已有链接，需用户明确同意后单独处理）。
 2. 对**首次创建的分类**：创建分类子目录即可；分类目录是纯笔记文件夹。根目录索引（`总目录.md` / `收录疑问.md`）由 Step 6 自动创建 / 更新，无需手工建。
 
+**本步完成判据**：方案表里每个主题块的分类目录都已存在（已有，或已创建）。
+
 ### Step 4：执行"新建"或"合并"（按 Step 2 方案表执行）
 
 新建/合并方式在 Step 2 方案表中已确认，本步按行执行：
@@ -168,12 +171,14 @@ create_source: super-agent-skill-creator
    - **改写优化保留旧内容独有信息**：只改写/替换重复部分，旧笔记独有信息并入新表述或原样保留。改写保持原意、不引入无依据内容（仍受"绝不编造事实"红线约束）。
    - **改写优化 ≠ 消解冲突**：若新旧内容是**结论矛盾**（同一问题说法不一致），不适用"改写优化"覆盖旧结论，须按 Step 5「与旧笔记冲突时先标注」处理——显式标注两种说法及依据，确需改写旧结论时必须先经用户确认。
    - **元数据**：两种方式都**沿用旧笔记既有 `tags`**（保持标签一致，避免新造同义标签削弱后续查重；仅在确有新主题时补充），并追加/更新 `updated: YYYY-MM-DD`。
-   - **插入位置**：追加时优先插到笔记末尾的"相关笔记"章节之前；若新内容明显属于某个已有章节，则插到该章节末尾。改写优化则直接在被优化的段落/章节处就地改写。
+   - **插入位置**：追加时优先插到笔记末尾的"相关笔记"章节之前；若新内容明显属于某个已有章节，则插到该章节末尾——**默认挂成该章节下的 `###` 子标题，不重排既有编号**（"一、二、三…"保持原样）。新内容自成一块时另起小节即可，说明理由。改写优化则直接在被优化的段落/章节处就地改写。
    - **来源标注**：合并的新内容可加一行来源说明（如"来源：2026-09-09 对话"），便于追溯。
    - **先确认再合并**：目标笔记内容与预期差异较大（可能被用户改过）时，先向用户确认再合并。
    - **改写优化写前先给变更摘要并确认**：列出将被改写/替换的段落、以及旧内容中保留的独有信息，用户确认后再落盘；写入前会自动备份，不满意可用「回退笔记」退回。
    - **写入方式**：先读取目标笔记原文、在内存中拼好合并后的完整内容，再用 `write-note` **整体写回**（见 Step 5）——脚本会先备份原文件、再原子替换，避免写到一半损坏原笔记。
 5. 用户追问的相似问题 → 优先归入已收录该主题的那篇笔记，**不新建**。
+
+**本步完成判据**：方案表里每一行都已跑过 `check-name`、最终标题已确定且与将要写入的文件名一致，合并行的合并方式（追加 / 改写优化）已明确。
 
 ### Step 5：撰写并写入笔记（核心，每个主题块分别执行）
 
@@ -221,6 +226,8 @@ create_source: super-agent-skill-creator
   - 脚本会：目标已存在则**先备份**到 `~/.knowledge-distill-backups/`（可用 `list-backups` / `restore-note` 回退，见「回退笔记」）；先写同目录临时文件、再用原子替换（写到一半失败不会损坏原笔记）；内容与原文完全一致时返回 `unchanged`，不写、不备份。
   - 返回 `action` 为 `created` / `overwritten` / `unchanged`，`backup` 为备份文件路径（无备份时为 `null`）。
   - **所有整篇写入/重写都走本命令**（含 Step 4 的"合并"：读原文 → 内存拼好 → 整体写回）。Obsidian 用双链、普通 Markdown 用标准链接/相对路径组织。
+  - **落盘顺序：先笔记，后索引**——本步把所有笔记写完，才进 Step 6 更新索引。`write-note` 写的是含 frontmatter 的完整文件，`updated:` 等元数据在这一步一次写好。
+  - **frontmatter 单独微调**可用 `edit` 精确改（正文内容改动仍走 `write-note`），但同样要在进 Step 6 之前改完：索引写完后笔记再变，`stale_index` 会如实报出。
 
 **本步完成判据**：方案表里**每一篇**都已按本步原则撰写完整（含具体细节与真实性标注），且都通过 `write-note` 写入成功（返回 `created` / `overwritten` / `unchanged`）。
 
@@ -275,6 +282,7 @@ python "<SKILL_DIR>/scripts/skill_tools.py" append-index-question "<note_root>" 
 4. **顺带回报相关旧笔记（沉淀即检索）**：把 Step 2 已检索到的**其它旧笔记**（分类 + 标题 + 路径 + 片段）一并列出，提示"这些旧笔记可能与本次相关"——复用那次结果，不重复检索。
    - 这是把"沉淀"与"检索"接起来，用户不必再单独问一句"我之前记过什么"；只读检索，不生成任何新笔记。
    - 若本次笔记**已回链某篇旧笔记**，在该篇后注明"已互链"；若发现主题明显重合，可建议下次合并。
+5. **调用 `report_final_files`**（本轮变更了最终交付文件就必须调用，且只调一次）：传入本轮新建/变更的笔记**绝对路径**；草稿、备份、`.temp/` 一律不传。前端据此在对话末尾渲染文件卡片。
 
 ---
 
@@ -329,7 +337,7 @@ python "<SKILL_DIR>/scripts/skill_tools.py" append-index-question "<note_root>" 
    **内容质量（三类）**：
    - `missing_frontmatter`：Obsidian 笔记缺 frontmatter，或 frontmatter 缺必填字段（`tags` / `created` / `source`）。**仅当用户已配置为 Obsidian 格式时检查**——普通 Markdown 无 frontmatter 要求，不会误报。
    - `empty_sections`：有标题、标题下却没有任何正文的章节（骨架写了没填）。
-   - `stale_index`：笔记比其所在分类的索引文件更新（改了笔记、索引摘要却没同步）。
+   - `stale_index`：笔记比根目录 `总目录.md` 更新（改了笔记、索引摘要却没同步）。
    - 返回的 `summary` 除 `issues`（问题总数）外，另含 `structure_issues`、`content_issues` 两个分组计数，便于一眼看出问题规模。
 
    **合并候选（参考，非问题）**：
@@ -337,7 +345,7 @@ python "<SKILL_DIR>/scripts/skill_tools.py" append-index-question "<note_root>" 
 4. 向用户逐类列出问题清单（含完整路径），并**询问是否要修复**：
    - 索引类问题（`index_orphans` / `unindexed_notes` / `question_orphans`）可用 `append-index-entry`、`append-index-question` 等命令修正，但**必须先经用户确认**。
    - 断链的处置（改链接 / 补建目标笔记）由用户决定。
-   - 内容质量类：`empty_sections` 需补齐正文、`missing_frontmatter` 需补字段，都走 `write-note` 重写该篇；`stale_index` 用 `append-index-entry` 刷新摘要。同样**一律先经用户确认再动手**。
+   - 内容质量类：`empty_sections` 需补齐正文、`missing_frontmatter` 需补字段，都走 `write-note` 重写该篇；`stale_index` 用 `append-index-entry` 重跑一次即可（内容已一致时脚本也会刷新索引 mtime，提示随之消失）。同样**一律先经用户确认再动手**。
    - **合并候选**：逐对列出候选与依据，给出建议（**合并** / **仅互链**），由用户决定；不自动改。
 5. 若八类问题均为空，明确告知"笔记库健康，未发现问题"（合并候选不视为问题，另行列报）。
 

@@ -329,6 +329,30 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         self.assertNotIn("AIGC:", content)
         self.assertNotIn("ContentProducer", content)
 
+    def test_append_index_entry_unchanged_refreshes_index_mtime(self):
+        """内容一致（unchanged）也要推进索引 mtime：否则 stale_index 复跑也清不掉。"""
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_entry(str(root), "分类", "笔记A", "摘要A")
+        toc = root / "总目录.md"
+        old = time.time() - 3600
+        os.utime(toc, (old, old))
+        result = t.append_index_entry(str(root), "分类", "笔记A", "摘要A")
+        self.assertEqual(result["action"], "unchanged")
+        self.assertGreater(toc.stat().st_mtime, old + 1)
+
+    def test_append_index_question_unchanged_refreshes_index_mtime(self):
+        """疑问条目同理：复跑 append-index-question 应能清除 stale_index 提示。"""
+        root = self.sandbox / "AI笔记"
+        root.mkdir(parents=True)
+        t.append_index_question(str(root), "分类", "疑问？", "笔记A")
+        qpath = root / "收录疑问.md"
+        old = time.time() - 3600
+        os.utime(qpath, (old, old))
+        result = t.append_index_question(str(root), "分类", "疑问？", "笔记A")
+        self.assertEqual(result["action"], "unchanged")
+        self.assertGreater(qpath.stat().st_mtime, old + 1)
+
     def test_strip_aigc_frontmatter_block(self):
         """AIGC 块应被完整剥离，frontmatter 其它字段与正文保留。"""
         text = ("---\n"

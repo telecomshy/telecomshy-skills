@@ -33,8 +33,8 @@ knowledge-distill 技能工具脚本
   python skill_tools.py write-note "D:\\vault\\AI笔记\\示例分类\\标题.md" --content-file draft.md
   python skill_tools.py list-backups "D:\\vault\\AI笔记\\示例分类\\标题.md"
   python skill_tools.py restore-note "D:\\vault\\AI笔记\\示例分类\\标题.md" --version 20260101-120000
-  python skill_tools.py append-index-entry "D:\\vault\\AI笔记\\示例分类" "标题" "摘要"
-  python skill_tools.py append-index-question "D:\\vault\\AI笔记\\示例分类" "示例疑问？" "标题"
+  python skill_tools.py append-index-entry "D:\\vault\\AI笔记" "示例分类" "标题" "摘要"
+  python skill_tools.py append-index-question "D:\\vault\\AI笔记" "示例分类" "示例疑问？" "标题"
 """
 
 import argparse
@@ -406,6 +406,33 @@ def check_name(category_dir, title):
             "suggestion": "向用户确认：覆盖 / 改名 / 合并进该笔记"}
 
 
+def _collect_snippets(pattern, text, max_snippets, context):
+    """截取命中片段：每段含匹配文本与上下文，跳过与上一段区间重叠的命中。
+
+    本地笔记与有道笔记共用同一实现——两端的片段语义必须一致，否则同一查询
+    在两个后端返回的上下文会对不上。
+    """
+    snippets = []
+    covered_until = -1
+    for m in pattern.finditer(text):
+        if len(snippets) >= max_snippets:
+            break
+        start = max(0, m.start() - context)
+        if start < covered_until:
+            continue
+        end = min(len(text), m.end() + context)
+        snippets.append({"match": m.group(0),
+                         "snippet": text[start:end].replace("\n", " ").strip()})
+        covered_until = end
+    return snippets
+
+
+def _sort_hits(hits):
+    """确定性排序（不上向量）：标题命中优先 → 命中次数多 → 日期新 → 文件名。"""
+    hits.sort(key=lambda h: h["note"].casefold())
+    hits.sort(key=lambda h: (h["title_hit"], h["count"], h["date"]), reverse=True)
+
+
 def search_notes(note_root, query, category=None, use_regex=False, max_snippets=3, context=60, full=False):
     """在笔记正文中按关键词/正则检索，返回命中片段。
 
@@ -464,19 +491,7 @@ def search_notes(note_root, query, category=None, use_regex=False, max_snippets=
                 })
                 continue
 
-            snippets = []
-            covered_until = -1
-            for m in pattern.finditer(text):
-                if len(snippets) >= max_snippets:
-                    break
-                start = max(0, m.start() - context)
-                # 跳过与上一个片段区间重叠的命中，避免返回重复内容
-                if start < covered_until:
-                    continue
-                end = min(len(text), m.end() + context)
-                snippet = text[start:end].replace("\n", " ").strip()
-                snippets.append({"match": m.group(0), "snippet": snippet})
-                covered_until = end
+            snippets = _collect_snippets(pattern, text, max_snippets, context)
             if snippets:
                 hits.append({
                     "category": cat_dir.name,
@@ -488,9 +503,7 @@ def search_notes(note_root, query, category=None, use_regex=False, max_snippets=
                     "snippets": snippets,
                 })
 
-    # 确定性排序（不上向量）：标题命中优先 → 命中次数多 → 日期新（updated/created）→ 文件名
-    hits.sort(key=lambda h: h["note"].casefold())
-    hits.sort(key=lambda h: (h["title_hit"], h["count"], h["date"]), reverse=True)
+    _sort_hits(hits)
 
     return {"ok": True, "query": query, "use_regex": use_regex, "full": full,
             "matched_notes": len(hits), "hits": hits}
@@ -600,12 +613,26 @@ def _upsert_toc_row(text, category, title, summary, fmt=None):
     return "\n".join(lines) + "\n", {"action": "appended", "row": row}
 
 
+def _mark_verified(path):
+    """把索引文件的 mtime 推到当前时间：内容无需改动时，也记录"刚刚核对过"。
+
+    `lint-notes` 的 `stale_index` 比较「笔记 mtime > 索引 mtime」；若内容一致就
+    不写文件，索引 mtime 会一直停在旧值，复跑本命令也清不掉该提示（调用方只能
+    去手工改时间戳）。这里在 `unchanged` 分支也更新 mtime，使复跑即清除。
+    """
+    try:
+        os.utime(path, None)
+    except OSError:
+        pass
+
+
 def append_index_entry(note_root, category, title, summary, fmt=None):
     """向根目录「总目录」的分类章节追加/更新一行笔记（格式由脚本保证）。
 
     - 分类章节（`## <分类>`）不存在则创建；表格不存在则补表头。
     - 已存在同名条目则更新摘要，不重复追加。
     - `fmt`：obsidian（双链）/ markdown（标准链接，href 带分类前缀）/ youdao（纯文本）。
+    - 内容已一致（`unchanged`）时也会更新索引文件 mtime（见 `_mark_verified`）。
     """
     root = Path(note_root)
     if not root.is_dir():
@@ -615,6 +642,7 @@ def append_index_entry(note_root, category, title, summary, fmt=None):
     text = TOC_HEADER if created else toc.read_text(encoding="utf-8-sig")
     new_text, info = _upsert_toc_row(text, category, title, summary, fmt)
     if info["action"] == "unchanged":
+        _mark_verified(toc)
         return {"ok": True, "action": "unchanged", "index_file": str(toc), "row": info["row"]}
     toc.write_text(new_text, encoding="utf-8")
     return {"ok": True, "action": "created" if created else info["action"],
@@ -708,6 +736,7 @@ def append_index_question(note_root, category, question, note_title, fmt=None):
     - 每条格式固定为 `- 疑问 → <链接>[、<链接>...]`，可并列多篇。
     - 同一疑问再次写入时**合并链接**：保留已有链接、追加新链接、去重、保持顺序。
     - 分类章节（`## <分类>`）不存在则创建；疑问文件不存在则新建。
+    - 内容已一致（`unchanged`）时也会更新索引文件 mtime（见 `_mark_verified`）。
     """
     root = Path(note_root)
     if not root.is_dir():
@@ -727,6 +756,8 @@ def append_index_question(note_root, category, question, note_title, fmt=None):
                                           fmt, plain_links=_is_youdao_format(fmt))
     if info["action"] != "unchanged":
         path.write_text(new_text, encoding="utf-8")
+    else:
+        _mark_verified(path)
     result = {"ok": True, "action": "created" if created else info["action"],
               "index_file": str(path), "entry": info["entry"], "links": info.get("links"),
               "normalized": info.get("normalized")}
@@ -1776,19 +1807,22 @@ def _youdao_parts(path):
     return [p for p in s.split("/") if p and p != "."]
 
 
+def _strip_note_suffix(name):
+    """去掉笔记名的 `.md` / `.markdown` 扩展名（唯一实现点）。"""
+    return re.sub(r"\.(md|markdown)$", "", str(name), flags=re.IGNORECASE)
+
+
 def _youdao_split_note(note_path):
     """把笔记逻辑路径切成 (分类路径段, 标题)；标题去掉 .md/.markdown 扩展名。"""
     parts = _youdao_parts(note_path)
     if not parts:
         return [], ""
-    title = re.sub(r"\.(md|markdown)$", "", parts[-1], flags=re.IGNORECASE)
-    return parts[:-1], title
+    return parts[:-1], _strip_note_suffix(parts[-1])
 
 
 def _youdao_title_key(name):
     """标题归一化键：去扩展名、去空白、小写，用于跨端按标题匹配。"""
-    return re.sub(r"\.(md|markdown)$", "", str(name or "").strip(),
-                  flags=re.IGNORECASE).casefold()
+    return _strip_note_suffix(str(name or "").strip()).casefold()
 
 
 def _youdao_md_title(title):
@@ -2160,7 +2194,7 @@ def youdao_search_notes(note_root, query, category=None, use_regex=False,
             continue
         if not text:
             continue
-        title = re.sub(r"\.(md|markdown)$", "", name, flags=re.IGNORECASE)
+        title = _strip_note_suffix(name)
         count = len(pattern.findall(text))
         title_hit = bool(pattern.search(title))
         if count == 0 and not title_hit:
@@ -2172,24 +2206,13 @@ def youdao_search_notes(note_root, query, category=None, use_regex=False,
             hit["content"] = text
             hit["snippets"] = []
         else:
-            snippets, covered = [], -1
-            for m in pattern.finditer(text):
-                if len(snippets) >= max_snippets:
-                    break
-                start = max(0, m.start() - context)
-                if start < covered:
-                    continue
-                end = min(len(text), m.end() + context)
-                snippets.append({"match": m.group(0),
-                                 "snippet": text[start:end].replace("\n", " ").strip()})
-                covered = end
+            snippets = _collect_snippets(pattern, text, max_snippets, context)
             if not snippets:
                 continue
             hit["snippets"] = snippets
         hits.append(hit)
 
-    hits.sort(key=lambda h: h["note"].casefold())
-    hits.sort(key=lambda h: (h["title_hit"], h["count"], h["date"]), reverse=True)
+    _sort_hits(hits)
     return {"ok": True, "query": query, "use_regex": use_regex, "full": full,
             "matched_notes": len(hits), "hits": hits}
 
