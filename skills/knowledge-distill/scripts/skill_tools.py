@@ -60,10 +60,10 @@ BACKUP_DIR = Path.home() / ".knowledge-distill-backups"
 
 DEFAULT_INDEX_FILE = "00-分类索引.md"   # 旧版每分类索引（仅迁移时读取）
 
-# 根目录索引（新结构）：全库「总目录」+「已收录疑问」，两份分开维护。
-# 分开是因为用途与读取时机不同：判合并/新建读总目录，疑问查重读疑问。
+# 根目录索引（新结构）：全库「总目录」+「收录疑问」，两份分开维护。
+# 分开是因为用途与读取时机不同：判合并/新建读总目录，疑问查重读收录疑问。
 TOC_FILE = "总目录.md"
-QUESTIONS_FILE = "疑问.md"
+QUESTIONS_FILE = "收录疑问.md"
 
 # 笔记文件扩展名（唯一权威）：技能只认这两种为知识笔记。
 # 其它文件（含 .txt）一律视为附件，不参与笔记的列举、检索、索引与健康检查。
@@ -88,13 +88,13 @@ _SIMILAR_THRESHOLD = 2.0         # 达到该分才作为候选
 _SIMILAR_MAX_PAIRS = 50          # 最多返回的候选对数
 _SIMILAR_PER_NOTE = 5            # 每篇笔记最多参与几个候选对（保留高分）
 
-# 根目录索引的骨架（脚本保证结构，避免 LLM 手写漂移）
+# 根目录索引的骨架（脚本保证结构，避免 LLM 手写漂移）。
+# 不写与文件名重复的一级标题（文件名本身已是「总目录」/「收录疑问」），
+# 只留一行说明，随后直接进入 `## <分类>` 章节。
 TOC_HEADER = (
-    "# 总目录\n\n"
     "> 本文件由「智识沉淀」自动维护，列出全库分类与笔记；请勿手工编辑（下次保存会覆盖）。\n"
 )
 QUESTIONS_HEADER = (
-    "# 已收录疑问\n\n"
     "> 本文件由「智识沉淀」自动维护，记录已解答的疑问并链接到笔记；请勿手工编辑。\n"
 )
 
@@ -314,7 +314,7 @@ def _iter_notes(cat_dir):
 def list_structure(note_root):
     """列出笔记根目录下一层分类（子目录）及每类下的笔记文件。
 
-    只把一层子目录视为分类；根目录下的索引文件（`总目录.md` / `疑问.md`）
+    只把一层子目录视为分类；根目录下的索引文件（`总目录.md` / `收录疑问.md`）
     不是子目录，天然不参与。
     """
     root = Path(note_root)
@@ -352,7 +352,7 @@ def list_index(note_root, category=None):
 
 
 def list_questions(note_root, category=None):
-    """列出根目录「疑问」（`疑问.md`）的条目（结构化，供写入前查重）。
+    """列出根目录「收录疑问」（`收录疑问.md`）的条目（结构化，供写入前查重）。
 
     写入新疑问前先调用本命令，比对是否已存在**语义等价**的疑问：
     - 等价 -> 复用已有条目的原疑问文本再调用 append-index-question，脚本会命中
@@ -736,7 +736,7 @@ def append_index_question(note_root, category, question, note_title, fmt=None):
 
 
 def migrate_index(note_root):
-    """一次性迁移：把旧版每分类索引（`00-分类索引.md`）聚合成根目录「总目录」+「疑问」。
+    """一次性迁移：把旧版每分类索引（`00-分类索引.md`）聚合成根目录「总目录」+「收录疑问」。
 
     只读旧索引、写新索引；不改笔记、不删旧索引文件（旧文件由用户确认后自行清理）。
     返回迁移的分类、笔记数、疑问数。
@@ -744,6 +744,9 @@ def migrate_index(note_root):
     root = Path(note_root)
     if not root.is_dir():
         return {"ok": False, "error": f"笔记根目录不存在: {root}"}
+    # 迁移是纯本地文件操作：链接按本地格式渲染（Obsidian 双链 / Markdown 链接）。
+    # 不能沿用配置里的 youdao 格式——那会渲染成纯文本，本地打开点不动。
+    local_fmt = "markdown" if _is_markdown_format() else "obsidian"
     toc_lines = [TOC_HEADER.rstrip("\n")]
     q_lines = [QUESTIONS_HEADER.rstrip("\n")]
     migrated, n_notes, n_questions = [], 0, 0
@@ -768,7 +771,7 @@ def migrate_index(note_root):
                 continue
             summary = cells[1] if len(cells) > 1 else ""
             rows.append(f"| {escape_table_cell(cells[0])} | {escape_table_cell(summary)} | "
-                        f"{render_note_link(cells[0], category=entry.name)} |")
+                        f"{render_note_link(cells[0], fmt=local_fmt, category=entry.name)} |")
         if rows:
             toc_lines += ["", _category_heading(entry.name), "",
                           "| 笔记 | 摘要 | 链接 |", "| ---- | ---- | ---- |"] + rows
