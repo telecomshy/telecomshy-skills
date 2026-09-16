@@ -18,5 +18,6 @@ Thumbs.db
 # 临时文件
 .temp/
 
-# 文档目录
-docs/
+# 文档目录（需求文档纳入版本库，其余调研/方案文档仅本地留存）
+docs/*
+!docs/requirements/

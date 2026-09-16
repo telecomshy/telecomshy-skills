@@ -26,9 +26,13 @@ TeleAgent 技能集合仓库（Agent Skills for TeleAgent）。
 
 ```
 telecomshy-skills/
-├── README.md          # 仓库级人类说明
-├── LICENSE            # MIT 许可证
-└── skills/            # 所有技能存放于此
+├── README.md            # 仓库级人类说明
+├── AGENTS.md            # 面向 agent 的仓库约定（目录约定等）
+├── LICENSE              # MIT 许可证
+├── docs/
+│   ├── research/        # 调研报告（research 技能产出）
+│   └── requirements/    # 技能需求文档（含写作规范 README）
+└── skills/              # 所有技能存放于此
     └── knowledge-distill/
         ├── SKILL.md
         ├── scripts/
