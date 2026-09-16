@@ -1,0 +1,60 @@
+# 复审外派子 agent
+
+复审里"**跑**""**评**""**分析**"外派给子 agent；主 agent 只保留"写""问用户""综合决策"。两个动机：**独立性**（谁写的谁不评分）与**干净上下文**（跑技能时不带本会话历史）。
+
+## 派发还是内联
+
+客户端支持子 agent（opencode 的 Task / Claude Code 的 Task / TeleAgent 的子任务）→ **派发**；不支持 → **内联**执行，并在报告注明"**未隔离**（独立性打折）"。
+
+派发时**窄 brief、短返回**：只给该角色所需的最小输入，只收结论，不把长轨迹带回主上下文。
+
+**触发检测**：若客户端能观测子 agent 的工具调用，由主 agent 判定 `used_skill`；否则由子 agent 自报（较弱，需标注）。
+
+## 角色
+
+### executor（服务 Step 1 触发、Step 2 有/无技能对照）
+
+- **输入**：一条 prompt；技能路径（with）或无技能（baseline）；输出目录。
+- **任务**：在**干净上下文**里只跑这一条，以用户视角完成；产出文件；记录 tokens / 耗时。
+- **输出**：`outputs/`、`timing.json`、`used_skill: true|false`。
+- **禁止**：不重试、不评判、不参考"期望结果"。
+- **关键**：baseline **必须真的没有该技能**；with-run **不要把期望答案给它**（否则等于作弊）。
+
+### grader（服务 Step 2 / 3）
+
+- **输入**：一个 run 的产出；断言列表。
+- **任务**：逐条 PASS / FAIL 并**引用证据**（原文 / 文件名 / 计数）→ `grading.json`（`pass_rate`）。
+- **输出**：`grading.json`。
+- **禁止**：不改产出；**不知道哪份是 `with_skill`、哪份是 `baseline`**（盲）；不给"benefit of the doubt"——证据不足即 FAIL。
+
+### spec-reviewer（服务 Step 3 Spec 轴）
+
+- **输入**：REQ 全文（问题与目标 / 触发与分支 / 行为与步骤 / 脚本与资源 / 验收标准 / 范围外）；技能文件集；已有证据。
+- **任务**：逐条验收标准 → 通过 / 部分 / 未实现（**引用 REQ 的那一行**）；报**范围蔓延**（REQ 没要求的行为）；报**文档-实现不一致**（触发分支 ↔ `description` / 路由、范围外 ↔ 实现、脚本资源 ↔ 文件与接口）。
+- **输出**：分轴 findings（每行：REQ 行 + 判定 + 证据）。
+- **禁止**：不改技能；不做质量评价（那是标准轴）；无 REQ 就报 `no spec available`。
+
+### analyzer（可选，服务 Step 8）
+
+- **输入**：`benchmark.json`、各 `grading.json`。
+- **任务**：失败聚类、flaky（`pass_rate_std > 0.3`）、跨轮回归、成本离群、触发 TPR / FPR。
+- **输出**：3–5 条结论。
+- **禁止**：不重新跑评测。
+
+### comparator（可选，主观质量）
+
+- **输入**：两份产出（**匿名、随机标 A/B**）。
+- **任务**：按自定 rubric 打分 + 偏好 + 置信度。
+- **输出**：偏好与理由。
+- **禁止**：不被告知哪份是哪版。
+
+## 与 `agent_runner.py` 的关系
+
+- **脚本版**（`agent_runner.py`）：无头、可脚本化，适合 `--runner opencode|teleagent|cmd`。
+- **子 agent 版**：agent 原生、**真上下文隔离**，无需外部 CLI。
+- 二者互补：**能派发时优先子 agent**；无头 / 批量时用脚本。
+
+## 不该外派
+
+- 逼问（要用户交互）、落需求（要整段对话）、改进意见综合与回写 REQ（要全貌与决策）。
+- 确定性工作（`track_requirements.py` / `validate_skill.py` / `aggregate_benchmark.py`）已由脚本完成，不必外派。

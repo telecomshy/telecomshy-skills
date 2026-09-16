@@ -1,7 +1,7 @@
 # 技能需求文档 · 操作规范
 
 > 本文件规定 `docs/<skill>/requirements/` 下**每个技能需求文档**的命名、结构与写作原则，供 AI 落盘、供人后期审核。
-> 配套：技能落地后的复审见 [`reviewing-skills.md`](reviewing-skills.md)。
+> 配套：开发闭环见 [`lifecycle.md`](lifecycle.md)；复审见 [`reviewing-skills.md`](reviewing-skills.md)。
 > 依据见 §7。
 
 ---
@@ -11,13 +11,16 @@
 - 当讨论出一个**要做的技能改动**（新功能 / 重构 / 修复）并达成一致后，落盘一份需求文档。
 - **改动必须源于真实缺口**：来自一次真实任务、一个可复现的失败、或用户明确提出的诉求——不是"照最佳实践加个功能"。写不出触发它的真实场景，就先别写。
 - **一份文档 = 一个可独立验收的内聚需求单元**（像一张 ticket）；不要把所有需求塞进一个文件。
+- **需求是活文档**：每轮复审后回写（勾选验收、追加迭代记录、更新 `status`/`iteration`），不是写完就冻结——闭环见 `lifecycle.md`。
+- **可跟踪**：`blocked_by` 声明前置依赖；`status` + `iteration` + 迭代记录构成进度；"现在能开始"的 frontier 由 `scripts/track_requirements.py` 扫描得出。
+- **可延后**：确定要做但暂缓 → `status: deferred` + `defer_reason`（不算 frontier、不算 done）。恢复时改回 `ready`，并在迭代记录记一句。
 - 落盘的是**结论**，不是讨论过程（访谈、方案推演留在对话里）。
 
 ## 2. 文件与命名
 
 - 位置：`docs/<skill>/requirements/`
 - 文件名：`REQ-NNNN-<slug>.md`
-  - `NNNN`：四位序号，从 `0001` 起递增，**永不复用**。
+  - `NNNN`：四位序号，**每个技能各自从 `0001` 起**递增，**永不复用**（唯一性按 `(skill, id)` 判定）。
   - `<slug>`：短横线连接的英文小写 slug（ASCII，便于检索与跨平台）。
 - 文档标题（H1）：`# REQ-NNNN <中文标题>`
 
@@ -30,12 +33,17 @@
 id: REQ-0001
 title: <中文标题>
 skill: <所属技能目录名，如 knowledge-distill>
-status: draft | ready | in-progress | done | out-of-scope
+status: draft | ready | in-progress | done | deferred | out-of-scope
+iteration: 1               # 当前轮次；每轮回写后 +1
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
-related: [REQ-0002]        # 可选，关联的需求
+blocked_by: [REQ-0002]     # 可选，必须先 done 的前置需求
+defer_reason: <为什么延后>  # 仅 status: deferred 时必填
+related: [REQ-0003]        # 可选，关联的需求
 ---
 ```
+
+**`blocked_by` 与 frontier**：`blocked_by` 声明前置 REQ（必须先 `done`）；同技能内写 `REQ-NNNN`，跨技能写 `<skill>:REQ-NNNN`。**现在能开始的 REQ**（frontier）= `status ∈ {ready, in-progress}` 且 `blocked_by` 全部 `done`；用 `scripts/track_requirements.py` 扫描得出（并检查悬空引用），**不落盘索引文件**。
 
 **正文各节**（按顺序）
 
@@ -46,7 +54,18 @@ related: [REQ-0002]        # 可选，关联的需求
 5. **## 降级与边界** — 已知限制、平台差异、能力降级。
 6. **## 验收标准** — 可勾选、可独立验证的清单（`- [ ] ...`），**必须端到端可验**。
 7. **## 范围外** — 明确不做的事，防止范围蔓延。
-8. **## 备注 / 待办** — 未决项、风险、参考链接。
+8. **## 迭代记录** — 每轮复审后的回写：改了什么、证据、结论（格式见下）。
+9. **## 备注 / 待办** — 未决项、风险、参考链接。
+
+**## 迭代记录** 用表格，每轮一行；这是需求"活文档"的体现（回写规则见 `lifecycle.md` 阶段 4）：
+
+```markdown
+## 迭代记录
+
+| 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
+| --- | --- | --- | --- | --- |
+| 1 | YYYY-MM-DD | … | 触发率 / 对照 delta | 继续 / 收敛 |
+```
 
 ## 4. 写作原则
 
@@ -64,6 +83,7 @@ related: [REQ-0002]        # 可选，关联的需求
 | `ready` | 已确认，可开工 |
 | `in-progress` | 实现中 |
 | `done` | 已实现并验收 |
+| `deferred` | 确定要做，但**延后**；不在 frontier（必须附 `defer_reason`） |
 | `out-of-scope` | 明确不做 |
 
 ## 6. 模板（复制即用；各节含义见 §3）
@@ -74,8 +94,11 @@ id: REQ-NNNN
 title: <中文标题>
 skill: <skill-name>
 status: draft
+iteration: 1
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
+blocked_by: []
+related: []
 ---
 
 # REQ-NNNN <中文标题>
@@ -100,6 +123,12 @@ updated: YYYY-MM-DD
 
 ## 范围外
 …
+
+## 迭代记录
+
+| 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
+| --- | --- | --- | --- | --- |
+| 1 | YYYY-MM-DD | … | … | … |
 
 ## 备注 / 待办
 …
