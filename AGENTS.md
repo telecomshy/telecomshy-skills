@@ -5,7 +5,8 @@
 ## 目录约定
 
 - **调研报告**（`research` 技能产出）→ `docs/research/`
-- **技能需求文档** → `docs/requirements/`（先读 `docs/requirements/README.md` 的命名与写作规范，按其模板落盘）
+- **技能需求文档** → `docs/requirements/`（先按 `docs/guides/writing-skill-requirements.md` 的规范落盘）
+- **AI 生成 / 改写技能后复审** → `docs/guides/reviewing-skills.md`
 
 ## 技能必须自包含
 

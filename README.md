@@ -31,7 +31,8 @@ telecomshy-skills/
 ├── LICENSE              # MIT 许可证
 ├── docs/
 │   ├── research/        # 调研报告（research 技能产出）
-│   └── requirements/    # 技能需求文档（含写作规范 README）
+│   ├── requirements/    # 技能需求文档（REQ-NNNN-*.md）
+│   └── guides/          # 操作指导手册（写需求、复审技能等最佳实践）
 └── skills/              # 所有技能存放于此
     └── knowledge-distill/
         ├── SKILL.md
