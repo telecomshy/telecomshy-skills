@@ -79,5 +79,6 @@ related: [REQ-0011, REQ-0010]
 
 - 来源：2026-09-16 用户诉求；决策：先落地 **opencode** + 加域限定触发词。
 - **命名决策（用户确认）**：命令名带横线 `/shy-<分支>`（`/shy-grill` 等），**不支持** `/shy <分支>` 空格式。因 opencode **以文件名作命令名**，每个分支一个文件；无法用单文件响应多个 `/shy-xxx`。
+- **命令集被 `REQ-0022` 取代**：原 5 个命令合并为 4 个（删 `/shy-eval`，评测并入 `/shy-review`）。
 - 与 `REQ-0011` 不冲突：`REQ-0011` 把 Claude Code 字段写进 §2 并放进校验器白名单；本 REQ 补的是 **opencode 的 command 路线**，仍只写在 §2 一处（单一事实源）。
 - opencode 文档依据：<https://opencode.ai/docs/skills>、<https://opencode.ai/docs/commands>（access date 2026-09-16）。

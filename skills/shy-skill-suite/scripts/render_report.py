@@ -17,6 +17,7 @@ import html
 import json
 import re
 import sys
+import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -239,6 +240,21 @@ def build_html(data: dict[str, Any], template: str) -> str:
     return out
 
 
+def open_report(path: Path) -> bool:
+    """用默认浏览器打开报告；无显示环境不抛错，返回是否成功。"""
+    try:
+        return webbrowser.open(path.as_uri())
+    except Exception:
+        return False
+
+
+def _fallback_skill_name(itdir: Path) -> str:
+    """目录名兜底：`iteration-N` 时取父目录名（去 `-workspace`），否则取自身。"""
+    if re.match(r"^iteration-\d+$", itdir.name):
+        return itdir.parent.name.replace("-workspace", "")
+    return itdir.name.replace("-workspace", "")
+
+
 def render(
     iteration_dir: str,
     skill_name: str | None = None,
@@ -270,7 +286,7 @@ def render(
     if not skill_name:
         skill_name = ((benchmark or {}).get("skill_name")
                       or (findings or {}).get("skill")
-                      or itdir.name.replace("-workspace", ""))
+                      or _fallback_skill_name(itdir))
     match = re.search(r"iteration-(\d+)", itdir.name)
     iteration = int(match.group(1)) if match else int((benchmark or {}).get("iteration") or 1)
 
@@ -301,6 +317,9 @@ def main() -> int:
             "示例:\n"
             "  python render_report.py my-skill-workspace/iteration-1\n"
             "  python render_report.py my-skill-workspace/iteration-1 --skill-name my-skill -o report.html\n"
+            "  python render_report.py my-skill-workspace/iteration-1 --no-open\n"
+            "\n"
+            "默认生成后自动用浏览器打开报告；用 --no-open 关闭（无显示环境不报错）。\n"
             "\n"
             "退出码:\n"
             "  0  成功（已写出 HTML）\n"
@@ -313,9 +332,12 @@ def main() -> int:
     parser.add_argument("--skill-name", help="技能名（缺省从 benchmark / findings / 目录名推断）")
     parser.add_argument("--findings", help="findings.json 路径（缺省 <dir>/findings.json）")
     parser.add_argument("--out", "-o", help="输出 HTML 路径（缺省 <dir>/report.html）")
+    parser.add_argument("--no-open", action="store_true", help="生成后不自动打开浏览器（默认会自动打开）")
     args = parser.parse_args()
 
     result = render(args.path, args.skill_name, args.findings, args.out)
+    if result.get("status") == "success" and not args.no_open:
+        result["opened"] = open_report(Path(result["report"]))
     stream = sys.stderr if result.get("status") == "error" else sys.stdout
     print(json.dumps(result, indent=2, ensure_ascii=False), file=stream)
     return 1 if result.get("status") == "error" else 0

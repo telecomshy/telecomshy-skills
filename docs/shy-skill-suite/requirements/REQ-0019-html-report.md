@@ -71,7 +71,7 @@ related: [REQ-0018, REQ-0012]
 
 ## 范围外
 
-- 不做 HTTP 服务器、不做浏览器自动打开、不做反馈回写（`feedback.json`）。
+- 不做 HTTP 服务器、不做反馈回写（`feedback.json`）。**"不做浏览器自动打开"已被 `REQ-0022` 取代**——现默认生成后自动打开（`--no-open` 可关）。
 - 不改 `aggregate_benchmark.py` 的产出（报告只消费它）。
 - 不内嵌 run 原始产出文件（无 base64 图片/PDF）。
 - 不做跨平台（`REQ-0020` 的 command 另议）。

@@ -41,7 +41,8 @@ related: []
 ## 脚本与资源
 
 - 改 `scripts/agent_runner.py`（命令构造）、其余 6 个脚本（argparse `description` / `epilog`）。
-- 不改 `references/`、不改 `SKILL.md`。
+- 改 `references/running-evals.md`：注明命令模板按 argv 切分、`{prompt}` 作单参数（无 shell 语法）。
+- 不改 `SKILL.md`。
 
 ## 降级与边界
 

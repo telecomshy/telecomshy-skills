@@ -140,7 +140,7 @@
 
 可选：把 `benchmark.json` / `grading.json` 交给 `subagents.md` 的 **analyzer** 做失败聚类、flaky 与回归分析。可选（主观型技能、比两版时）：用 `subagents.md` 的 **comparator** 做盲测 A/B，**与断言结果并列报告**。
 
-**完成判据**：给出三档结论之一；产出 `findings.json`；把改进清单与评测结果**呈现**给用户（HTML 见 `running-evals.md`）；然后**停下**。**不**回写需求文档——回写要等用户显式触发（见 `lifecycle.md` 阶段 3 → 4 的「呈现门禁」）。
+**完成判据**：给出三档结论之一；产出 `findings.json`；把改进清单与评测结果**呈现**给用户（HTML 报告，默认自动打开，见 `running-evals.md`）；然后**停下**。**不**回写需求文档——回写要等用户显式触发（见 `lifecycle.md` 阶段 3 → 4 的「呈现门禁」）。
 
 **`findings.json`（呈现层数据契约，供 HTML 报告消费）**：
 

@@ -76,6 +76,7 @@ python "<SKILL_DIR>/scripts/render_report.py" <workspace>/iteration-1 --skill-na
 ```
 
 - 读 `benchmark.json` + `eval-*/` + `findings.json`（schema 见 `reviewing-skills.md`），输出 `<iteration>/report.html`（`--out` 可改）。
+- **生成后默认自动用浏览器打开**；用 `--no-open` 关闭（无显示环境不报错，仍写出文件）。
 - 单文件、无服务器、无外部资源：opencode / TeleAgent 直接打开即可。
 - 只有 findings（无 benchmark）或反之都能出；两者都无 → 退出码 1。
 

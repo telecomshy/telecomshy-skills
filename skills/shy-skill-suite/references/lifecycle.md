@@ -18,12 +18,13 @@
 | 命令 | 进入 |
 | --- | --- |
 | `/shy-grill` | 逼问一个技能该做什么（`grilling.md`） |
-| `/shy-review` | 只复审并出报告，不落盘（`reviewing-skills.md`） |
-| `/shy-eval` | 跑评测 + 出 HTML 报告（`running-evals.md`） |
+| `/shy-review` | 复审 + 评测，出一份 HTML 报告并打开，不落盘（`reviewing-skills.md` + `running-evals.md`） |
 | `/shy-apply` | 用户确认后落盘 REQ 并优化（阶段 4） |
 | `/shy-next` | 列 REQ frontier（`track_requirements.py`） |
 
-## 六个阶段
+`/shy-review` 已含评测——eval 是复审 Step 1/2 的执行层（见 `running-evals.md`），故不单列 `/shy-eval`。
+
+## 七个阶段
 
 ### 0 · 逼问（grill）
 
