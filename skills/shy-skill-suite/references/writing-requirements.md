@@ -14,6 +14,7 @@
 - **需求是活文档**：每轮复审后回写（勾选验收、追加迭代记录、更新 `status`/`iteration`），不是写完就冻结——闭环见 `lifecycle.md`。
 - **可跟踪**：`blocked_by` 声明前置依赖；`status` + `iteration` + 迭代记录构成进度；"现在能开始"的 frontier 由 `scripts/track_requirements.py` 扫描得出。
 - **可延后**：确定要做但暂缓 → `status: deferred` + `defer_reason`（不算 frontier、不算 done）。恢复时改回 `ready`，并在迭代记录记一句。
+- **可回溯补写**：给**既有技能**补 REQ 时，走 `grilling.md` 从**意图**问出来（产出"**应该**做什么"，不是"现在做了什么"），**不得**读技能反推；标 `retroactive: true`。
 - 落盘的是**结论**，不是讨论过程（访谈、方案推演留在对话里）。
 
 ## 2. 文件与命名
@@ -39,6 +40,7 @@ created: YYYY-MM-DD
 updated: YYYY-MM-DD
 blocked_by: [REQ-0002]     # 可选，必须先 done 的前置需求
 defer_reason: <为什么延后>  # 仅 status: deferred 时必填
+retroactive: true          # 可选，仅"回溯补写（从意图补、非从实现）"时加
 related: [REQ-0003]        # 可选，关联的需求
 ---
 ```

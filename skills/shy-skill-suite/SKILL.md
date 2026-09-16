@@ -16,6 +16,7 @@ metadata:
 | 用户意图 | 进入 |
 | --- | --- |
 | 开发 / 迭代一个技能的闭环（逼问 → 落需求 → 实现 → 复审 → 回写需求 → 下一轮） | [`references/lifecycle.md`](references/lifecycle.md) |
+| 逼问需求 / 拷问一个技能该做什么（含给既有技能回溯意图） | [`references/grilling.md`](references/grilling.md) |
 | 只写 / 改需求文档；"写需求""需求文档""这个改动要做什么" | [`references/writing-requirements.md`](references/writing-requirements.md) |
 | 只做复审；"评估这个技能""检查技能""触发准不准""提改进意见" | [`references/reviewing-skills.md`](references/reviewing-skills.md) |
 | 跑评测取证据（触发率、有/无技能对照） | [`references/running-evals.md`](references/running-evals.md) |
@@ -30,6 +31,7 @@ metadata:
 ## 资源
 
 - `references/lifecycle.md` — 开发生命周期与迭代环：逼问 → 落需求 → 实现 → 复审 → 回写需求 → 下一轮。
+- `references/grilling.md` — 逼问：设计树 + frontier、技能领域 6 问、三动作（术语规范化 / 场景压测 / 与实现核对）、回溯补写。
 - `references/writing-requirements.md` — 技能需求文档（活文档）的用途、命名、结构、写作原则、状态词表、迭代记录与模板。
 - `references/reviewing-skills.md` — 复审流程与三轴判据（行为 / 需求一致性 Spec / 标准）、改进意见写法与反模式。
 - `references/subagents.md` — 复审外派子 agent 的角色与窄 brief（executor / grader / spec-reviewer / analyzer / comparator）、派发 vs 内联。
