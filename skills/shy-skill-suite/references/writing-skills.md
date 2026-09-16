@@ -15,6 +15,8 @@
 
 落地：user-invoked 在 frontmatter 写 `disable-model-invocation: true`；需要参数提示时再写 `argument-hint: "<提示>"`。二者是**客户端扩展字段**（不在 `agentskills.io` 基础字段集内），`validate_skill.py` 已列入允许集。
 
+**opencode 路线**：opencode 只认 `name`/`description` 等基础字段，**忽略 `disable-model-invocation`**——它的技能一律 model-invoked，user 侧快捷入口是**客户端 command**：`~/.config/opencode/commands/<name>.md`（body 是 prompt 模板，可用 `$ARGUMENTS`），调用即 `/<name>`。command **不在技能包内自动生效**，技能只能放模板 + 复制说明。要"必须人工触发"的动作，用 command，别靠 `disable-model-invocation`。
+
 ## 3. 信息层级与按需披露
 
 - **步骤**（agent 按序做的事）留主文件；**只在部分分支才需要的参考**下放到 `references/`，并给**何时加载**的指针（"API 返回非 200 时读 `references/api-errors.md`"），不要笼统的"详见 references/"。

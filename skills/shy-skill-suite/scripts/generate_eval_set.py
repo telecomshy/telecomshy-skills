@@ -261,7 +261,20 @@ def generate_eval_set(skill_dir: str, output: str | None = None, lang: str = "au
 
 def main() -> int:
     force_utf8_stdio()
-    parser = argparse.ArgumentParser(description="Generate a starter trigger eval set from a SKILL.md")
+    parser = argparse.ArgumentParser(
+        description="从 SKILL.md 的 description 启发式生成起手触发评测集（should-trigger / near-miss），需人工复核后再用。",
+        epilog=(
+            "示例:\n"
+            "  python generate_eval_set.py skills/my-skill -o evals/evals.json\n"
+            "  python generate_eval_set.py skills/my-skill --lang zh\n"
+            "\n"
+            "退出码:\n"
+            "  0  成功\n"
+            "  1  路径不是目录 / SKILL.md 缺失或 frontmatter 解析失败\n"
+            "  2  参数错误\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("path", help="Path to skill directory containing SKILL.md")
     parser.add_argument("--output", "-o", help="Output JSON path (default: stdout)")
     parser.add_argument("--lang", default="auto", choices=["auto", "zh", "en"], help="Template language")

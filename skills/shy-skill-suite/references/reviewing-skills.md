@@ -140,7 +140,36 @@
 
 可选：把 `benchmark.json` / `grading.json` 交给 `subagents.md` 的 **analyzer** 做失败聚类、flaky 与回归分析。可选（主观型技能、比两版时）：用 `subagents.md` 的 **comparator** 做盲测 A/B，**与断言结果并列报告**。
 
-**完成判据**：给出三档结论之一，并附一份**分轴**、带优先级的改进清单（每条意见已按 §3「先证伪」筛过、**附淘汰数**）；**并把结果回写需求文档**（勾选验收、追加迭代记录、更新 `status`/`iteration`；见 `lifecycle.md` 阶段 4）。
+**完成判据**：给出三档结论之一；产出 `findings.json`；把改进清单与评测结果**呈现**给用户（HTML 见 `running-evals.md`）；然后**停下**。**不**回写需求文档——回写要等用户显式触发（见 `lifecycle.md` 阶段 3 → 4 的「呈现门禁」）。
+
+**`findings.json`（呈现层数据契约，供 HTML 报告消费）**：
+
+```json
+{
+  "skill": "<skill-name>",
+  "iteration": 1,
+  "generated_at": "<ISO-8601>",
+  "verdict": "可合入 | 改后可合入 | 需重做",
+  "summary": {"candidates": 0, "passed": 0, "falsified": 0},
+  "findings": [
+    {
+      "axis": "行为 | 需求 | 标准",
+      "priority": "P0 | P1 | P2",
+      "location": "file:line",
+      "problem": "我看到 X",
+      "impact": "影响",
+      "suggestion": "改哪里、改成什么、预期行为怎么变",
+      "expected": "预期行为变化",
+      "falsification": "推翻它要跑的命令 / 原文",
+      "evidence": "已跑结果",
+      "verified": true
+    }
+  ]
+}
+```
+
+- 位置：`<skill>-workspace/iteration-N/findings.json`；纯复审无 eval 时 `<skill>-workspace/findings.json`。
+- `verified: false` 的条目仍进报告，但标注「待验证」（对应 §3「跑不了检查的只标待验证」）。
 
 ---
 

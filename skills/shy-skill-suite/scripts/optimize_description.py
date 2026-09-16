@@ -205,7 +205,21 @@ def optimize(
 
 def main() -> int:
     force_utf8_stdio()
-    parser = argparse.ArgumentParser(description="Optimize a skill's description for triggering accuracy")
+    parser = argparse.ArgumentParser(
+        description="按 train/held-out test 给技能 description 的触发准确率打分并给改进建议（选优按 test 分，防过拟合）。",
+        epilog=(
+            "示例:\n"
+            "  python optimize_description.py skills/my-skill --eval-set evals/evals.json\n"
+            "  python optimize_description.py skills/my-skill --eval-set evals/evals.json --runner opencode --detect my-skill\n"
+            '  python optimize_description.py skills/my-skill --eval-set evals/evals.json --description "候选描述" --previous reports/desc-opt.json\n'
+            "\n"
+            "退出码:\n"
+            "  0  成功\n"
+            "  1  技能路径 / 评测集无效，或结果为 error\n"
+            "  2  参数错误\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("path", help="Path to skill directory containing SKILL.md")
     parser.add_argument("--eval-set", required=True, help="Path to trigger eval set JSON")
     parser.add_argument("--runner", default="heuristic",

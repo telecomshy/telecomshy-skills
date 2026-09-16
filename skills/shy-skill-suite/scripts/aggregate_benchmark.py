@@ -3,7 +3,8 @@
 
 读取 ``iteration-N/eval-*/{with_skill,baseline}/`` 下的 ``grading.json`` 与
 ``timing.json``，产出 ``benchmark.json`` 与 ``benchmark.md``，含通过率、token、耗时，
-以及 with_skill 相对 baseline 的 improvement_ratio 与方差。
+以及 with_skill 相对 baseline 的 improvement_ratio、token_ratio、time_ratio 与方差。
+比率一律是 ``with_skill / baseline``：> 1 表示带技能**多花**（token / 耗时）或**更高**（通过率）。
 
 用法:
     python aggregate_benchmark.py <iteration-N 目录> --skill-name my-skill [--previous <上一轮目录>]
@@ -183,8 +184,8 @@ def aggregate_benchmark(
                 "avg_duration_seconds": base_dur,
             },
             "improvement_ratio": improvement_ratio,
-            "token_savings_ratio": round(with_tokens / base_tokens, 2) if base_tokens > 0 else 1.0,
-            "time_savings_ratio": round(with_dur / base_dur, 2) if base_dur > 0 else 1.0,
+            "token_ratio": round(with_tokens / base_tokens, 2) if base_tokens > 0 else 1.0,
+            "time_ratio": round(with_dur / base_dur, 2) if base_dur > 0 else 1.0,
         },
         "per_eval": per_eval,
     }
@@ -211,14 +212,14 @@ def aggregate_benchmark(
         "",
         "## Summary",
         "",
-        "| Metric | With Skill | Baseline | Ratio |",
+        "| Metric | With Skill | Baseline | With/Baseline |",
         "| --- | --- | --- | --- |",
         f"| Pass Rate | {with_stats['mean']:.0%} (std {with_stats['std']:.2f}) "
         f"| {base_stats['mean']:.0%} (std {base_stats['std']:.2f}) | {improvement_ratio}x |",
         f"| Avg Tokens | {with_tokens:,.0f} | {base_tokens:,.0f} | "
-        f"{benchmark['summary']['token_savings_ratio']}x |",
+        f"{benchmark['summary']['token_ratio']}x |",
         f"| Avg Time | {with_dur:.1f}s | {base_dur:.1f}s | "
-        f"{benchmark['summary']['time_savings_ratio']}x |",
+        f"{benchmark['summary']['time_ratio']}x |",
         "",
         "## Per-Eval",
         "",
@@ -242,7 +243,20 @@ def aggregate_benchmark(
 
 def main() -> int:
     force_utf8_stdio()
-    parser = argparse.ArgumentParser(description="Aggregate eval results into a benchmark report")
+    parser = argparse.ArgumentParser(
+        description="把一个 iteration 工作区的评测结果聚合成 benchmark.json / benchmark.md（含 with_skill vs baseline 的比率与方差）。",
+        epilog=(
+            "示例:\n"
+            "  python aggregate_benchmark.py my-skill-workspace/iteration-1 --skill-name my-skill\n"
+            "  python aggregate_benchmark.py my-skill-workspace/iteration-1 --skill-name my-skill --previous my-skill-workspace/iteration-0\n"
+            "\n"
+            "退出码:\n"
+            "  0  成功\n"
+            "  1  路径不是目录 / 未发现 eval-* 目录\n"
+            "  2  参数错误\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("path", help="Path to an iteration-N workspace directory")
     parser.add_argument("--skill-name", required=True, help="Name of the skill being benchmarked")
     parser.add_argument("--previous", "-p", help="Path to previous iteration directory for comparison")

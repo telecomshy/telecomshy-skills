@@ -151,7 +151,20 @@ def validate(skill_dir: str) -> dict:
 
 def main() -> int:
     force_utf8_stdio()
-    parser = argparse.ArgumentParser(description="Validate a skill's structure and frontmatter (spec only)")
+    parser = argparse.ArgumentParser(
+        description="校验技能的结构与规范（frontmatter / 文件 / 相对引用），不做语义或质量审查。",
+        epilog=(
+            "示例:\n"
+            "  python validate_skill.py skills/my-skill\n"
+            "  python validate_skill.py ~/.agents/skills/my-skill\n"
+            "\n"
+            "退出码:\n"
+            "  0  status: ok（无 error）\n"
+            "  1  status: error（校验失败，或路径不是目录 / SKILL.md 缺失）\n"
+            "  2  参数错误\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("path", help="Path to the skill directory")
     args = parser.parse_args()
 

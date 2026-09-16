@@ -2,8 +2,8 @@
 id: REQ-0014
 title: SKILL.md 声明运行前提（compatibility）
 skill: shy-skill-suite
-status: ready
-iteration: 1
+status: done
+iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
 blocked_by: []
@@ -47,11 +47,11 @@ related: []
 
 ## 验收标准
 
-- [ ] `SKILL.md` frontmatter 含非空 `compatibility`。
-- [ ] `compatibility` ≤ 500 字符。
-- [ ] `compatibility` 写明"需要 Python 3（纯标准库）"与"缺 Python 时的手工降级路径"。
-- [ ] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
-- [ ] `SKILL.md` 正文行数不变（运行前提只进 frontmatter）。
+- [x] `SKILL.md` frontmatter 含非空 `compatibility`（实测 95 字符）。
+- [x] `compatibility` ≤ 500 字符。
+- [x] `compatibility` 写明"需要 Python 3（仅标准库）"与"缺 Python 时的手工降级路径"（"按 `references/` 的规范手工执行"）。
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
+- [x] `SKILL.md` 正文行数不变（实测 38 行；运行前提只进 frontmatter）。
 
 ## 范围外
 
@@ -62,6 +62,7 @@ related: []
 | 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-16 | 落需求（复审 P2），未实施 | — | 待开工 |
+| 2 | 2026-09-16 | 实施：`SKILL.md` frontmatter 加 `compatibility`（95 字符，写 Python 3 前提 + 无 Python 的手工降级） | `compatibility` len=95、含 "Python 3"/"手工执行"；正文 38 行不变；`validate_skill` → ok | 收敛（done） |
 
 ## 备注 / 待办
 

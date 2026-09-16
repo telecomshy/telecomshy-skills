@@ -2,8 +2,8 @@
 id: REQ-0012
 title: 脚本接口硬化（agent_runner 注入面 + 7 脚本 --help 完整化）
 skill: shy-skill-suite
-status: ready
-iteration: 1
+status: done
+iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
 blocked_by: []
@@ -51,12 +51,14 @@ related: []
 
 ## 验收标准
 
-- [ ] `agent_runner.py` 中不再出现 `shell=True`（或：出现时伴随显式的 argv 白名单，且 prompt 不经 shell）。
-- [ ] 回归（注入）：`--runner cmd --cmd "echo {prompt}" --prompt "hi & echo INJECTED_MARKER"` → `output` **不含** `INJECTED_MARKER`。
-- [ ] 回归（正常）：含空格与中文的 prompt 仍能正确传入（`output` 含原 prompt 全文）。
-- [ ] 7 个脚本的 `--help` 输出均含：一句简述、参数说明、至少 1 个示例、退出码含义。
-- [ ] 7 个脚本的 `--help` 退出码仍为 0；缺必填参数时退出码仍为 2。
-- [ ] 成功路径行为不变：对 `skills/shy-skill-suite` 跑 `validate_skill.py` → 仍 `status: ok`、退出码 0。
+- [x] `agent_runner.py` 中不再出现 `shell=True`（`grep shell\s*=\s*True scripts/*.py` 无命中）。
+- [x] 回归（注入）：模板 `"{python}" "argv_dump.py" {prompt}`、prompt=`hi & echo PWNED` → 目标程序收到的 `argv[1:]` **恰为单元素** `["hi & echo PWNED"]`，无第二个命令被执行。
+  - 原判据「`--cmd "echo {prompt}"` → `output` 不含 `INJECTED_MARKER`」**被证伪**：回显程序会把 prompt 原文打印，substring 无法区分"被执行"与"作为数据被打印"；且 Windows 无 `echo.exe`，原命令本身跑不通。
+- [x] 回归（正常）：含空格与中文的 prompt（`帮 我 写 个 技能需求`）→ 目标程序收到**单参数原全文**，无截断、无拆分。
+- [x] 边界：不存在的命令 → 返回可行动 `error`（`could not run command: ...`），抛未捕获异常已消除。
+- [x] 7 个脚本的 `--help` 输出均含：一句简述、参数说明、至少 1 个示例、退出码含义。
+- [x] 7 个脚本的 `--help` 退出码仍为 0；缺必填参数时退出码仍为 2（抽查 `validate_skill` / `aggregate_benchmark`）。
+- [x] 成功路径行为不变：对 `skills/shy-skill-suite` 跑 `validate_skill.py` → 仍 `status: ok`、退出码 0；`optimize_description.py` 启发式路径仍 `mode: heuristic`、退出码 0。
 
 ## 范围外
 
@@ -67,8 +69,10 @@ related: []
 | 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-16 | 落需求（复审 P2），未实施 | — | 待开工 |
+| 2 | 2026-09-16 | `agent_runner.py` 改 `shlex.split(posix=False)` + 逐 token 去引号 + `shell=False`，prompt 作为单参数注入；新增 `build_argv`；补 `OSError` 处理。7 个脚本 argparse 补 `description` + `epilog`（示例 + 退出码 + `RawDescriptionHelpFormatter`） | 注入回归：`argv[1:] == ["hi & echo PWNED"]`（单元素）；正常回归：中文+空格全文传入；`grep shell=True` 无命中；7×`--help` exit 0、缺参 exit 2；`validate_skill` ok | 收敛（done） |
 
 ## 备注 / 待办
 
 - 来源：2026-09-16 复审报告，标准轴 P2（两条合并为一份：同属"脚本作为 agent 接口"）。
 - 注入面的现实风险较低（prompt 来自用户自己的评测集），但 `running-evals.md` 把它当"可脚本化"接口对外，仍应硬化。
+- 实施时**证伪并修正了一处判据**：原注入回归用 substring（`output 不含 INJECTED_MARKER`）不可判定——回显程序会原样打印 prompt，且 Windows 无 `echo.exe`。已改为"目标程序收到 `argv[1:]` 恰为单元素"。记录于此，避免下次重走。

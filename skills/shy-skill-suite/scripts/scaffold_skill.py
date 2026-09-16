@@ -67,7 +67,20 @@ def scaffold(name: str, path: str, description: str | None, force: bool) -> dict
 
 def main() -> int:
     force_utf8_stdio()
-    parser = argparse.ArgumentParser(description="Create a minimal skill skeleton (SKILL.md only)")
+    parser = argparse.ArgumentParser(
+        description="创建一个技能骨架（只生成 SKILL.md；不建子目录、不生成需求文档）。",
+        epilog=(
+            "示例:\n"
+            '  python scaffold_skill.py my-skill --description "当用户要 X 时使用本技能"\n'
+            "  python scaffold_skill.py my-skill --path skills --force\n"
+            "\n"
+            "退出码:\n"
+            "  0  成功\n"
+            "  1  名称非法 / 目标 SKILL.md 已存在（未加 --force）\n"
+            "  2  参数错误\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("name", help="Skill name (kebab-case, matches the directory)")
     parser.add_argument("--path", default="skills", help="Parent directory for skills (default: skills)")
     parser.add_argument("--description", help="Trigger description; omit for a TODO placeholder")

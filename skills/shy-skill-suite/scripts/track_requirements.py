@@ -157,7 +157,20 @@ def analyze(reqs: list[dict[str, Any]]) -> dict[str, Any]:
 
 def main() -> int:
     force_utf8_stdio()
-    parser = argparse.ArgumentParser(description="Track skill requirements: frontier, blockers, dangling edges")
+    parser = argparse.ArgumentParser(
+        description="扫描 docs/<skill>/requirements/ 的 REQ frontmatter，输出 frontier / blocked / deferred 与错误。",
+        epilog=(
+            "示例:\n"
+            "  python track_requirements.py --root .\n"
+            "  python track_requirements.py --root . --skill my-skill\n"
+            "\n"
+            "退出码:\n"
+            "  0  无 error\n"
+            "  1  存在 error（blocked_by 悬空 / 缺 id / 同技能重复 id）\n"
+            "  2  参数错误\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("--root", default=".", help="Repo root to scan (default: .)")
     parser.add_argument("--skill", help="Limit to docs/<skill>/requirements/")
     args = parser.parse_args()

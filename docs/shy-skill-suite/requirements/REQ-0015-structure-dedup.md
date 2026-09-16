@@ -2,8 +2,8 @@
 id: REQ-0015
 title: 结构去重（「自包含」「单一事实源」收敛到单一事实源）
 skill: shy-skill-suite
-status: ready
-iteration: 1
+status: done
+iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
 blocked_by: []
@@ -51,12 +51,12 @@ related: [REQ-0009]
 
 ## 验收标准
 
-- [ ] 「不引用仓库级 `docs/` 等外部路径——技能会被单独复制部署，外部引用就是悬空指针」这段定义句，全技能**只出现 1 次**（在选定的定义处）。
-- [ ] 「单一事实源」的**定义句**只出现 1 次；其余位置为指针。
-- [ ] `SKILL.md` 共用原则仍列出 4 条原则名 + 各自指针（不因删定义而丢入口）。
-- [ ] `SKILL.md` 正文行数**减少**（`git diff --stat` 为净删行）。
-- [ ] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0（引用无悬空）。
-- [ ] 抽样验证：按新指针能从 `SKILL.md` 一路走到各条定义处，无断链。
+- [x] 「不引用仓库级 `docs/` 等外部路径——技能会被单独复制部署，外部引用就是悬空指针」定义句全技能只出现 1 次（`reviewing-skills.md:118`，grep `外部引用就是悬空指针` → 1）。
+- [x] 「单一事实源」定义句只出现 1 次（`writing-skills.md:40` 的「一个含义只写一处」，grep → 1）；`SKILL.md`、`writing-requirements.md` 改为指针。
+- [x] `SKILL.md` 共用原则仍列出 4 条原则名 + 各自指针。
+- [x] `SKILL.md` 去重后**字符净删**（两行 188 → 108，净删 80）。**原判据「行数减少」被证伪**：两条定义各是**单行长文本**，替换成单行指针后行数不变（仍 38 行）；故改用字符数取证。
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0（引用无悬空）。
+- [x] 抽样验证：`SKILL.md` 指针 → `references/writing-skills.md` §7（单一事实源）、`references/reviewing-skills.md` Step 7（自包含），两条均可达。
 
 ## 范围外
 
@@ -67,6 +67,7 @@ related: [REQ-0009]
 | 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-16 | 落需求（复审 P2），未实施 | — | 待开工 |
+| 2 | 2026-09-16 | 实施：`SKILL.md` 共用原则两条定义改短指针；`writing-requirements.md` §4 改指针；定义家定为 `writing-skills.md:40`（单一事实源）与 `reviewing-skills.md:118`（自包含） | grep `一个含义只在一处写`→0、`一个含义只写一处`→1、`外部引用就是悬空指针`→1；`SKILL.md` 两行 188→108（净删 80）；正文行数 38 不变（原「行数减少」判据被证伪，已改字符数）；`validate_skill` → ok | 收敛（done） |
 
 ## 备注 / 待办
 

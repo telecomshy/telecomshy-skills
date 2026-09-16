@@ -67,6 +67,18 @@ python "<SKILL_DIR>/scripts/aggregate_benchmark.py" <workspace>/iteration-1 \
   --skill-name <name> --previous <workspace>/iteration-0
 ```
 
+## HTML 报告（呈现门禁）
+
+复审 / 评测收工后，把结果渲染成**单文件自包含** HTML 交给人看（不落盘、不自动优化，见 `reviewing-skills.md` Step 8）：
+
+```bash
+python "<SKILL_DIR>/scripts/render_report.py" <workspace>/iteration-1 --skill-name <name>
+```
+
+- 读 `benchmark.json` + `eval-*/` + `findings.json`（schema 见 `reviewing-skills.md`），输出 `<iteration>/report.html`（`--out` 可改）。
+- 单文件、无服务器、无外部资源：opencode / TeleAgent 直接打开即可。
+- 只有 findings（无 benchmark）或反之都能出；两者都无 → 退出码 1。
+
 ## runner 适配（客户端无关）
 
 | runner | 命令来源 | 说明 |
@@ -77,6 +89,8 @@ python "<SKILL_DIR>/scripts/aggregate_benchmark.py" <workspace>/iteration-1 \
 | `cmd` | `--cmd`（必须含 `{prompt}`） | 任意客户端 |
 
 **检测**：`--detect` 传技能名或正则；命中命令的 stdout/stderr 即判为触发。客户端日志格式不同，检测串可能需要按客户端微调。
+
+**命令模板按 argv 切分、不经 shell**（`shell=False`）：`{prompt}` 始终作为**单个参数**注入，模板里的 `&` / `|` / 反引号不会被解释；代价是模板不能用管道、重定向等 shell 语法（需要时写一个包装脚本，再让 `{prompt}` 调用它）。
 
 ## 边界
 

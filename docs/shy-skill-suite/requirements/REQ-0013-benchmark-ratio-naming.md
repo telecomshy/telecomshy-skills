@@ -2,8 +2,8 @@
 id: REQ-0013
 title: benchmark 比率字段命名修正（token/time savings 语义反向）
 skill: shy-skill-suite
-status: ready
-iteration: 1
+status: done
+iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
 blocked_by: []
@@ -46,11 +46,11 @@ related: []
 
 ## 验收标准
 
-- [ ] `benchmark.json` 的 summary 中不再有语义反向的 `*_savings_ratio` 字段（或该字段方向已与名字一致）。
-- [ ] `benchmark.md` 的 token / time 行表头不再是裸 `Ratio`，读者无需反推方向。
-- [ ] 构造一组 with 比 baseline 多花 token 的假数据 → 报告里的数值 > 1 且表头语义与之一致。
-- [ ] `improvement_ratio`（通过率）行为不变。
-- [ ] 对同一份假数据，脚本输出仍为合法 JSON、退出码 0。
+- [x] `benchmark.json` 的 summary 中不再有语义反向的 `*_savings_ratio` 字段（或该字段方向已与名字一致）。
+- [x] `benchmark.md` 的 token / time 行表头不再是裸 `Ratio`，读者无需反推方向。
+- [x] 构造一组 with 比 baseline 多花 token 的假数据 → 报告里的数值 > 1 且表头语义与之一致。
+- [x] `improvement_ratio`（通过率）行为不变。
+- [x] 对同一份假数据，脚本输出仍为合法 JSON、退出码 0。
 
 ## 范围外
 
@@ -61,6 +61,7 @@ related: []
 | 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-16 | 落需求（复审 P2），未实施 | — | 待开工 |
+| 2 | 2026-09-16 | 按方案 A 实施：`token_savings_ratio → token_ratio`、`time_savings_ratio → time_ratio`；`benchmark.md` 表头 `Ratio → With/Baseline`；docstring 注明比率方向 | 假数据（with 150k/60s vs base 100k/40s）→ `token_ratio=1.5`、`time_ratio=1.5`、`improvement_ratio=2.0`，退出码 0、JSON 合法；`benchmark.md` 表头为 `With/Baseline`；脚本无 `savings` 残留；`validate_skill.py` → ok | 收敛（done） |
 
 ## 备注 / 待办
 

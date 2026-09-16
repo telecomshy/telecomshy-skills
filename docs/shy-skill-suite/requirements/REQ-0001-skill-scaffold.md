@@ -3,7 +3,7 @@ id: REQ-0001
 title: 轻量脚手架（scaffold_skill.py）
 skill: shy-skill-suite
 status: done
-iteration: 1
+iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
 blocked_by: []
@@ -51,7 +51,7 @@ related: [REQ-0003]
 - [x] 非法 `name`（如 `Demo_Skill`）→ 报错、退出码非 0、且未创建任何文件。
 - [x] 生成目录内**只有** `SKILL.md`，无 `references/`、`scripts/`、`assets/`。
 - [x] 同名重复运行 → 报错且不覆盖；`--force` 才覆盖。
-- [x] 生成的 `SKILL.md` 通过官方 `quick_validate.py`。
+- [x] 生成的 `SKILL.md` 满足规范硬约束：`name` == 目录名、kebab-case、≤64；`description` 非空、≤1024、不含尖括号 `<` / `>`；frontmatter 顶层字段在允许集内（可用 `scripts/validate_skill.py` 复现）。
 
 ## 范围外
 
@@ -62,7 +62,9 @@ related: [REQ-0003]
 | 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-16 | 落需求 + 实现 `scaffold_skill.py`（轻量骨架，仅 `SKILL.md`）；接入 `SKILL.md` 资源与 `lifecycle.md` 阶段 2 | 6/6 验收标准通过；官方 `quick_validate` 通过 | 收敛（done） |
+| 2 | 2026-09-16 | 文档修正（`REQ-0017`）：验收「通过官方 `quick_validate.py`」改为仓库内可复现的硬约束断言 | 断言可用 `scripts/validate_skill.py` 复现；本步只改本文档 | done（无行为变化） |
 
 ## 备注 / 待办
 
 - 编号已改为**按技能各自从 `0001` 起**（全局递增作废）。
+- 历史说明（`REQ-0017`）：验收原先用外部 `quick_validate.py` 对照；该文件不在技能包内、不可复现，结论已并入上面那条仓库内断言。

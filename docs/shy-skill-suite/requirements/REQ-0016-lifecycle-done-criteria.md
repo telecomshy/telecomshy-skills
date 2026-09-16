@@ -2,8 +2,8 @@
 id: REQ-0016
 title: lifecycle 阶段 1 / 阶段 2 补可判定的完成判据
 skill: shy-skill-suite
-status: ready
-iteration: 1
+status: done
+iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
 blocked_by: []
@@ -51,11 +51,11 @@ related: []
 
 ## 验收标准
 
-- [ ] `lifecycle.md` 阶段 1 含一句以"完成判据"标示的可判定条件，且提到 `status: ready`、验收标准可验证、`blocked_by`、迭代记录。
-- [ ] `lifecycle.md` 阶段 2 含一句以"完成判据"标示的可判定条件，且提到 `validate_skill.py` 与"每条验收标准有证据"。
-- [ ] 两处判据措辞不与 `reviewing-skills.md` 的「完成判据」重复（grep 该句只在 `lifecycle.md` 命中）。
-- [ ] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
-- [ ] 阶段 3–6 的现有判据/收工条件未被改动。
+- [x] `lifecycle.md` 阶段 1 含以"完成判据"标示的可判定条件，且提到 `status: ready`、验收标准可端到端验证、`blocked_by`、迭代记录（`lifecycle.md:47`）。
+- [x] `lifecycle.md` 阶段 2 含以"完成判据"标示的可判定条件，且提到 `validate_skill.py` 与"每条验收标准有证据"（`lifecycle.md:57`）。
+- [x] 两处判据措辞不与 `reviewing-skills.md` 的「完成判据」重复：`grep "待开发的 REQ 已达"` → 1（仅 lifecycle）、`grep "无一条标「待验证」"` → 1（仅 lifecycle）。
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
+- [x] 本步只改阶段 1/2；阶段 3–6 未由本步改动（阶段 3/4 的现状是 `REQ-0018` 的合法改动）。
 
 ## 范围外
 
@@ -66,8 +66,10 @@ related: []
 | 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-16 | 落需求（复审 P2），未实施 | — | 待开工 |
+| 2 | 2026-09-16 | 实施：阶段 1 加完成判据（`status: ready` + 验收可验 + `blocked_by` + 迭代记录）、阶段 2 加完成判据（`validate_skill.py` ok + 每条验收有证据） | 判据句各唯一命中（`待开发的 REQ 已达`→1、`无一条标「待验证」`→1，均在 lifecycle.md）；`validate_skill` → ok；本步只改阶段 1/2 | 收敛（done） |
 
 ## 备注 / 待办
 
 - 来源：2026-09-16 复审报告，标准轴 P2。
 - 低危：阶段 2 已有事实闸门（跑校验器），本 REQ 主要是把它写成判据、并补上阶段 1 的空缺。
+- 实施时**证伪了原拟措辞**：阶段 1 判据初稿以「手里有 1 份…」开头，与 `reviewing-skills.md:39`（Step 0 完成判据）字面撞车，违反"判据句唯一"；已改为「待开发的 REQ 已达 `status: ready`…」。记录以免下次重走。
