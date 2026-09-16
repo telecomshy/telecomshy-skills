@@ -4,7 +4,8 @@
 校验内容：
 - frontmatter：必填 `name`/`description`；`name` 与目录同名、kebab-case、≤64；
   `description` ≤1024、不含尖括号、含 `TODO` 记 warning；
-  顶层只允许 {name, description, license, compatibility, metadata, allowed-tools}，多余字段报错。
+  顶层只允许 `agentskills.io` 基础字段 {name, description, license, compatibility, metadata, allowed-tools}
+  加上客户端扩展字段 {disable-model-invocation, argument-hint}；多余字段报错。
 - 结构：`SKILL.md` 大小写精确；技能目录内不得有 `README.md`。
 - 引用：`SKILL.md` 与 `references/*.md` 里的相对 `.md` / 脚本链接必须指向存在的文件。
 
@@ -24,7 +25,9 @@ from pathlib import Path
 
 from skill_utils import force_utf8_stdio, parse_frontmatter, read_text
 
-ALLOWED_FIELDS = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
+BASE_FIELDS = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
+EXTENSION_FIELDS = {"disable-model-invocation", "argument-hint"}
+ALLOWED_FIELDS = BASE_FIELDS | EXTENSION_FIELDS
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 LINK_RE = re.compile(r"\]\(([^)]+)\)")
 FENCE_RE = re.compile(r"```.*?```", re.DOTALL)

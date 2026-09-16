@@ -68,4 +68,5 @@ related: []
 ## 备注 / 待办
 
 - 与 `REQ-0001`（脚手架）无硬依赖：脚手架只生成 frontmatter，不必调用本校验器。若后续让脚手架内联校验，再加 `blocked_by`。
+- **允许字段集已由 `REQ-0011` 扩展**：在 `agentskills.io` 基础字段之外，另放行客户端扩展字段 `disable-model-invocation` / `argument-hint`（`BASE_FIELDS` / `EXTENSION_FIELDS`）。以 `REQ-0011` 为准。
 - **与官方校验器的关系（实测）**：官方 `quick_validate.py` 是我们规则的**真子集**——它不查 `name` == 目录名、不查技能内 `README.md`、不查悬空引用；而我们的轻量解析器比 PyYAML 宽松（曾放过未加引号的 `: `），故补了 YAML 隐患检查以对齐。结论：**在我们覆盖的规则上不冲突；额外规则为有意收紧。**

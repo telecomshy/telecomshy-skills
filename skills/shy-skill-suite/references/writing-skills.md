@@ -13,6 +13,8 @@
 
 只有人手动调用、且没有别的技能要引用它 → **user-invoked**（不付常驻上下文）；否则才 **model-invoked**。选错是持续的上下文浪费。
 
+落地：user-invoked 在 frontmatter 写 `disable-model-invocation: true`；需要参数提示时再写 `argument-hint: "<提示>"`。二者是**客户端扩展字段**（不在 `agentskills.io` 基础字段集内），`validate_skill.py` 已列入允许集。
+
 ## 3. 信息层级与按需披露
 
 - **步骤**（agent 按序做的事）留主文件；**只在部分分支才需要的参考**下放到 `references/`，并给**何时加载**的指针（"API 返回非 200 时读 `references/api-errors.md`"），不要笼统的"详见 references/"。
