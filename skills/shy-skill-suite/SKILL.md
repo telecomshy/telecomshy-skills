@@ -39,7 +39,7 @@ metadata:
 - `references/reviewing-skills.md` — 复审流程与三轴判据（行为 / 需求一致性 Spec / 标准）、改进意见写法与反模式。
 - `references/subagents.md` — 复审外派子 agent 的角色与窄 brief（executor / grader / spec-reviewer / analyzer / comparator）、派发 vs 内联。
 - `references/running-evals.md` — 复审的执行层：评测脚本、工作区布局与产物 schema、HTML 报告生成、opencode / TeleAgent 适配。
-- `scripts/` — `scaffold_skill.py`（轻量起骨架：只生成 `SKILL.md`）、`validate_skill.py`（结构与规范校验）、`generate_eval_set.py`（生成起手评测集）、`optimize_description.py`（描述打分与选优）、`agent_runner.py`（跑 agent 并检测触发）、`aggregate_benchmark.py`（聚合 benchmark）、`track_requirements.py`（算 REQ frontier、查悬空阻塞边）、`render_report.py`（把迭代工作区渲染成单文件 HTML 报告）。
+- `scripts/` — `scaffold_skill.py`（轻量起骨架：只生成 `SKILL.md`）、`validate_skill.py`（结构与规范校验）、`generate_eval_set.py`（生成起手评测集）、`optimize_description.py`（描述打分与选优）、`agent_runner.py`（跑 agent 并检测触发）、`aggregate_benchmark.py`（聚合 benchmark）、`track_requirements.py`（算 REQ frontier、查悬空阻塞边、报回归债）、`render_report.py`（把迭代工作区渲染成单文件 HTML 报告）。
 - `assets/report-template.html` — HTML 报告模板（内联样式、无外部资源）。
 - `commands/` — opencode 斜杠命令模板（`shy-grill` / `shy-review` / `shy-apply` / `shy-next`；`shy-review` 已含评测）；复制到 `~/.config/opencode/commands/` 生效，复制说明见 `lifecycle.md` 的「斜杠快捷」。
 

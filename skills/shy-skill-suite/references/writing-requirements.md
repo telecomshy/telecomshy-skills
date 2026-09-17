@@ -42,6 +42,7 @@ blocked_by: [REQ-0002]     # 可选，必须先 done 的前置需求
 defer_reason: <为什么延后>  # 仅 status: deferred 时必填
 retroactive: true          # 可选，仅"回溯补写（从意图补、非从实现）"时加
 related: [REQ-0003]        # 可选，关联的需求
+last_verified: YYYY-MM-DD  # 可选，最近一次做过回归验证的日期（见 §5「done 的时效」）
 ---
 ```
 
@@ -84,9 +85,11 @@ related: [REQ-0003]        # 可选，关联的需求
 | `draft` | 草拟中，未定稿 |
 | `ready` | 已确认，可开工 |
 | `in-progress` | 实现中 |
-| `done` | 已实现并验收 |
+| `done` | 已实现并验收（**有时效**，见下） |
 | `deferred` | 确定要做，但**延后**；不在 frontier（必须附 `defer_reason`） |
 | `out-of-scope` | 明确不做 |
+
+**`done` 的时效**：技能没有编译期，后续 REQ 会改同一份文本（`SKILL.md` / `references/`），旧验收可能静默失效。所以 `done` 只表示"验收那一刻成立"，不是永久。回写时（`lifecycle.md` 阶段 4）在 frontmatter 记 `last_verified: YYYY-MM-DD`。**回归债** = `done` 但需复核的 REQ，由 `scripts/track_requirements.py` 报出（缺 `last_verified` / `updated` 晚于 `last_verified` / 有未勾选且未标「待验证」的验收项）；复审的需求轴据此决定是否从增量转全量（`reviewing-skills.md` Step 3）。
 
 ## 6. 模板（复制即用；各节含义见 §3）
 
