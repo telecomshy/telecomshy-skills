@@ -2,8 +2,8 @@
 id: REQ-0044
 title: 触发评测每条多跑（3 次）对齐规范，消除单跑抖动
 skill: shy-skill-suite
-status: ready
-iteration: 1
+status: done
+iteration: 2
 created: 2026-09-17
 updated: 2026-09-17
 blocked_by: []
@@ -53,10 +53,10 @@ iteration-2：8/10，误触发 #103（本周工作周报）、#104（渐进式�
 
 ## 验收标准
 
-- [ ] `optimize_description.py --help` 含 `--trials`，默认 3 — `check:req0044-trials`
-- [ ] `running-evals.md` 命令示例含 `--trials` 并写明默认 3 次 — `check:req0044-doc`
-- [ ] 真跑一次 `--trials 3`：报告里每条给出触发率（0–1），且不再单次定生死 — （行为）
-- [ ] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
+- [x] `optimize_description.py --help` 含 `--trials`，默认 3 — `check:req0044-trials`
+- [x] `running-evals.md` 命令示例含 `--trials` 并写明默认 3 次 — `check:req0044-doc`
+- [x] 真跑一次 `--trials 3`：报告里每条给出触发率（0–1），且不再单次定生死 — （行为）
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
 
 ## 范围外
 
@@ -69,6 +69,7 @@ iteration-2：8/10，误触发 #103（本周工作周报）、#104（渐进式�
 | 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-17 | 落盘（全量复审 iteration-2 行为轴 P2） | 两轮失败项不同（#101 vs #103/#104） | 待实施 |
+| 2 | 2026-09-17 | **回写**：实施 `--trials`——`optimize_description.py` 每条默认跑 3 次、按触发率 ≥0.5 判触发并输出 `trigger_rate`（heuristic 无随机性，强制 1）；`running-evals.md` 命令加 `--trials 3`；`run_checks.py` 注册 2 条。行为证据：真跑 `--trials 3`，near-miss #101/#103 触发率均 **0.667（2/3）**——是「真·边缘」，不是单跑噪声。 | `--trials 3` 真跑：trials=3、train 5/6、test 3/4；`run_checks` 45/45；`validate` ok | **done** |
 
 ## 备注 / 待办
 

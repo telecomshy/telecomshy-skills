@@ -11,9 +11,12 @@
 脚本本身不重写 description（那需要 LLM）。循环由 agent 驱动：
 提出新 description → 用 ``--description`` 评估 → 比较 test 分 → 保留更高者。
 
+**每条查询默认跑 ``--trials 3`` 次、按触发率 ≥ 0.5 判"是否触发"**——真跑 agent 时单次判定有抖动，
+单跑会把噪声当结论（heuristic 无随机性，强制 1 次）。
+
 用法:
     python optimize_description.py <skill_dir> --eval-set evals/evals.json
-    python optimize_description.py <skill_dir> --eval-set evals/evals.json --runner opencode --detect my-skill
+    python optimize_description.py <skill_dir> --eval-set evals/evals.json --runner opencode --detect my-skill --trials 3
     python optimize_description.py <skill_dir> --eval-set evals/evals.json --description "候选描述" --previous reports/desc-opt.json
 """
 
@@ -101,12 +104,32 @@ def score(
     eval_set: list[dict[str, Any]],
     predict: Callable[[str], bool | None],
     split: str = "",
+    trials: int = 1,
 ) -> dict[str, Any]:
+    """每条查询跑 ``trials`` 次，按触发率 ≥ 0.5 判"是否触发"。
+
+    真跑 agent 时单次判定有抖动（同一 description 换一次跑，误触发的题会变），
+    故规范要求**每条 ≥3 次取多数**；heuristic 无随机性，``trials`` 由上层强制为 1。
+    """
     details: list[dict[str, Any]] = []
     correct = 0
     for item in eval_set:
         should = bool(item.get("should_trigger", True))
-        predicted = predict(item.get("prompt", ""))
+        hits = 0
+        decided = 0
+        for _ in range(max(1, trials)):
+            p = predict(item.get("prompt", ""))
+            if p is None:
+                continue
+            decided += 1
+            if p:
+                hits += 1
+        if decided == 0:
+            rate: float | None = None
+            predicted: bool | None = None
+        else:
+            rate = round(hits / decided, 4)
+            predicted = rate >= 0.5
         is_correct = predicted is not None and predicted == should
         if is_correct:
             correct += 1
@@ -115,6 +138,8 @@ def score(
             "prompt": item.get("prompt", ""),
             "should_trigger": should,
             "predicted_trigger": predicted,
+            "trigger_rate": rate,
+            "trials": decided,
             "correct": is_correct,
             "split": split,
         })
@@ -156,6 +181,7 @@ def optimize(
     seed: int = 42,
     cwd: str | None = None,
     timeout: int = 120,
+    trials: int = 3,
 ) -> dict[str, Any]:
     path = Path(skill_dir).resolve()
     frontmatter, _body, errors = load_skill(path)
@@ -173,8 +199,11 @@ def optimize(
     train_set, test_set = split_eval_set(all_evals, seed=seed)
     predict, mode = build_predictor(candidate, runner, cmd, detect, cwd, timeout)
 
-    train_result = score(candidate, train_set, predict, "train")
-    test_result = score(candidate, test_set, predict, "test")
+    if runner == "heuristic":
+        trials = 1  # heuristic 无随机性，重复无意义
+
+    train_result = score(candidate, train_set, predict, "train", trials=trials)
+    test_result = score(candidate, test_set, predict, "test", trials=trials)
 
     train_failures = [d for d in train_result["details"] if not d["correct"]]
     test_failures = [d for d in test_result["details"] if not d["correct"]]
@@ -193,6 +222,7 @@ def optimize(
         "status": "success",
         "skill_name": frontmatter.get("name", "unknown"),
         "mode": mode,
+        "trials": trials,
         "original_description": original,
         "candidate_description": candidate,
         "train_set_size": len(train_set),
@@ -242,6 +272,8 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=42, help="Train/test split seed (default: 42)")
     parser.add_argument("--cwd", help="Working directory for agent runs")
     parser.add_argument("--timeout", type=int, default=120, help="Per-run timeout seconds (default: 120)")
+    parser.add_argument("--trials", type=int, default=3,
+                        help="每条查询跑 N 次、按触发率 ≥ 0.5 判触发（默认 3；heuristic 强制 1）")
     parser.add_argument("--out", "-o", help="Write the full report JSON to this path")
     args = parser.parse_args()
 
@@ -261,7 +293,7 @@ def main() -> int:
         args.path, args.eval_set,
         runner=args.runner, cmd=args.cmd, detect=detect,
         description_override=args.description, previous_path=args.previous,
-        seed=args.seed, cwd=args.cwd, timeout=args.timeout,
+        seed=args.seed, cwd=args.cwd, timeout=args.timeout, trials=args.trials,
     )
     if args.out and "error" not in result:
         write_text(args.out, json.dumps(result, indent=2, ensure_ascii=False))

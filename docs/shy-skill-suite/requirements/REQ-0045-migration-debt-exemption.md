@@ -2,8 +2,8 @@
 id: REQ-0045
 title: Step 3 完成判据给存量 done REQ 的未标条目一个迁移债出口
 skill: shy-skill-suite
-status: ready
-iteration: 1
+status: done
+iteration: 2
 created: 2026-09-17
 updated: 2026-09-17
 blocked_by: []
@@ -44,8 +44,8 @@ related: [REQ-0030, REQ-0042, REQ-0044]
 
 ## 验收标准
 
-- [ ] `reviewing-skills.md` Step 3 完成判据含"迁移债 / 只报数、不阻断"，且限定为"本轮新写 / 改写的 REQ" — `check:req0045-migration-debt`
-- [ ] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
+- [x] `reviewing-skills.md` Step 3 完成判据含"迁移债 / 只报数、不阻断"，且限定为"本轮新写 / 改写的 REQ" — `check:req0045-migration-debt`
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
 
 ## 范围外
 
@@ -57,6 +57,7 @@ related: [REQ-0030, REQ-0042, REQ-0044]
 | 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-17 | 落盘（全量复审 iteration-2 需求轴 P2） | 触碰的 done REQ 未标 47 条 | 待实施 |
+| 2 | 2026-09-17 | **回写**：`reviewing-skills.md` Step 3 完成判据收窄为「本轮**新写 / 改写**的验收标准无未标」；存量 `done` REQ 的未标 = **迁移债，只报数、不阻断**；`lifecycle.md` 阶段 5 同步；`run_checks.py` 注册 1 条。 | `run_checks` 45 通过 / 0 失败；`validate` ok | **done** |
 
 ## 备注 / 待办
 

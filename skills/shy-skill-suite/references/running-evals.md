@@ -63,9 +63,10 @@ python "<SKILL_DIR>/scripts/generate_eval_set.py" <skill_dir> -o evals/evals.jso
 # 2) 给 description 打分（离线启发式）
 python "<SKILL_DIR>/scripts/optimize_description.py" <skill_dir> --eval-set evals/evals.json -o reports/desc-opt.json
 
-# 2') 真跑触发（opencode / TeleAgent）
+# 2') 真跑触发（opencode / TeleAgent）——每条默认跑 3 次、按触发率 ≥ 0.5 判触发
+#     单跑有抖动（同一 description 换一次跑，误触发的题会变），别用单跑结论改 description
 python "<SKILL_DIR>/scripts/optimize_description.py" <skill_dir> --eval-set evals/evals.json \
-  --runner opencode --detect <skill-name>
+  --runner opencode --detect <skill-name> --trials 3
 
 # 3) 聚合 benchmark
 python "<SKILL_DIR>/scripts/aggregate_benchmark.py" <workspace>/iteration-1 \

@@ -299,6 +299,29 @@ def skill_selftest(root: Path, skill: str) -> tuple[bool, str]:
     return (rc == 0), f"rc={rc} {tail[:120]}"
 
 
+@check("req0044-trials")
+def req0044_trials(root: Path, skill: str) -> tuple[bool, str]:
+    rc, out, _err = run_script(root, skill_dir(root, skill) / "scripts" / "optimize_description.py", "--help")
+    ok = (rc == 0) and ("--trials" in out)
+    return ok, f"optimize --help 含 --trials={('--trials' in out)}"
+
+
+@check("req0044-doc")
+def req0044_doc(root: Path, skill: str) -> tuple[bool, str]:
+    text = read_text(skill_dir(root, skill) / "references" / "running-evals.md")
+    ok = "--trials" in text
+    return ok, f"running-evals 含 --trials={ok}"
+
+
+@check("req0045-migration-debt")
+def req0045_migration_debt(root: Path, skill: str) -> tuple[bool, str]:
+    text = read_text(skill_dir(root, skill) / "references" / "reviewing-skills.md")
+    m = re.search(r"### Step 3.*?(?=\n### |\Z)", text, re.S)
+    seg = m.group(0) if m else ""
+    need = {k: (k in seg) for k in ("迁移债", "只报数", "新写")}
+    return all(need.values()), f"need={need}"
+
+
 @check("req0046-unimplemented-skipped")
 def req0046_unimplemented_skipped(root: Path, skill: str) -> tuple[bool, str]:
     """未实现的 REQ（ready/draft）的 `check:` 应跳过，不因未注册而报红。"""
