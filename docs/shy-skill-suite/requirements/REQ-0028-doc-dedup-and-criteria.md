@@ -2,8 +2,8 @@
 id: REQ-0028
 title: 文档去重与判据补齐（单一事实源 / 悬空指针 / 阶段 4 完成判据 / 引用约定）
 skill: shy-skill-suite
-status: in-progress
-iteration: 2
+status: done
+iteration: 3
 created: 2026-09-17
 updated: 2026-09-17
 blocked_by: []
@@ -56,16 +56,16 @@ related: [REQ-0008, REQ-0009, REQ-0015, REQ-0016, REQ-0018, REQ-0025, REQ-0026, 
 
 ## 验收标准
 
-- [ ] `grep -n "sprawl\|duplication" skills/shy-skill-suite/references/writing-skills.md` → `duplication` 有定义（或已改为 §7 用词）；`sprawl` 在全技能 0 命中。
-- [ ] `reviewing-skills.md` Step 4 完成判据里的每个词都能在 `writing-skills.md` §7 找到定义。
-- [ ] `lifecycle.md` 阶段 4 段内含「完成判据」，且该判据逐条可判定。
-- [ ] `grep -n "不落盘" skills/shy-skill-suite/references/lifecycle.md` → 不再与 `:62` 的「落盘 findings.json」冲突（改为「不回写 REQ」）。
-- [ ] `grep -rn "反推" skills/shy-skill-suite/references` → 1 处定义 + 引用，不再是 3 处完整规则。
-- [ ] `grep -n "逼问 → 落需求" skills/shy-skill-suite/SKILL.md` → 只命中 1 处。
-- [ ] `SKILL.md` 资源清单不再逐条重复路由表的描述，且不再抄脚本 `--help` 的一行简介。
-- [ ] `grep -rn "](.*\.md)" skills/shy-skill-suite/references` → 引用基准唯一（全带 `references/` 前缀，或 §3 措辞已改）。
-- [ ] `python scripts/validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
-- [ ] 改动后 `SKILL.md` 行数不增（只做减法或持平）。
+- [x] `grep -n "sprawl\|duplication" skills/shy-skill-suite/references/writing-skills.md` → `duplication` 有定义（或已改为 §7 用词）；`sprawl` 在全技能 0 命中。
+- [x] `reviewing-skills.md` Step 4 完成判据里的每个词都能在 `writing-skills.md` §7 找到定义。
+- [x] `lifecycle.md` 阶段 4 段内含「完成判据」，且该判据逐条可判定。
+- [x] `grep -n "不落盘" skills/shy-skill-suite/references/lifecycle.md` → 不再与 `:62` 的「落盘 findings.json」冲突（改为「不回写 REQ」）。
+- [x] `grep -rn "反推" skills/shy-skill-suite/references` → 1 处定义 + 引用，不再是 3 处完整规则。
+- [x] `grep -n "逼问 → 落需求" skills/shy-skill-suite/SKILL.md` → 只命中 1 处。
+- [x] `SKILL.md` 资源清单不再逐条重复路由表的描述，且不再抄脚本 `--help` 的一行简介。
+- [x] `grep -rn "](.*\.md)" skills/shy-skill-suite/references` → 引用基准唯一（全带 `references/` 前缀，或 §3 措辞已改）。
+- [x] `python scripts/validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
+- [x] 改动后 `SKILL.md` 行数不增（只做减法或持平）。
 
 ## 范围外
 
@@ -80,6 +80,7 @@ related: [REQ-0008, REQ-0009, REQ-0015, REQ-0016, REQ-0018, REQ-0025, REQ-0026, 
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-17 | 落需求（2026-09-17 复审标准轴 Step 4/5 的 9 条 findings，其中 2 条被 REQ-0030 吸收，实落 7 条） | — | 待开工 |
 | 2 | 2026-09-17 | 实施 7 项：删 `sprawl`、`duplication` 改用 §7 词；`lifecycle.md` 阶段 4 补完成判据；「不落盘」→「不回写 REQ」（lifecycle / running-evals / commands）；「不读技能反推」收敛为 grilling 定义 + 2 处引用；SKILL.md 管线串去重 + 资源清单只留路由表未覆盖的；`writing-skills.md` §3 明确同级引用可省略前缀；`SKILL.md` 「先删后加」改正面句 | `sprawl` 0、`duplication` 0；`逼问 → 落需求` 仅 SKILL.md:13；`不落盘` 仅剩「不落盘索引文件」（另一含义）；SKILL.md 49→45 行；validate ok | 待复审（阶段 3） |
+| 3 | 2026-09-17 | **收敛复审**：`sprawl` 全技能 0 命中；`lifecycle` 阶段 4 含完成判据；`SKILL.md`「逼问 → 落需求」1 处；「反推」= 1 定义（`grilling.md`）+ 2 短引用（均指向定义） → 通过。 | `verify_converge.py` 21 项 | done |
 
 ## 备注 / 待办
 

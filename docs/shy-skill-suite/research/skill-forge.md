@@ -1,5 +1,7 @@
 # 对标调研：AgriciDaniel/skill-forge 与 shy-skill-suite 的功能对比
 
+> **后续进展（2026-09-17 补记）**：本报告写后技能已变更——新增**可执行验收标准**（`scripts/run_checks.py` + REQ 里 `check:` / `（行为）` / `（语义）` 三类标记）、「P2 不阻断」停止规则，以及 grader 兼评评测集 / 抽取隐式主张、analyzer notes 落地（本报告 §4.1/§4.2 的部分候选已落地）。现状见 `REQ-0030` 迭代记录与 `skills/shy-skill-suite/references/reviewing-skills.md`。
+
 > 范围：为 `shy-skill-suite`（技能开发套件）找可借鉴的功能。逐项拆解对标物 `AgriciDaniel/skill-forge` 的功能、产物与门禁，再与 `shy-skill-suite` 对照，给出「可直接吸收 / 需改造 / 明确不吸收」三类候选。
 > 对标物锁定依据：`docs/shy-skill-suite/requirements/REQ-0001`（「skill-forge 是 plan → build 直接生成整套文件」）、`REQ-0005`（「skill-forge 的 8 个 agent」）、`REQ-0007`（「skill-forge 的 comparator」）、`lifecycle.md`（「skill-forge 有 eval 驱动的迭代」）——四条指纹全部只命中本仓库：8 个 agent（architect/writer/validator/converter/executor/grader/analyzer/comparator）、Tier 1–4、`plan → build`、`comparator`。
 > 一手来源：`git clone --depth 1 https://github.com/AgriciDaniel/skill-forge`（commit `2872ee9e1be8b81d48d8e6f2fe6c96225885e87b`，main，MIT，`CHANGELOG` 最新 `v1.1.0`）。

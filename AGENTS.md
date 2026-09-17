@@ -4,7 +4,7 @@
 
 ## 目录约定
 
-- **调研报告**（`research` 技能产出）→ `docs/<skill>/research/`（如 `docs/knowledge-distill/research/`）
+- **调研报告**（`research` 技能产出）→ `docs/<skill>/research/`（如 `docs/knowledge-distill/research/`）；生成调查报告时一律保存到 `docs` 目录下对应技能的 `research` 目录，不要放在别处
 - **技能需求文档** → `docs/<skill>/requirements/`（如 `docs/knowledge-distill/requirements/`）
 - **写技能需求 / 生成后复审技能** → 技能 `skills/shy-skill-suite`
 

@@ -183,7 +183,14 @@ def render_benchmark(bench: dict[str, Any] | None, evals: list[dict[str, Any]]) 
                 f'<td class="num">{_pct((e.get("with_skill") or {}).get("pass_rate"))}</td>'
                 f'<td class="num">{_pct((e.get("baseline") or {}).get("pass_rate"))}</td></tr>'
             )
-    out.append("</tbody></table></section>")
+    out.append("</tbody></table>")
+
+    notes = (bench or {}).get("notes") if bench else None
+    if notes:
+        out.append('<h3 style="font-size:14px;margin:18px 0 8px">Analyzer Notes</h3>')
+        out.append("<ul>" + "".join(f"<li>{esc(n)}</li>" for n in notes) + "</ul>")
+
+    out.append("</section>")
     return "\n".join(out)
 
 

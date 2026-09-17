@@ -21,15 +21,20 @@
     ├── eval-0/
     │   ├── eval_metadata.json          # {"eval_id":0,"eval_name":"...","prompt":"...","assertions":[...]}
     │   ├── with_skill/
-    │   │   ├── grading.json            # {"pass_rate":0.0-1.0,"assertions":[{"text","passed","evidence"}]}
+    │   │   ├── grading.json            # pass_rate + assertions[] + claims[] + eval_feedback[]（见下）
     │   │   └── timing.json             # {"total_tokens":int,"total_duration_seconds":float}
     │   └── baseline/                   # 与 with_skill 同构；新技能用无技能，改技能用旧版快照
     │       ├── grading.json
     │       └── timing.json
-    └── benchmark.json / benchmark.md   # 由 aggregate_benchmark.py 产出
+    ├── analyzer_notes.json             # 可选，{"notes":["..."]}；由 analyzer 产出、reviewing Step 8
+    └── benchmark.json / benchmark.md   # 由 aggregate_benchmark.py 产出（notes 会并入）
 ```
 
 `baseline/` 也可写作 `without_skill/`（脚本兼容）。多轮试验用 `with_skill_0/`、`baseline_0/` 等。
+
+`grading.json` 字段（角色定义见 `subagents.md` 的 grader）：`pass_rate`；`assertions[]{text,passed,evidence}`（逐条断言）；`claims[]{type,passed,evidence}`（断言之外的**隐式主张**核验，`type ∈ {factual,process,quality}`）；`eval_feedback[]`（对**评测集本身**的批评：弱断言 / 遗漏结果 / 不可验证断言）。
+
+`analyzer_notes.json` 由 analyzer 写入，`aggregate_benchmark.py` 自动读到 `benchmark.json.notes` 并渲染进报告——结论不落盘就等于没留证据。
 
 ## 评测集 schema（`evals/evals.json`）
 
@@ -100,3 +105,5 @@ python "<SKILL_DIR>/scripts/render_report.py" <workspace>/iteration-1 --skill-na
 - 真跑模式依赖客户端的**非交互命令**（不能弹 TTY）。
 - 对照基线（with_skill vs baseline）是硬要求：**只有 delta 才算证据**，单跑不算。
 - 启发式分数只用于排序候选，**不能**当作"技能有效"的证据。
+- **token 可能采不到**：客户端输出里解析不出 usage 时 `avg_tokens = 0`、`token_ratio` 恒为 **1.0**——那是"**没测到**"，不是"没花费"。**`token_ratio` 无效，不得当结论**。耗时同理：单次超时 / 重试会污染 `time_ratio`，别过度解读。
+- **baseline 怎么定**：**改技能用旧版快照**（改前的版本）。**"无技能" baseline 只适用**于内容不可在磁盘搜到、且不依赖读文件的技能——否则权限放开时 agent 会用 `glob/grep/read` 把技能源码搜出来作答（**对照被污染**），禁止读盘又会让 with_skill 失效（技能要读 `references/`）。

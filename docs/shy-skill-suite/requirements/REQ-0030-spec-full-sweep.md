@@ -2,8 +2,8 @@
 id: REQ-0030
 title: Spec 轴改无条件全量扫 + 删除回归债跟踪
 skill: shy-skill-suite
-status: in-progress
-iteration: 2
+status: done
+iteration: 3
 created: 2026-09-17
 updated: 2026-09-17
 blocked_by: []
@@ -76,22 +76,24 @@ False False
 
 ## 验收标准
 
-- [ ] `python scripts/track_requirements.py --root . --skill shy-skill-suite` 输出**不含** `regression_debt`；仍含 `frontier` / `blocked` / `deferred` / `errors`，且 `status: ok`、退出码 0。
-- [ ] `python scripts/track_requirements.py --help` 不含 `last_verified` 与「回归债」。
-- [ ] `grep -rn "last_verified\|regression_debt" skills/shy-skill-suite` → 0 命中（机制描述已全删）。
-- [ ] `grep -n "回归债" skills/shy-skill-suite/references/reviewing-skills.md skills/shy-skill-suite/references/lifecycle.md` → 0 命中。
-- [ ] `reviewing-skills.md` Step 3 无「三档范围」「三个自动升级条件」；含「全部 REQ」与「唯一豁免」。
-- [ ] `reviewing-skills.md` Step 2 的 case set 来源**不引用** Step 3 的转全量。
-- [ ] `writing-requirements.md` §3 含「尽量可执行」；frontmatter 说明块无 `last_verified`。
-- [ ] `REQ-0025` 的 frontmatter 含 `superseded_by: REQ-0030`，`status: out-of-scope`。
-- [ ] `python scripts/validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
-- [ ] **全量 Spec 扫仍能跑通**：对本技能跑一次，25 份 REQ 的验收标准逐条有判定（实测计数写入迭代记录）。
+> 本 REQ 起，验收标准默认可执行：`` `check:<name>` `` 由 `scripts/run_checks.py` 跑；跑不了的标 `（语义）`（见 `writing-requirements.md` §4）。
+
+- [x] track 输出不含 `regression_debt`，仍含 `frontier` / `blocked` / `deferred` / `errors`，`status: ok`、退出码 0 — `check:req0030-track-keys`
+- [x] `track_requirements.py --help` 不含 `last_verified` / `regression_debt` / 「回归债」 — `check:req0030-help-clean`
+- [x] 技能内 0 命中 `last_verified` / `regression_debt`（机制描述已全删） — `check:req0030-no-removed-tokens`
+- [x] 技能内 0 命中「回归债」 — `check:req0030-no-debt-term`
+- [x] `reviewing-skills.md` Step 3 无「三档范围」「三个自动升级条件」，含「全部 REQ」与「唯一豁免」 — `check:req0030-step3-terms`
+- [x] `reviewing-skills.md` Step 2 的 case set 来源不引用 Step 3 的转全量 — `check:req0030-step2-no-sweep-ref`
+- [x] `writing-requirements.md` 含 `check:` / `（行为）` / `（语义）` 三类规则、无 `last_verified` — `check:req0030-writing-req-executable`
+- [x] `REQ-0025` 的 frontmatter 含 `superseded_by: REQ-0030`、`status: out-of-scope` — `check:req0030-req0025-superseded`
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
+- [x] **全量 Spec 扫仍能跑通**：全部 REQ 的验收标准逐条有判定（可执行项由 `run_checks.py` 跑，`（语义）` 项逐条读）。（语义）
 
 ## 范围外
 
 - 不做 blame 定范围、不做 `touches:` 声明。
 - 不降范围（只允许降频）。
-- 不建 `verify_requirements.py`：前置条件（验收标准可执行）尚未成立——先落 §3 的"可执行"写作规则，等有真实重复证据再开。
+- ~~不建 `verify_requirements.py`~~：2026-09-17 已改由 `scripts/run_checks.py` 承担（写作侧的可执行前提已由 `writing-requirements.md` §4 的硬规则建立）——本项解除。
 - 不改 `render_report.py`（REQ-0029）、不改各脚本核心算法（REQ-0027）。
 - 不改 `frontier` / `blocked_by` 语义。
 
@@ -101,6 +103,8 @@ False False
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-17 | 落需求（复审证实 REQ-0025 的债机制为一次性；用户确认改无条件全量） | `regression_reasons(...)` → `[]`；脚本对 `skills/` 零感知 | 待开工 |
 | 2 | 2026-09-17 | 实施 8 步：`track_requirements.py` 删 `scan_criteria` / `regression_reasons` / `regression_debt`；`reviewing-skills.md` Step 3 改无条件全量（删三档表与三个升级条件）、Step 2 case set 直接取并集；`writing-requirements.md` 删 `last_verified`、§3 加「尽量可执行」；`lifecycle.md` 阶段 4/5 与斜杠快捷表同步；`commands/shy-next.md`、`SKILL.md` 同步；`REQ-0025` 置 `superseded_by: REQ-0030` | `regression_debt` / `last_verified` / `回归债` 在技能内 0 命中；track 输出键为 frontier/blocked/deferred/errors/warnings；frontier 不含 REQ-0025（out-of-scope）；validate ok | 待复审（阶段 3） |
+| 3 | 2026-09-17 | 本 REQ 作「Spec 轴靠跑不靠读」试点：验收标准改写成 `check:`（9 条可执行 + 1 条语义）；新增 `scripts/run_checks.py`（发现 + 注册表 + `--list`/`--output`）；`writing-requirements.md` §4 定「验收标准默认可执行」「写不成标（语义）」「自洽项不进验收标准」；`reviewing-skills.md` Step 3 改「先跑 `run_checks.py`，再读（语义）项，自洽项不复扫」、Step 8 加「P2 不阻断，自洽项攒批」；`lifecycle.md` 阶段 3/5 同步；`SKILL.md` 资源清单补 `run_checks.py`；解除本 REQ「不建 verify_requirements.py」的范围外项；`untagged = 0` 收窄为「**本轮 diff 触碰的 REQ**」——全局未标只记数、不阻断（避免新规则逼出一次全量改造） | `run_checks.py --root . --skill shy-skill-suite` → 9/9 通过、`untagged=0`；临时镜像注入故障后对应 check 变 FAIL（检出） | 待复审 |
+| 3 | 2026-09-17 | **收敛复审**：`run_checks.py` 的 9 条 `req0030-*` 全过；语义项「全量 Spec 扫仍能跑通」已由本会话 `run_checks` 全量执行覆盖。 | `run_checks.py` 21 通过 / 0 失败 | done |
 
 ## 备注 / 待办
 

@@ -5,9 +5,10 @@
 ``timing.json``，产出 ``benchmark.json`` 与 ``benchmark.md``，含通过率、token、耗时，
 以及 with_skill 相对 baseline 的 improvement_ratio、token_ratio、time_ratio 与方差。
 比率一律是 ``with_skill / baseline``：> 1 表示带技能**多花**（token / 耗时）或**更高**（通过率）。
+可选读 ``<iteration>/analyzer_notes.json``（analyzer 的结论），并入 ``benchmark.json.notes``。
 
 用法:
-    python aggregate_benchmark.py <iteration-N 目录> --skill-name my-skill [--previous <上一轮目录>]
+    python aggregate_benchmark.py <iteration-N 目录> --skill-name my-skill [--previous <上一轮目录>] [--notes <analyzer_notes.json>]
 
 run 目录名兼容：with_skill / with-skill / with，baseline / without_skill / without-skill / old_skill；
 也支持带序号的多轮试验：with_skill_0、baseline_0、……
@@ -36,6 +37,20 @@ def load_json(path: Path) -> dict[str, Any] | None:
         return json.loads(read_text(path))
     except (FileNotFoundError, json.JSONDecodeError):
         return None
+
+
+def load_notes(path: Path) -> list[str]:
+    """读 analyzer 的 notes：支持 ``{"notes": [...]}`` 或裸数组；缺失/损坏返回 []。"""
+    data = load_json(path)
+    if isinstance(data, dict):
+        notes = data.get("notes") or []
+    elif isinstance(data, list):
+        notes = data
+    else:
+        return []
+    if not isinstance(notes, list):
+        return []
+    return [str(n).strip() for n in notes if str(n).strip()]
 
 
 def discover_eval_dirs(iteration_path: Path) -> list[Path]:
@@ -107,6 +122,7 @@ def aggregate_benchmark(
     iteration_path: str,
     skill_name: str,
     previous_path: str | None = None,
+    notes_path: str | None = None,
 ) -> dict[str, Any]:
     path = Path(iteration_path).resolve()
     if not path.is_dir():
@@ -190,6 +206,10 @@ def aggregate_benchmark(
         "per_eval": per_eval,
     }
 
+    notes = load_notes(Path(notes_path) if notes_path else path / "analyzer_notes.json")
+    if notes:
+        benchmark["notes"] = notes
+
     if previous_path:
         prev = load_json(Path(previous_path) / "benchmark.json")
         if prev:
@@ -231,6 +251,8 @@ def aggregate_benchmark(
             f"| {e['eval_name']} | {e.get('with_skill', {}).get('pass_rate', 0):.0%} "
             f"| {e.get('baseline', {}).get('pass_rate', 0):.0%} |"
         )
+    if notes:
+        md += ["", "## Analyzer Notes", ""] + [f"- {n}" for n in notes]
     write_text(path / "benchmark.md", "\n".join(md) + "\n")
 
     return {
@@ -238,6 +260,7 @@ def aggregate_benchmark(
         "benchmark_json": str(path / "benchmark.json"),
         "benchmark_md": str(path / "benchmark.md"),
         "summary": benchmark["summary"],
+        "notes": len(notes),
     }
 
 
@@ -260,9 +283,10 @@ def main() -> int:
     parser.add_argument("path", help="Path to an iteration-N workspace directory")
     parser.add_argument("--skill-name", required=True, help="Name of the skill being benchmarked")
     parser.add_argument("--previous", "-p", help="Path to previous iteration directory for comparison")
+    parser.add_argument("--notes", help="analyzer_notes.json 路径（缺省 <iteration>/analyzer_notes.json）")
     args = parser.parse_args()
 
-    result = aggregate_benchmark(args.path, args.skill_name, args.previous)
+    result = aggregate_benchmark(args.path, args.skill_name, args.previous, args.notes)
     stream = sys.stderr if "error" in result else sys.stdout
     print(json.dumps(result, indent=2, ensure_ascii=False), file=stream)
     return 1 if "error" in result else 0

@@ -2,8 +2,8 @@
 id: REQ-0033
 title: 脚本遗留硬化（第三批：输出规模 / 覆盖护栏 / 文档-实现一致 / 中文关键词）
 skill: shy-skill-suite
-status: ready
-iteration: 1
+status: out-of-scope
+iteration: 2
 created: 2026-09-17
 updated: 2026-09-17
 blocked_by: []
@@ -67,9 +67,11 @@ related: [REQ-0027, REQ-0032]
 | 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-17 | 落需求（2026-09-17 第二轮复审标准轴 Step 6/7 的 5 条 findings） | — | 待开工 |
+| 2 | 2026-09-17 | **退休（out-of-scope）**：脚本输出规模 / 覆盖备份 / 解析细节，属 **P2 脚本卫生**（不改变行为契约、不阻断 `done`）→ 按 Step 8「P2 不阻断，攒批」归入清理批；若将来出现**真实故障**再单独开 REQ。 | 前置：`REQ-0027` 已收敛（同类第二批） | **out-of-scope（退休）** |
 
 ## 备注 / 待办
 
 - 来源：2026-09-17 第二轮复审 findings（标准轴 P2 ×5）。报告：`skills/shy-skill-suite-workspace/iteration-2/report.html`。
 - 本 REQ 是 `REQ-0027`（第二批）的续；第二批立了契约，本批补没盖到的地方。
 - 与 `REQ-0032` 交叉：两者都可能动 `render_report.py`（本 REQ 动覆盖护栏，`REQ-0032` 动 `--help` 文案），合并实施时注意。
+- **处置（2026-09-17）**：**退休（out-of-scope）**：脚本输出规模 / 覆盖备份 / 解析细节，属 **P2 脚本卫生**（不改变行为契约、不阻断 `done`）→ 按 Step 8「P2 不阻断，攒批」归入清理批；若将来出现**真实故障**再单独开 REQ。

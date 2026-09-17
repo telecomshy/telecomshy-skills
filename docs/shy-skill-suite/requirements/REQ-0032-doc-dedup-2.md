@@ -2,8 +2,8 @@
 id: REQ-0032
 title: 技能文档去重与判据补齐（第二批）
 skill: shy-skill-suite
-status: ready
-iteration: 1
+status: out-of-scope
+iteration: 2
 created: 2026-09-17
 updated: 2026-09-17
 blocked_by: []
@@ -76,9 +76,11 @@ related: [REQ-0028, REQ-0029, REQ-0030, REQ-0031]
 | 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-17 | 落需求（2026-09-17 第二轮复审标准轴 Step 4/5 的 8 条 findings） | — | 待开工 |
+| 2 | 2026-09-17 | **退休（out-of-scope）**：判定同上——去重 / 指针一致 / 行数不增，全属自洽项，不影响触发与行为契约。 | 前置：`REQ-0028` 已收敛（同类第一批） | **out-of-scope（退休）** |
 
 ## 备注 / 待办
 
 - 来源：2026-09-17 第二轮复审 findings（标准轴 P2 ×8）。报告：`skills/shy-skill-suite-workspace/iteration-2/report.html`。
 - **8 条里 5 条是 `REQ-0029`/`REQ-0030` 新引入的**（第 1/2/3/6/8 条）——上一轮 REQ-0028 才刚做过去重，这轮加规则又造出新的。这是套件自身反复出现的模式，值得在下一轮复盘（`lifecycle.md` 阶段 6）时留意。
 - 与 `REQ-0028` 同类；REQ-0028 修的是首轮，本 REQ 修的是大改引入的。
+- **处置（2026-09-17）**：**退休（out-of-scope）**：判定同上——去重 / 指针一致 / 行数不增，全属自洽项，不影响触发与行为契约。

@@ -24,7 +24,10 @@
 
 - **输入**：一个 run 的产出；断言列表。
 - **任务**：逐条 PASS / FAIL 并**引用证据**（原文 / 文件名 / 计数）→ `grading.json`（`pass_rate`）。
-- **输出**：`grading.json`。
+- **额外两职责**（让**"测不出东西的测试"**暴露出来）：
+  - **抽取并核验隐式主张**：断言之外，从产出里抽出可核验的**事实 / 过程 / 质量**主张（如"用了 2023 年数据""脚本已加 `--force`"），逐条给通过 / 不通过 + 证据 → `grading.json` 的 `claims[]`。预定义断言漏掉的事实错误靠它兜。
+  - **兼评评测集本身** → `grading.json` 的 `eval_feedback[]`：**弱断言**（只查文件名不查内容）、**遗漏结果**（该测的重要结果没测）、**不可验证断言**（指不出证据）。一条"通过了但测不出东西"的断言，比没有更糟。
+- **输出**：`grading.json`（`pass_rate` + `assertions[]` + `claims[]` + `eval_feedback[]`）。
 - **禁止**：不改产出；**不知道哪份是 `with_skill`、哪份是 `baseline`**（盲）；不给"benefit of the doubt"——证据不足即 FAIL。
 
 ### spec-reviewer（服务 Step 3 Spec 轴）
@@ -37,8 +40,8 @@
 ### analyzer（可选，服务 Step 8）
 
 - **输入**：`benchmark.json`、各 `grading.json`。
-- **任务**：失败聚类、flaky（`pass_rate_std > 0.3`）、跨轮回归、成本离群、触发 TPR / FPR。
-- **输出**：3–5 条结论。
+- **任务**：失败聚类、flaky（`pass_rate_std > 0.3`）、跨轮回归、成本离群、触发 TPR / FPR；外加**断言模式分析**——**恒过**（with_skill 与 baseline 都过 → 该断言测不出东西，建议删或换）、**恒败**（两边都败 → 查断言写错还是题太难）、**有无技能反转**（baseline 反超）。
+- **输出**：3–5 条结论，并**落盘 `<iteration>/analyzer_notes.json`**（`{"notes": ["...", "..."]}`）——`aggregate_benchmark.py` 会并入 `benchmark.json.notes`，报告会渲染；不落盘就只在对话里，等于没留证据。
 - **禁止**：不重新跑评测。
 
 ### comparator（可选，主观质量）
