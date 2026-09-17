@@ -160,7 +160,7 @@
 
 可选：把 `benchmark.json` / `grading.json` 交给 `subagents.md` 的 **analyzer** 做失败聚类、flaky 与回归分析。可选（主观型技能、比两版时）：用 `subagents.md` 的 **comparator** 做盲测 A/B，**与断言结果并列报告**。
 
-**完成判据**：给出三档结论之一；改进清单已按 §3「先证伪」筛过，并在 `summary` 附**淘汰数**（`candidates` / `passed` / `falsified`）；产出 `findings.json`。之后**按「呈现门禁」决定停不停**（见 `lifecycle.md` 阶段 3 → 4）：**无 P0/P1 且无新事项** → 机械记账**自动回写 `done`、不停**（纯秒级门无发现可不出 HTML）；**有 P0/P1 或新事项** → 出 **HTML 报告并打开**（默认自动打开，见 `running-evals.md`），**停下**等用户拍板。
+**完成判据**：给出三档结论之一；改进清单已按 §3「先证伪」筛过，并在 `summary` 附**淘汰数**（`candidates` / `passed` / `falsified`）；产出 `findings.json` + **HTML 报告并打开**（默认自动打开，见 `running-evals.md`）；然后**逐条请用户分拣**（立即修 / 以后修 / 丢弃，**不做批量**），按所选实施一次后**结束**——**不自动再审**（见 `lifecycle.md` 阶段 3）。
 
 **报告是终局产物**：**只在 Step 8 生成一次**，且由**主 agent**打开。复审中途（Step 1–7）不得生成报告——包括为验证渲染而跑 `render_report.py`（那会让浏览器在复审中途弹出来打断用户）。确需中途验证渲染，用临时工作区 + `--no-open`（或 `SHY_NO_OPEN=1`）。
 

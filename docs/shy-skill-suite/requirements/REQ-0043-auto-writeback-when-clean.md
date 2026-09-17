@@ -2,12 +2,13 @@
 id: REQ-0043
 title: 呈现门禁改为「有事才停」：机械记账自动回写，判断项才停
 skill: shy-skill-suite
-status: done
-iteration: 1
+status: out-of-scope
+iteration: 2
 created: 2026-09-17
 updated: 2026-09-17
 blocked_by: []
 related: [REQ-0018, REQ-0041, REQ-0042]
+superseded_by: REQ-0046
 ---
 
 # REQ-0043 呈现门禁改为「有事才停」

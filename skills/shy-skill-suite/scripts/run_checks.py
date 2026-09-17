@@ -299,6 +299,68 @@ def skill_selftest(root: Path, skill: str) -> tuple[bool, str]:
     return (rc == 0), f"rc={rc} {tail[:120]}"
 
 
+@check("req0046-unimplemented-skipped")
+def req0046_unimplemented_skipped(root: Path, skill: str) -> tuple[bool, str]:
+    """未实现的 REQ（ready/draft）的 `check:` 应跳过，不因未注册而报红。"""
+    sd = skill_dir(root, skill)
+    with tempfile.TemporaryDirectory(prefix="shy-skip-") as tmp:
+        t = Path(tmp)
+        d = t / "docs" / skill / "requirements"
+        d.mkdir(parents=True)
+        (d / "REQ-9001-ready.md").write_text(
+            f"---\nid: REQ-9001\ntitle: r\nskill: {skill}\nstatus: ready\niteration: 1\n"
+            "created: 2026-01-01\nupdated: 2026-01-01\nblocked_by: []\n---\n\n"
+            "## 验收标准\n\n- [ ] x — `check:no-such-check`\n", encoding="utf-8")
+        rc, _out, _err = run_script(root, sd / "scripts" / "run_checks.py",
+                                    "--root", str(t), "--skill", skill)
+    return (rc == 0), f"ready REQ 的未注册 check 被跳过 → rc={rc}"
+
+
+@check("req0046-two-paths")
+def req0046_two_paths(root: Path, skill: str) -> tuple[bool, str]:
+    text = read_text(skill_dir(root, skill) / "references" / "lifecycle.md")
+    need = {k: (k in text) for k in ("实现路", "评审路")}
+    return all(need.values()), f"need={need}"
+
+
+@check("req0046-user-triggered")
+def req0046_user_triggered(root: Path, skill: str) -> tuple[bool, str]:
+    text = read_text(skill_dir(root, skill) / "references" / "lifecycle.md")
+    need = {k: (k in text) for k in ("用户主动触发", "实现路不会自动进这里")}
+    return all(need.values()), f"need={need}"
+
+
+@check("req0046-triage")
+def req0046_triage(root: Path, skill: str) -> tuple[bool, str]:
+    text = read_text(skill_dir(root, skill) / "references" / "lifecycle.md")
+    need = {k: (k in text) for k in ("立即修", "以后修", "丢弃", "不落盘", "不自动再审")}
+    return all(need.values()), f"need={need}"
+
+
+@check("req0046-skill-rule")
+def req0046_skill_rule(root: Path, skill: str) -> tuple[bool, str]:
+    text = read_text(skill_dir(root, skill) / "SKILL.md")
+    ok = "实现 / 评审两路分离" in text
+    return ok, f"SKILL 含『实现 / 评审两路分离』={ok}"
+
+
+@check("req0046-superseded")
+def req0046_superseded(root: Path, skill: str) -> tuple[bool, str]:
+    ok = True
+    ev = {}
+    for rid in ("REQ-0041", "REQ-0043"):
+        p = list((root / "docs" / skill / "requirements").glob(rid + "-*.md"))
+        if not p:
+            ev[rid] = "缺失"
+            ok = False
+            continue
+        fm = read_text(p[0]).split("---", 2)[1]
+        hit = "superseded_by: REQ-0046" in fm
+        ev[rid] = hit
+        ok = ok and hit
+    return ok, f"{ev}"
+
+
 @check("req0043-auto-writeback")
 def req0043_auto_writeback(root: Path, skill: str) -> tuple[bool, str]:
     text = read_text(skill_dir(root, skill) / "references" / "lifecycle.md")
@@ -465,8 +527,10 @@ def analyze(root: Path, skill: str | None) -> dict[str, Any]:
         fm = req_frontmatter(path)
         req_skill = fm.get("skill", "")
         rid = fm.get("id", path.stem)
-        # 未实现 / 明确不做的 REQ：其 check: 条目跳过（与 Step 3 的 diff 豁免一致）
-        skip_exec = (fm.get("status") or "").strip() in ("deferred", "out-of-scope")
+        # 只有「已实现中 / 已完成」的 REQ 才跑 check:。
+        # 未实现的（draft / ready）与不做的（deferred / out-of-scope）一律跳过——
+        # 它们的 check: 是"未来契约"，此刻跑必红，是噪声。
+        skip_exec = (fm.get("status") or "").strip() not in ("in-progress", "done")
         for desc in criteria(path):
             tag = CHECK_TAG_RE.search(desc)
             if not tag:

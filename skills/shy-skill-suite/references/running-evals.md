@@ -72,9 +72,9 @@ python "<SKILL_DIR>/scripts/aggregate_benchmark.py" <workspace>/iteration-1 \
   --skill-name <name> --previous <workspace>/iteration-0
 ```
 
-## HTML 报告（呈现门禁）
+## HTML 报告（评审路的呈现）
 
-复审 / 评测收工后，把结果渲染成**单文件自包含** HTML 交给人看（不回写 REQ、不自动优化，见 `reviewing-skills.md` Step 8）：
+**评审路**（用户主动触发）收尾时，把结果渲染成**单文件自包含** HTML 交给人看——供**逐条分拣**（立即修 / 以后修 / 丢弃）；实现路不出报告（见 `reviewing-skills.md` Step 8）：
 
 ```bash
 python "<SKILL_DIR>/scripts/render_report.py" <workspace>/iteration-1 --skill-name <name>

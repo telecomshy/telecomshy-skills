@@ -2,12 +2,13 @@
 id: REQ-0041
 title: 实现 → 必审门 + 分层取证（门设在呈现，不设在修复）
 skill: shy-skill-suite
-status: done
-iteration: 2
+status: out-of-scope
+iteration: 3
 created: 2026-09-17
 updated: 2026-09-17
 blocked_by: []
 related: [REQ-0018, REQ-0024, REQ-0030, REQ-0040]
+superseded_by: REQ-0046
 ---
 
 # REQ-0041 实现 → 必审门 + 分层取证
