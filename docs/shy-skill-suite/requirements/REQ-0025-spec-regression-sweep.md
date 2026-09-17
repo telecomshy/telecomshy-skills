@@ -2,12 +2,13 @@
 id: REQ-0025
 title: 需求轴（Spec）回归扫 + 回归债跟踪
 skill: shy-skill-suite
-status: in-progress
-iteration: 1
+status: out-of-scope
+iteration: 2
 created: 2026-09-17
 updated: 2026-09-17
 blocked_by: []
-related: [REQ-0018, REQ-0022, REQ-0023]
+related: [REQ-0018, REQ-0022, REQ-0023, REQ-0030]
+superseded_by: REQ-0030
 ---
 
 # REQ-0025 需求轴（Spec）回归扫 + 回归债跟踪
@@ -96,6 +97,7 @@ related: [REQ-0018, REQ-0022, REQ-0023]
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-17 | 落需求（用户确认方案：需求轴默认增量 + 回归债触发全量） | — | 开工 |
 | 2 | 2026-09-17 | 实施：`track_requirements.py` 加 `scan_criteria` / `regression_reasons` / `regression_debt` 输出与 `--help`；`writing-requirements.md` 加 `last_verified` 与「done 的时效」；`reviewing-skills.md` Step 2 case set 来源 + Step 3 范围旋钮与三个升级条件；`lifecycle.md` 阶段 4/5 + 斜杠快捷；`commands/shy-next.md`；`SKILL.md` 资源清单 | 见下「实施证据」 | 待复审（阶段 3） |
+| 3 | 2026-09-17 | **复审（阶段 3）**：全量三轴复审。机制按设计生效——22 条回归债触发 Spec 轴转全量，25 份 REQ 全部逐条扫过；`track_requirements.py` 报出 REQ-0020 的假 `done`（P0）。验收 7/8 通过；**#4 部分满足**（§3 说明块有 `last_verified`，但 §6 模板漏了） | `validate_skill` ok rc=0；debt 22 → REQ-0020 以 `no last_verified` 入债；全量扫结论：21 份 REQ 全通过、4 份有 findings。报告 `skills/shy-skill-suite-workspace/iteration-1/report.html`（25 findings） | 仍 `in-progress`：#4 由 `REQ-0028` 补 §6 模板后收敛；其余 findings 落成 `REQ-0026`~`REQ-0029` |
 
 ### 实施证据
 
@@ -121,6 +123,7 @@ reasons(clean):            []
 
 ## 备注 / 待办
 
+- **本 REQ 已被 `REQ-0030` 取代（`superseded_by: REQ-0030`）**：2026-09-17 复审证实本 REQ 的**回归债机制是一次性的**——债判定只看 REQ 文档自己的 `updated`，不看技能产物；`track_requirements.py` 对 `skills/` 零感知、不调 git。落戳后技能再改 → 无债 → Spec 轴回增量 → 旧 REQ 永不重扫。`REQ-0030` 保留本 REQ 的**目标**（Spec 轴证据集扩为全部 REQ），删掉其**机制**（`last_verified` / `regression_debt` / 三档旋钮），改为无条件全量。本文件保留作为"试过并被推翻"的记录。
 - 来源：2026-09-17 与用户的方案讨论。三个候选方案中，方案 1（抽离增量 spec 指令）与方案 2（spec 轴完全抽离）被淘汰——都会让复审默认失去需求轴，破坏 `reviewing-skills.md` §1 的三轴结构；方案 3（单独加全量审计命令）因"可选门禁会被跳过"且与 Step 4 重叠被降级。采纳的是「需求轴默认增量 + 有债或动共有文本则转全量」。
 - 与 mattpocock 的关系：他的 `code-review` 同样是 diff-scoped（需求轴只对 originating spec），全盘视角由**另一个技能** `improve-codebase-architecture` 承担（`disable-model-invocation`、按需）。本 REQ 的取舍是**不加命令**——让全量回归长在默认路径上，避免"另一个技能会被遗忘"。
 - 已知未决：验收标准"确定性 vs 行为类"的分类准确率未经测量（**待验证**）。若后续观察到分类反复出错，再考虑引入标记语法。

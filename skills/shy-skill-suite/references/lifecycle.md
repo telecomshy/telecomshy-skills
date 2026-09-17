@@ -18,9 +18,9 @@
 | 命令 | 进入 |
 | --- | --- |
 | `/shy-grill` | 逼问一个技能该做什么（`grilling.md`） |
-| `/shy-review` | 复审 + 评测，出一份 HTML 报告并打开，不落盘（`reviewing-skills.md` + `running-evals.md`） |
+| `/shy-review` | 复审 + 评测，出一份 HTML 报告并打开，不回写 REQ（`reviewing-skills.md` + `running-evals.md`） |
 | `/shy-apply` | 用户确认后落盘 REQ 并优化（阶段 4） |
-| `/shy-next` | 列 REQ frontier 与回归债（`track_requirements.py`） |
+| `/shy-next` | 列 REQ frontier（`track_requirements.py`） |
 
 `/shy-review` 已含评测——eval 是复审 Step 1/2 的执行层（见 `running-evals.md`），故不单列 `/shy-eval`。
 
@@ -61,7 +61,7 @@
 
 按 `reviewing-skills.md` 执行（行为轴：触发 + 有效性；需求轴：需求一致性 Spec；标准轴：结构 / 脚本 / 安全），用 `running-evals.md` 的脚本取证据。产出**分轴**、带优先级的 findings，并落盘 `findings.json`（schema 见 `reviewing-skills.md`）。
 
-**呈现门禁（阶段 3 → 4）**：复审收工后**只呈现、不落盘**——把 findings（`findings.json`）与评测结果生成报告交给人看（HTML 见 `running-evals.md`），然后**停下**；此时**未**修改任何 REQ、**未**改动技能文件。回写要等用户显式触发：`/shy-apply`，或用户明确说"落盘 / 回写 / 开始改"。
+**呈现门禁（阶段 3 → 4）**：复审收工后**只呈现、不回写 REQ**——把 findings（`findings.json`）与评测结果生成报告交给人看（HTML 见 `running-evals.md`），然后**停下**；此时**未**修改任何 REQ、**未**改动技能文件。回写要等用户显式触发：`/shy-apply`，或用户明确说"落盘 / 回写 / 开始改"。
 
 ### 4 · 回写需求（本环的关键，skill-forge 缺）
 
@@ -72,13 +72,13 @@
 - 范围变化 → 更新「范围外」。
 - 追加一条**迭代记录**（格式见 `writing-requirements.md`）。
 - `status`：全部验收过且无 P0/P1 → `done`；仍有下一轮 → `in-progress`；`iteration` 加一、`updated` 改为当天。
-- **`last_verified` 改为当天**：`done` 有时效——后续 REQ 改同一份文本会让旧验收静默失效。这个字段是"最近一次做过回归验证"的戳，缺它或落后于 `updated` 的 `done` REQ 会被 `track_requirements.py` 报成回归债。
+- **整份被取代**：加 `superseded_by: REQ-NNNN`（定义见 `writing-requirements.md` §3）——取代关系必须落字段，不能只写在备注散文里（那是"假 `done`"的成因）。
+
+**完成判据**：每条验收项已勾选或转成新 REQ；迭代记录新增一行；`status` / `iteration` / `updated` 已更新；改完后 `python "<SKILL_DIR>/scripts/track_requirements.py" --root .` 仍 `status: ok`（REQ 仍可解析、`blocked_by` 无悬空）。
 
 ### 5 · 下一轮
 
 **从 frontier 取下一个**：`python "<SKILL_DIR>/scripts/track_requirements.py" --root .` 列出现在能开始的 REQ（`blocked_by` 全部 `done`），按依赖顺序推进。
-
-**顺手看回归债**：同一份输出里的 `regression_debt` 列出需复核的 `done` REQ（缺 `last_verified` / `updated` 晚于 `last_verified` / 有未勾选且未标「待验证」的验收项）。有债时，下一轮复审的需求轴自动转全量（`reviewing-skills.md` Step 3）。
 
 回到阶段 2，直到：
 

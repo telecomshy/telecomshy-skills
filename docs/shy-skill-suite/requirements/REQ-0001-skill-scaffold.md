@@ -5,7 +5,7 @@ skill: shy-skill-suite
 status: done
 iteration: 2
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 blocked_by: []
 related: [REQ-0003]
 ---
@@ -31,8 +31,8 @@ related: [REQ-0003]
    - `description`：`--description` 提供则用；省略则写**显式占位** `TODO: 一句话说明它做什么、何时触发`（便于需求明确前先起骨架）。
    - 正文：只有 H1 标题，无其它内容。
 3. **不创建任何子目录**（`scripts/` / `references/` / `assets/` 在真正放入文件时再建）；**不生成 REQ**。
-4. 幂等：目标已存在则报错退出、不覆盖；`--force` 才覆盖。
-5. 输出 JSON：`{status, skill_dir, files: [...]}`。
+4. 幂等：目标已存在则返回 `status: skipped`、退出码 0、不覆盖；`--force` 才覆盖（覆盖前先备份为 `SKILL.md.bak`）。（**`REQ-0027` 修订**：原先"报错退出"改为"skipped + rc 0"，使 agent 重试幂等；备份亦由该 REQ 加。）
+5. 输出 JSON：`{status, skill_dir, files: [...], description}`（`description` 为实际写入的描述，省略参数时为 TODO 占位；2026-09-17 复审补记）。
 
 ## 脚本与资源
 
@@ -50,7 +50,7 @@ related: [REQ-0003]
 - [x] 省略 `--description` → 生成含 `TODO` 的占位 `description`，文件仍可解析。
 - [x] 非法 `name`（如 `Demo_Skill`）→ 报错、退出码非 0、且未创建任何文件。
 - [x] 生成目录内**只有** `SKILL.md`，无 `references/`、`scripts/`、`assets/`。
-- [x] 同名重复运行 → 报错且不覆盖；`--force` 才覆盖。
+- [x] 同名重复运行 → `status: skipped`、退出码 0、内容不变；`--force` 才覆盖（并留下 `SKILL.md.bak`）。（**2026-09-17 复审订正**：原写"报错"，实现按 `REQ-0027` 改为幂等。）
 - [x] 生成的 `SKILL.md` 满足规范硬约束：`name` == 目录名、kebab-case、≤64；`description` 非空、≤1024、不含尖括号 `<` / `>`；frontmatter 顶层字段在允许集内（可用 `scripts/validate_skill.py` 复现）。
 
 ## 范围外

@@ -96,7 +96,12 @@ def build_predictor(
     return predict, "heuristic"
 
 
-def score(description: str, eval_set: list[dict[str, Any]], predict: Callable[[str], bool | None]) -> dict[str, Any]:
+def score(
+    description: str,
+    eval_set: list[dict[str, Any]],
+    predict: Callable[[str], bool | None],
+    split: str = "",
+) -> dict[str, Any]:
     details: list[dict[str, Any]] = []
     correct = 0
     for item in eval_set:
@@ -111,6 +116,7 @@ def score(description: str, eval_set: list[dict[str, Any]], predict: Callable[[s
             "should_trigger": should,
             "predicted_trigger": predicted,
             "correct": is_correct,
+            "split": split,
         })
     total = len(eval_set)
     return {
@@ -167,10 +173,12 @@ def optimize(
     train_set, test_set = split_eval_set(all_evals, seed=seed)
     predict, mode = build_predictor(candidate, runner, cmd, detect, cwd, timeout)
 
-    train_result = score(candidate, train_set, predict)
-    test_result = score(candidate, test_set, predict)
+    train_result = score(candidate, train_set, predict, "train")
+    test_result = score(candidate, test_set, predict, "test")
 
     train_failures = [d for d in train_result["details"] if not d["correct"]]
+    test_failures = [d for d in test_result["details"] if not d["correct"]]
+    # 改进建议只用 train 的失败：用 test 的失败去改措辞 = 把描述过拟合到测试句子上。
     suggestions = suggest_improvements(train_failures, candidate)
 
     best_description = candidate
@@ -191,8 +199,10 @@ def optimize(
         "test_set_size": len(test_set),
         "train": {k: train_result[k] for k in ("score", "correct", "total")},
         "test": {k: test_result[k] for k in ("score", "correct", "total")},
-        "failure_count": len(train_failures),
-        "failures": train_failures,
+        "train_failure_count": len(train_failures),
+        "test_failure_count": len(test_failures),
+        "failure_count": len(train_failures) + len(test_failures),
+        "failures": train_failures + test_failures,
         "suggestions": suggestions,
         "best_description": best_description,
         "best_test_score": best_test_score,
@@ -255,7 +265,8 @@ def main() -> int:
     )
     if args.out and "error" not in result:
         write_text(args.out, json.dumps(result, indent=2, ensure_ascii=False))
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    stream = sys.stderr if "error" in result else sys.stdout
+    print(json.dumps(result, indent=2, ensure_ascii=False), file=stream)
     return 1 if "error" in result else 0
 
 

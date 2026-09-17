@@ -14,7 +14,7 @@
 - **需求是活文档**：用户确认落盘后回写（勾选验收、追加迭代记录、更新 `status`/`iteration`），不是写完就冻结；评审后先**呈现**、由用户决定何时回写（门禁见 `lifecycle.md` 阶段 3 → 4）。
 - **可跟踪**：`blocked_by` 声明前置依赖；`status` + `iteration` + 迭代记录构成进度；"现在能开始"的 frontier 由 `scripts/track_requirements.py` 扫描得出。
 - **可延后**：确定要做但暂缓 → `status: deferred` + `defer_reason`（不算 frontier、不算 done）。恢复时改回 `ready`，并在迭代记录记一句。
-- **可回溯补写**：给**既有技能**补 REQ 时，走 `grilling.md` 从**意图**问出来（产出"**应该**做什么"，不是"现在做了什么"），**不得**读技能反推；标 `retroactive: true`。
+- **可回溯补写**：给**既有技能**补 REQ 时，走 `grilling.md` 从**意图**问出来（产出"**应该**做什么"，不是"现在做了什么"），**不得**读技能反推（定义见 `grilling.md`）；标 `retroactive: true`。
 - 落盘的是**结论**，不是讨论过程（访谈、方案推演留在对话里）。
 
 ## 2. 文件与命名
@@ -42,11 +42,13 @@ blocked_by: [REQ-0002]     # 可选，必须先 done 的前置需求
 defer_reason: <为什么延后>  # 仅 status: deferred 时必填
 retroactive: true          # 可选，仅"回溯补写（从意图补、非从实现）"时加
 related: [REQ-0003]        # 可选，关联的需求
-last_verified: YYYY-MM-DD  # 可选，最近一次做过回归验证的日期（见 §5「done 的时效」）
+superseded_by: REQ-NNNN    # 可选，整份被哪份 REQ 取代（见下）
 ---
 ```
 
 **`blocked_by` 与 frontier**：`blocked_by` 声明前置 REQ（必须先 `done`）；同技能内写 `REQ-NNNN`，跨技能写 `<skill>:REQ-NNNN`。**现在能开始的 REQ**（frontier）= `status ∈ {ready, in-progress}` 且 `blocked_by` 全部 `done`；用 `scripts/track_requirements.py` 扫描得出（并检查悬空引用），**不落盘索引文件**。
+
+**`superseded_by` 与 `related` 的区别**：`related` 是"有关联"，双方都还是当前的；`superseded_by` 是"**整份**被取代"——被指向的那份才代表当前设计。取代关系必须落成**字段**，不能只写在 `## 备注` 的散文里：散文机器看不见，正是"假 `done`"（验收标准已过期却仍勾 `[x]`、`status` 仍 `done`）的成因。`status` 语义不变（`done` 已不在 frontier）。**部分**取代不用该字段——直接订正受影响的那几条验收标准，并在迭代记录说明。
 
 **正文各节**（按顺序）
 
@@ -74,6 +76,7 @@ last_verified: YYYY-MM-DD  # 可选，最近一次做过回归验证的日期（
 
 - **行为 + 自包含**：写"系统该做什么"，并**写明接口与涉及的文件**——命令名 / 参数 / 返回 / 配置字段 / 章节名，以及 `SKILL.md`、`scripts/`、`references/` 等（技能文件集小且稳定，写清才自包含、可执行）。**不写行号与易变的实现细节。**
 - **可验收**：每条标准能独立判定通过 / 失败，且以**具体证据**（命令输出 / 返回字段 / 计数）为准；避开过虚（"输出正确"）与过脆（精确到某句话）的措辞。
+- **尽量可执行**：能用一条命令 / grep / 计数表达的，就**把命令写进验收标准**（如 `grep -c ...`、`--help` 含某参数、退出码为 0）。这是全量重扫的成本杠杆——可执行的标准每轮直接跑，秒级；写不成命令的才靠语义判断。
 - **明确范围外**：显式列出不做的事。
 - **精简**：只写 AI 无法自行推断的信息；能一句说清就不写一段。
 - **单一事实源**：见 [`writing-skills.md`](writing-skills.md) §7。
@@ -85,11 +88,11 @@ last_verified: YYYY-MM-DD  # 可选，最近一次做过回归验证的日期（
 | `draft` | 草拟中，未定稿 |
 | `ready` | 已确认，可开工 |
 | `in-progress` | 实现中 |
-| `done` | 已实现并验收（**有时效**，见下） |
+| `done` | 已实现并验收 |
 | `deferred` | 确定要做，但**延后**；不在 frontier（必须附 `defer_reason`） |
 | `out-of-scope` | 明确不做 |
 
-**`done` 的时效**：技能没有编译期，后续 REQ 会改同一份文本（`SKILL.md` / `references/`），旧验收可能静默失效。所以 `done` 只表示"验收那一刻成立"，不是永久。回写时（`lifecycle.md` 阶段 4）在 frontmatter 记 `last_verified: YYYY-MM-DD`。**回归债** = `done` 但需复核的 REQ，由 `scripts/track_requirements.py` 报出（缺 `last_verified` / `updated` 晚于 `last_verified` / 有未勾选且未标「待验证」的验收项）；复审的需求轴据此决定是否从增量转全量（`reviewing-skills.md` Step 3）。
+**`done` 的时效**：技能没有编译期，后续 REQ 会改同一份文本（`SKILL.md` / `references/`），旧验收可能静默失效。所以 `done` 只表示"验收那一刻成立"。**这一点不用状态戳来管**——复审的需求轴**无条件全量重扫**全部 REQ（`reviewing-skills.md` Step 3），不靠字段触发：状态戳会腐烂，而且落戳之后就不再回归了。
 
 ## 6. 模板（复制即用；各节含义见 §3）
 

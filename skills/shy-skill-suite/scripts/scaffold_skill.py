@@ -18,7 +18,7 @@ import re
 import sys
 from pathlib import Path
 
-from skill_utils import force_utf8_stdio, write_text
+from skill_utils import force_utf8_stdio, read_text, write_text
 
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 PLACEHOLDER = "TODO: 一句话说明它做什么、何时触发"
@@ -54,15 +54,29 @@ def scaffold(name: str, path: str, description: str | None, force: bool) -> dict
     skill_md = skill_dir / "SKILL.md"
 
     if skill_md.exists() and not force:
-        return {"status": "error", "error": f"已存在: {skill_md}（用 --force 覆盖）"}
+        return {
+            "status": "skipped",
+            "skill_dir": str(skill_dir),
+            "files": [str(skill_md)],
+            "reason": f"已存在，未改动: {skill_md}（要覆盖请加 --force）",
+        }
+
+    backup = None
+    if skill_md.exists() and force:
+        backup_path = skill_md.with_name(skill_md.name + ".bak")
+        write_text(backup_path, read_text(skill_md))
+        backup = str(backup_path)
 
     write_text(skill_md, build_skill_md(name, description or PLACEHOLDER))
-    return {
+    result = {
         "status": "success",
         "skill_dir": str(skill_dir),
         "files": [str(skill_md)],
         "description": description or PLACEHOLDER,
     }
+    if backup:
+        result["backup"] = backup
+    return result
 
 
 def main() -> int:
@@ -75,20 +89,23 @@ def main() -> int:
             "  python scaffold_skill.py my-skill --path skills --force\n"
             "\n"
             "退出码:\n"
-            "  0  成功\n"
-            "  1  名称非法 / 目标 SKILL.md 已存在（未加 --force）\n"
+            "  0  成功，或目标已存在且未加 --force（status: skipped，幂等）\n"
+            "  1  名称非法\n"
             "  2  参数错误\n"
+            "\n"
+            "--force 会覆盖已有 SKILL.md，但先把它备份为 SKILL.md.bak（输出里的 backup 字段）。\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("name", help="Skill name (kebab-case, matches the directory)")
     parser.add_argument("--path", default="skills", help="Parent directory for skills (default: skills)")
     parser.add_argument("--description", help="Trigger description; omit for a TODO placeholder")
-    parser.add_argument("--force", action="store_true", help="Overwrite an existing SKILL.md")
+    parser.add_argument("--force", action="store_true", help="Overwrite an existing SKILL.md (backs it up to .bak first)")
     args = parser.parse_args()
 
     result = scaffold(args.name, args.path, args.description, args.force)
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    stream = sys.stderr if result["status"] == "error" else sys.stdout
+    print(json.dumps(result, indent=2, ensure_ascii=False), file=stream)
     return 1 if result["status"] == "error" else 0
 
 

@@ -263,7 +263,8 @@ def main() -> int:
     args = parser.parse_args()
 
     result = aggregate_benchmark(args.path, args.skill_name, args.previous)
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    stream = sys.stderr if "error" in result else sys.stdout
+    print(json.dumps(result, indent=2, ensure_ascii=False), file=stream)
     return 1 if "error" in result else 0
 
 

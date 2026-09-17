@@ -54,6 +54,19 @@ _STOP_WORDS = {
 }
 
 
+_PLACEHOLDER_WORDS = {"todo", "xxx", "nnnn", "foo", "bar", "baz", "example", "placeholder"}
+
+
+def _is_placeholder(word: str) -> bool:
+    """判断 token 是否是占位符 / 示例词（如 description 里的 ``REQ-NNNN`` → ``req-nnnn``）。
+
+    它们不是触发词；抽出来会生成一堆无意义 prompt（``req-nnnn`` / ``帮我req-nnnn``）。
+    """
+    if word in _PLACEHOLDER_WORDS:
+        return True
+    return any(len(seg) >= 3 and len(set(seg)) == 1 for seg in word.split("-"))
+
+
 def _dedupe(items: list[str]) -> list[str]:
     seen: set[str] = set()
     out: list[str] = []
@@ -108,10 +121,31 @@ def extract_keywords(description: str, phrases: list[str]) -> list[str]:
     """ASCII 关键词 + 中文触发短语（作为关键词候选）。"""
     words = [
         w for w in _ASCII_WORD.findall(description.lower())
-        if len(w) > 3 and w not in _STOP_WORDS
+        if len(w) > 3 and w not in _STOP_WORDS and not _is_placeholder(w)
     ]
     cjk = [p for p in phrases if has_cjk(p) and 2 <= len(p) <= 20]
     return _dedupe(words + cjk)[:20]
+
+
+_CJK_SPLIT_RE = re.compile(r"[^\u3400-\u9fff]+")
+_CJK_LEAD_RE = re.compile(
+    r"^(?:当你在|当用户|当你|用户|当|在|如|若|请你|请|帮我|我想|我需要|需要)+"
+)
+
+
+def extract_cjk_keywords(description: str, limit: int = 10) -> list[str]:
+    """description 没写引号 / 没写 ``触发：`` 段时，从中文正文切出候选短语。
+
+    中文技能常把 description 写成「当……时使用本技能」的祈使句，不带引号；
+    此时按非中文字符切分、去常见前缀词，保留 2–20 字的片段当关键词。
+    仍是启发式，需人工复核。
+    """
+    out: list[str] = []
+    for frag in _CJK_SPLIT_RE.split(description):
+        frag = _CJK_LEAD_RE.sub("", frag).strip()
+        if 2 <= len(frag) <= 12 and frag not in _STOP_WORDS:
+            out.append(frag)
+    return _dedupe(out)[:limit]
 
 
 def _trigger_assertion(name: str, lang: str) -> dict[str, Any]:
@@ -195,6 +229,15 @@ def generate_eval_set(skill_dir: str, output: str | None = None, lang: str = "au
 
     phrases = extract_trigger_phrases(description)
     keywords = extract_keywords(description, phrases)
+    if not phrases and not keywords and has_cjk(description):
+        keywords = extract_cjk_keywords(description)
+    if not phrases and not keywords:
+        return {
+            "error": (
+                "description 里没抽到可用的触发短语或关键词。"
+                "请在其中用引号标出用户原话（如「帮我逼问这个技能」），或直接手写触发评测集。"
+            )
+        }
     fallback = "这个" if lang == "zh" else "this"
 
     evals: list[dict[str, Any]] = []

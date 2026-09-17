@@ -6,19 +6,12 @@
 - **frontier**：现在就能开始的 REQ（`status ∈ {ready, in-progress}`，且所有 `blocked_by` 都已 `done`）
 - **blocked**：在等前置 REQ 的
 - **deferred**：`status: deferred` 的（附 `defer_reason`），不算 frontier
-- **regression_debt**：`status: done` 但需复核的 REQ（见下），附 `reasons`
-- **errors**：`blocked_by` 悬空、缺 `id`、同一技能内重复 `id`
+- **errors**：`blocked_by` / `superseded_by` 悬空、缺 `id`、同一技能内重复 `id`
 - **warnings**：`blocked_by` 指向 `out-of-scope` / `deferred`、缺 `skill` 字段
 - 状态汇总
 
-**回归债（regression_debt）**：`done` 只保证"写的那一刻成立"。技能没有编译期，
-后续 REQ 改同一份文本会让旧验收静默失效，故 `done` 需带时效。一条 REQ 入债的条件（满足其一）：
-
-- `no last_verified`：从未做过回归验证（缺 frontmatter `last_verified`）
-- `updated after last_verified`：`updated` 晚于 `last_verified`
-- `unchecked criteria`：`## 验收标准` 有未勾选且**未标「待验证」**的条目
-
-脚本只报"该复核哪些"，不跑验收（验收标准是 prose，不可机器执行）。
+本脚本只管**排期**（frontier / 依赖 / 状态），**不管回归**：Spec 轴的回归由复审
+**无条件全量扫**承担（见 `references/reviewing-skills.md` Step 3），不靠状态戳。
 
 编号约定：**每个技能各自从 `REQ-0001` 起**（唯一性按 `(skill, id)` 判定）。
 `blocked_by` 默认在同技能内解析；跨技能写 `<skill>:REQ-NNNN`。
@@ -26,53 +19,24 @@
 frontier 由状态**推导**，不落盘索引文件（避免派生索引过期）。
 
 用法:
-    python track_requirements.py [--root .] [--skill <name>]
+    python track_requirements.py [--root .] [--skill <name>] [--full] [--output <path>]
+
+默认打**有界摘要**（frontier / blocked / deferred 只给 id + title）；`--full` 打完整 JSON，
+`--output <path>` 把完整 JSON 写到文件（大仓库避免被输出上限截断）。
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 from typing import Any
 
-from skill_utils import force_utf8_stdio, parse_frontmatter, read_text
+from skill_utils import force_utf8_stdio, parse_frontmatter, read_text, write_text
 
 RESOLVED = {"done"}
 ACTIONABLE = {"ready", "in-progress"}
-
-_CRITERIA_HEADING_RE = re.compile(r"^##\s*验收标准\s*$")
-_HEADING_RE = re.compile(r"^##\s+")
-_CRITERION_RE = re.compile(r"^\s*-\s*\[([ xX])\]\s*(.*)$")
-_PENDING_MARK = "待验证"
-
-
-def scan_criteria(body: str) -> dict[str, int]:
-    """统计 `## 验收标准` 节的勾选情况。
-
-    返回 ``{"checked": n, "unchecked": n, "pending": n}``；``pending`` 是
-    未勾选但标了「待验证」的条目（按规范允许，不计入回归债）。
-    """
-    checked = unchecked = pending = 0
-    in_section = False
-    for line in body.splitlines():
-        if _HEADING_RE.match(line):
-            in_section = bool(_CRITERIA_HEADING_RE.match(line))
-            continue
-        if not in_section:
-            continue
-        match = _CRITERION_RE.match(line)
-        if not match:
-            continue
-        if match.group(1).strip():
-            checked += 1
-        elif _PENDING_MARK in match.group(2):
-            pending += 1
-        else:
-            unchecked += 1
-    return {"checked": checked, "unchecked": unchecked, "pending": pending}
 
 
 def as_list(value: Any) -> list[str]:
@@ -97,27 +61,11 @@ def discover(root: Path, skill: str | None) -> list[Path]:
 
 
 def load(path: Path) -> dict[str, Any]:
-    frontmatter, body, errors = parse_frontmatter(read_text(path))
+    frontmatter, _body, errors = parse_frontmatter(read_text(path))
     if frontmatter is None:
         return {"_path": str(path), "_parse_errors": errors}
     frontmatter["_path"] = str(path)
-    frontmatter["_criteria"] = scan_criteria(body)
     return frontmatter
-
-
-def regression_reasons(req: dict[str, Any]) -> list[str]:
-    """判断一条 `done` REQ 是否入回归债；返回原因列表（空 = 无债）。"""
-    reasons: list[str] = []
-    last_verified = str(req.get("last_verified", "")).strip()
-    updated = str(req.get("updated", "")).strip()
-    if not last_verified:
-        reasons.append("no last_verified")
-    elif updated and updated > last_verified:
-        reasons.append("updated after last_verified")
-    unchecked = (req.get("_criteria") or {}).get("unchecked", 0)
-    if unchecked:
-        reasons.append(f"unchecked criteria ({unchecked})")
-    return reasons
 
 
 def resolve_blocker(ref: str, skill: str) -> tuple[str, str]:
@@ -153,7 +101,6 @@ def analyze(reqs: list[dict[str, Any]]) -> dict[str, Any]:
     frontier: list[dict[str, Any]] = []
     blocked: list[dict[str, Any]] = []
     deferred: list[dict[str, Any]] = []
-    regression_debt: list[dict[str, Any]] = []
     summary: dict[str, int] = {}
 
     for skill, rid in sorted(by_key):
@@ -187,6 +134,10 @@ def analyze(reqs: list[dict[str, Any]]) -> dict[str, Any]:
         if deferred_refs:
             warnings.append({"skill": skill, "id": rid, "warning": f"blocked_by 指向 deferred: {', '.join(deferred_refs)}（需先恢复）"})
 
+        superseded_by = str(req.get("superseded_by", "")).strip()
+        if superseded_by and resolve_blocker(superseded_by, skill) not in by_key:
+            errors.append({"skill": skill, "id": rid, "error": f"superseded_by 悬空: {superseded_by}"})
+
         entry = {
             "skill": skill,
             "id": rid,
@@ -194,6 +145,8 @@ def analyze(reqs: list[dict[str, Any]]) -> dict[str, Any]:
             "status": status,
             "path": req["_path"],
         }
+        if superseded_by:
+            entry["superseded_by"] = superseded_by
         if status == "deferred":
             deferred.append({**entry, "defer_reason": str(req.get("defer_reason", "")).strip()})
         elif status in ACTIONABLE:
@@ -201,17 +154,6 @@ def analyze(reqs: list[dict[str, Any]]) -> dict[str, Any]:
                 blocked.append({**entry, "waiting_on": unresolved})
             else:
                 frontier.append(entry)
-        elif status == "done":
-            reasons = regression_reasons(req)
-            if reasons:
-                regression_debt.append(
-                    {
-                        **entry,
-                        "last_verified": str(req.get("last_verified", "")).strip(),
-                        "criteria": req.get("_criteria") or {},
-                        "reasons": reasons,
-                    }
-                )
 
     return {
         "status": "errors" if errors else "ok",
@@ -220,9 +162,35 @@ def analyze(reqs: list[dict[str, Any]]) -> dict[str, Any]:
         "frontier": frontier,
         "blocked": blocked,
         "deferred": deferred,
-        "regression_debt": regression_debt,
         "errors": errors,
         "warnings": warnings,
+    }
+
+
+def summarize(result: dict[str, Any]) -> dict[str, Any]:
+    """默认输出：有界摘要——frontier / blocked / deferred 只给 id + title。"""
+
+    def brief(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for item in items:
+            row = {"id": item["id"], "title": item.get("title", "")}
+            if "waiting_on" in item:
+                row["waiting_on"] = item["waiting_on"]
+            out.append(row)
+        return out
+
+    return {
+        "status": result["status"],
+        "total": result["total"],
+        "summary": result["summary"],
+        "frontier": brief(result["frontier"]),
+        "blocked": brief(result["blocked"]),
+        "deferred": brief(result["deferred"]),
+        "errors": result["errors"],
+        "warnings": result["warnings"],
+        "root": result["root"],
+        "files": result["files"],
+        "hint": "完整数据（含 path / defer_reason）用 --full，或 --output <path> 写文件",
     }
 
 
@@ -231,27 +199,26 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "扫描 docs/<skill>/requirements/ 的 REQ frontmatter，输出 frontier / blocked / "
-            "deferred / regression_debt 与错误。"
+            "deferred 与错误。只管排期，不管回归。"
         ),
         epilog=(
-            "回归债 (regression_debt):\n"
-            "  status: done 但需复核的 REQ。原因: no last_verified（缺 frontmatter\n"
-            "  last_verified）/ updated after last_verified / unchecked criteria\n"
-            "  （验收标准有未勾选且未标「待验证」的条目）。\n"
-            "\n"
             "示例:\n"
             "  python track_requirements.py --root .\n"
             "  python track_requirements.py --root . --skill my-skill\n"
+            "  python track_requirements.py --root . --full\n"
+            "  python track_requirements.py --root . --output reqs.json\n"
             "\n"
             "退出码:\n"
             "  0  无 error\n"
-            "  1  存在 error（blocked_by 悬空 / 缺 id / 同技能重复 id）\n"
+            "  1  存在 error（blocked_by / superseded_by 悬空 / 缺 id / 同技能重复 id）\n"
             "  2  参数错误\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--root", default=".", help="Repo root to scan (default: .)")
     parser.add_argument("--skill", help="Limit to docs/<skill>/requirements/")
+    parser.add_argument("--full", action="store_true", help="Print the full JSON instead of the bounded summary")
+    parser.add_argument("--output", "-o", help="Write the full JSON to this path")
     args = parser.parse_args()
 
     root = Path(args.root).resolve()
@@ -260,7 +227,10 @@ def main() -> int:
     result["root"] = str(root)
     result["files"] = len(files)
 
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    if args.output:
+        write_text(args.output, json.dumps(result, indent=2, ensure_ascii=False))
+    payload = result if args.full else summarize(result)
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
     return 1 if result["errors"] else 0
 
 

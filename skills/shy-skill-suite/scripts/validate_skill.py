@@ -169,7 +169,8 @@ def main() -> int:
     args = parser.parse_args()
 
     result = validate(args.path)
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    stream = sys.stderr if result["status"] == "error" else sys.stdout
+    print(json.dumps(result, indent=2, ensure_ascii=False), file=stream)
     return 1 if result["status"] == "error" else 0
 
 

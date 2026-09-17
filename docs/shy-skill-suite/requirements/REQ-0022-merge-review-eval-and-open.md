@@ -5,7 +5,7 @@ skill: shy-skill-suite
 status: done
 iteration: 2
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 blocked_by: []
 related: [REQ-0019, REQ-0020, REQ-0023]
 ---
@@ -39,6 +39,7 @@ related: [REQ-0019, REQ-0020, REQ-0023]
 ## 脚本与资源
 
 - 改 `commands/shy-review.md`；删 `commands/shy-eval.md`；改 `scripts/render_report.py`（`--no-open` + 自动打开）。
+- 改 `SKILL.md`（资源清单：命令 5 → 4；2026-09-17 复审补记）。
 - 改 `references/running-evals.md`、`references/lifecycle.md`、`references/reviewing-skills.md`（Step 8 指针）。
 - 改 `docs/.../REQ-0019-html-report.md`、`REQ-0020-slash-commands.md`（取代标注）。
 

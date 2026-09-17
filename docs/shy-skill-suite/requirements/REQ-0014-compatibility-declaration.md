@@ -5,7 +5,7 @@ skill: shy-skill-suite
 status: done
 iteration: 2
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 blocked_by: []
 related: []
 ---
@@ -31,7 +31,7 @@ related: []
 
 1. `SKILL.md` frontmatter 增 `compatibility`，写明：
    - 需要 Python 3（纯标准库，无第三方依赖）；
-   - 7 个脚本的作用域（只在校验 / 评测 / 需求跟踪时用到）；
+   - 8 个脚本的作用域（只在校验 / 评测 / 需求跟踪 / 生成报告时用到；原写 7 个，`REQ-0019` 加了 `render_report.py`）；
    - 缺 Python 时的降级：不跑脚本，手工按 `writing-requirements.md` / `reviewing-skills.md` 的规范执行。
 2. `compatibility` 长度 ≤ 500 字符（`validate_skill.py` 与官方 `quick_validate.py` 都查这条）。
 3. `SKILL.md` 正文不改（运行前提属元信息，不进正文，避免占激活后的上下文）。
@@ -43,7 +43,7 @@ related: []
 ## 降级与边界
 
 - `compatibility` 不在 `agentskills.io` 必填集内，是可选字段；写了不影响其它客户端。
-- 不声明具体 Python 次版本号（脚本用了 `from __future__ import annotations`，3.8+ 即可）——写"Python 3"并注明"实测 3.12"，避免脆弱的精确版本断言。
+- 不声明具体 Python 次版本号——声明**最低**版本（`Python ≥ 3.7`，仅标准库）并注明实测环境（`3.12`），避免脆弱的精确版本断言。**（`REQ-0027` 修订：原先只写"Python 3"，改为声明最低版本；原"实测 3.14"与仓库痕迹不符，已订正为 3.12。）**
 
 ## 验收标准
 
@@ -51,7 +51,7 @@ related: []
 - [x] `compatibility` ≤ 500 字符。
 - [x] `compatibility` 写明"需要 Python 3（仅标准库）"与"缺 Python 时的手工降级路径"（"按 `references/` 的规范手工执行"）。
 - [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
-- [x] `SKILL.md` 正文行数不变（实测 38 行；运行前提只进 frontmatter）。
+- [x] `SKILL.md` 正文行数不变（当时实测 38 行；运行前提只进 frontmatter。当前 45 行——后续 REQ 增删过正文，与本次改动无关）。
 
 ## 范围外
 

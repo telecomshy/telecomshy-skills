@@ -21,7 +21,7 @@
 
 - **步骤**（agent 按序做的事）留主文件；**只在部分分支才需要的参考**下放到 `references/`，并给**何时加载**的指针（"API 返回非 200 时读 `references/api-errors.md`"），不要笼统的"详见 references/"。
 - 主文件目标 **< 500 行 / < 5k token**。
-- 文件引用**相对技能根、保持一层深**。
+- 文件引用**相对技能根、保持一层深**。`references/` 内部互引用同级文件时可省略前缀（写 `lifecycle.md` 而非 `references/lifecycle.md`），以保持 Markdown 链接可解析。
 
 ## 4. co-location
 

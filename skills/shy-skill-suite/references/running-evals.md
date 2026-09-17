@@ -69,14 +69,15 @@ python "<SKILL_DIR>/scripts/aggregate_benchmark.py" <workspace>/iteration-1 \
 
 ## HTML 报告（呈现门禁）
 
-复审 / 评测收工后，把结果渲染成**单文件自包含** HTML 交给人看（不落盘、不自动优化，见 `reviewing-skills.md` Step 8）：
+复审 / 评测收工后，把结果渲染成**单文件自包含** HTML 交给人看（不回写 REQ、不自动优化，见 `reviewing-skills.md` Step 8）：
 
 ```bash
 python "<SKILL_DIR>/scripts/render_report.py" <workspace>/iteration-1 --skill-name <name>
 ```
 
 - 读 `benchmark.json` + `eval-*/` + `findings.json`（schema 见 `reviewing-skills.md`），输出 `<iteration>/report.html`（`--out` 可改）。
-- **生成后默认自动用浏览器打开**；用 `--no-open` 关闭（无显示环境不报错，仍写出文件）。
+- **生成后默认自动用浏览器打开**；关闭方式（任一即可）：`--no-open`，或环境变量 `SHY_NO_OPEN` / `CI` / `NO_BROWSER` 为真值。无显示环境不报错，仍写出文件。
+- **报告是复审的终局产物**：只在 `reviewing-skills.md` Step 8 生成一次。复审中途、以及**子 agent 测试渲染**时，一律关闭自动打开（否则会中途弹浏览器打断用户）。
 - 单文件、无服务器、无外部资源：opencode / TeleAgent 直接打开即可。
 - 只有 findings（无 benchmark）或反之都能出；两者都无 → 退出码 1。
 

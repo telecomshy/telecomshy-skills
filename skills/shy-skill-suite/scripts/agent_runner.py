@@ -198,6 +198,9 @@ def main() -> int:
         cwd=args.cwd,
         timeout=args.timeout,
     )
+    if result.get("error"):
+        print(json.dumps(result, indent=2, ensure_ascii=False), file=sys.stderr)
+        return 1
     print(json.dumps(result, indent=2, ensure_ascii=False))
     return 0 if result.get("triggered") is not False else 1
 

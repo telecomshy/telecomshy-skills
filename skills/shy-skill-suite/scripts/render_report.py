@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import os
 import re
 import sys
 import webbrowser
@@ -240,6 +241,22 @@ def build_html(data: dict[str, Any], template: str) -> str:
     return out
 
 
+_OPEN_DISABLE_ENV = ("SHY_NO_OPEN", "CI", "NO_BROWSER")
+
+
+def open_disabled_reason() -> str | None:
+    """环境变量是否禁用自动打开；返回命中的变量名，否则 None。
+
+    报告是复审的**终局**产物；子 agent / 自动化测试跑本脚本时必须静默，
+    否则会中途弹浏览器打断用户。设任一变量为真值即可关闭。
+    """
+    for name in _OPEN_DISABLE_ENV:
+        value = os.environ.get(name, "").strip().lower()
+        if value and value not in ("0", "false", "no"):
+            return name
+    return None
+
+
 def open_report(path: Path) -> bool:
     """用默认浏览器打开报告；无显示环境不抛错，返回是否成功。"""
     try:
@@ -319,7 +336,12 @@ def main() -> int:
             "  python render_report.py my-skill-workspace/iteration-1 --skill-name my-skill -o report.html\n"
             "  python render_report.py my-skill-workspace/iteration-1 --no-open\n"
             "\n"
-            "默认生成后自动用浏览器打开报告；用 --no-open 关闭（无显示环境不报错）。\n"
+            "默认生成后自动用浏览器打开报告；关闭方式（任一即可）：--no-open，\n"
+            "或设环境变量 SHY_NO_OPEN / CI / NO_BROWSER 为真值。\n"
+            "无显示环境不报错，仍写出 HTML。\n"
+            "\n"
+            "报告是复审的终局产物：**只在复审 Step 8 生成一次**；复审中途（含子 agent\n"
+            "测试渲染）必须关闭自动打开，否则会中途弹浏览器打断用户。\n"
             "\n"
             "退出码:\n"
             "  0  成功（已写出 HTML）\n"
@@ -336,8 +358,13 @@ def main() -> int:
     args = parser.parse_args()
 
     result = render(args.path, args.skill_name, args.findings, args.out)
-    if result.get("status") == "success" and not args.no_open:
-        result["opened"] = open_report(Path(result["report"]))
+    if result.get("status") == "success":
+        skip = "--no-open" if args.no_open else open_disabled_reason()
+        if skip:
+            result["opened"] = False
+            result["open_skipped"] = skip
+        else:
+            result["opened"] = open_report(Path(result["report"]))
     stream = sys.stderr if result.get("status") == "error" else sys.stdout
     print(json.dumps(result, indent=2, ensure_ascii=False), file=stream)
     return 1 if result.get("status") == "error" else 0
