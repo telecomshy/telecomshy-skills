@@ -556,6 +556,14 @@ def generate_eval_set_ok(root: Path, skill: str) -> tuple[bool, str]:
     return (rc == 0 and produced), f"rc={rc} produced={produced}"
 
 
+@check("converged-mechanical")
+def converged_mechanical(root: Path, skill: str) -> tuple[bool, str]:
+    """converged 由 run_checks 机械算出（非 agent 手写，去自证）。"""
+    src = read_text(skill_dir(root, skill) / "scripts" / "run_checks.py")
+    ok = 'result["converged"]' in src
+    return ok, f"run_checks 含机械 converged 计算={ok}"
+
+
 # --------------------------------------------------------------------------- #
 # 发现与执行
 # --------------------------------------------------------------------------- #
@@ -721,6 +729,8 @@ def main() -> int:
             if result["untagged"] > target and result["status"] == "ok":
                 result["status"] = "debt"
                 result["debt_target"] = target
+    # converged = 机械判据（非 agent 自证）：无失败 / 无未注册 check / 债达标 ⇔ status == "ok"
+    result["converged"] = (result["status"] == "ok")
 
     if args.output:
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
@@ -736,6 +746,7 @@ def main() -> int:
     if cc is not None and fc is not None:
         print(f"问题: open={cc[0] + fc[0]}（台账 {cc[0]} + fix 工单 {fc[0]}） "
               f"fixed={cc[1] + fc[1]}（台账 {cc[1]} + fix 工单 {fc[1]}）")
+    print(f"converged: {str(result['converged']).lower()}")
     e = result["executable"]
     cleanup_note = ""
     if result.get("cleanup_open") is not None:

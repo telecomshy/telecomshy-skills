@@ -164,7 +164,7 @@
 - **轴**：`行为`（触发 / 有效性）/ `需求`（Spec）/ `标准`（结构 / 脚本 / 安全）——**分轴报告、不合并**：一条轴过、另一条败是常事，合并会互相掩盖。
 - **优先级**：`P0` 阻断（触发错误 / 行为错误 / 偏离需求 / 安全）→ `P1` 行为提升 → `P2` 精简与可读性。
 - **P2 不阻断，自洽项进台账**：`P2`（精简 / 措辞 / 数字漂移 / 重复）**不阻断 `done`、不新开 REQ**；其中"文档 / 措辞自洽"类（Step 3 第 3 条）**不进每轮 finding**——**写进 `docs/<skill>/cleanup.md` 台账**（id / dedup_key / 关闭路径），在收敛点或顺手时结清。只有 `P0` / `P1` 才要求"改后可合入"。
-- **`converged`（停止规则）**：本轮 **0 个 P0/P1** 且**迁移债达标**（`state.json` 的 `debt_targets`）→ 把 `converged: true` 与 `converged_since` 写进 `docs/<skill>/state.json`，**不排下一轮**；只有**真实失败 / 用户显式要求**才重开。**带活跃迁移债时不得判 `converged`**（设计说明 §4.7）。
+- **`converged`（机械判据，非 agent 自证）**：`converged = (未分类迁移债 == `debt_targets`) 且 (Gate 无失败) 且 (无未注册 check)`——由 `run_checks.py` **算出并打印**，agent **不得手写**（同一 agent 既判 P0/P1 又写 verdict = 自证）。达标的唯一动作是把 `converged_since` 记进 `state.json`，**不排下一轮**；只有**真实失败 / 用户显式要求**才重开。
 - **说人话 + 说 why（报告是给人看的）**：每条 finding 与建议，除了结构行，必须用**白话**再讲一遍——① **为什么会出问题**（不修会怎样，用具体场景，不用术语堆砌）；② **为什么这么改**（这条建议依据什么来源 / 证据）。读者是用户，不是替你复现推理链的人。**不许只给术语、file:line 或"建议优化"**——那不叫解释。HTML 报告是主要呈现面，`problem` / `impact` / `suggestion` 三字段都要写成能直接念给用户听的话。
 
 可选：把 `benchmark.json` / `grading.json` 交给 `subagents.md` 的 **analyzer** 做失败聚类、flaky 与回归分析。可选（主观型技能、比两版时）：用 `subagents.md` 的 **comparator** 做盲测 A/B，**与断言结果并列报告**。

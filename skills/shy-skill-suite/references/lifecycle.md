@@ -105,7 +105,7 @@
 
 - `run_checks.py` 全部 `check:` 项通过；`（行为）` / `（语义）` / `（未定）` 项判定完毕；`（episode）` 不读；
 - 无 P0/P1（**P2 不阻断**；"文档 / 措辞自洽"类进 `cleanup.md` 台账，见 `reviewing-skills.md` Step 8）；
-- **迁移债达标**（`state.json` 的 `debt_targets`）且**无已知不可靠 check 仍在跑**——否则**不判 `converged`**（设计说明 §4.7）；
+- **迁移债达标**（`state.json` 的 `debt_targets`）且**无已知不可靠 check 仍在跑**；`converged` 由 `run_checks.py` **机械算出**（债达标 + 无失败 + 无未注册 check），**不由 agent 自证**（设计说明 §4.7）；
 - 对照 delta 稳定，或再做也不见有意义的改进（过约束时**做减法**，见 `reviewing-skills.md` §3）。
 
 ### 6 · 复盘（retro）
