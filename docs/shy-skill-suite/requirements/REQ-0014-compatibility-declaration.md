@@ -3,6 +3,7 @@ id: REQ-0014
 title: SKILL.md 声明运行前提（compatibility）
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 2
 created: 2026-09-16
 updated: 2026-09-17
@@ -47,11 +48,11 @@ related: []
 
 ## 验收标准
 
-- [x] `SKILL.md` frontmatter 含非空 `compatibility`（实测 95 字符）。
-- [x] `compatibility` ≤ 500 字符。
-- [x] `compatibility` 写明"需要 Python 3（仅标准库）"与"缺 Python 时的手工降级路径"（"按 `references/` 的规范手工执行"）。
-- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
-- [x] `SKILL.md` 正文行数不变（当时实测 38 行；运行前提只进 frontmatter。当前 45 行——后续 REQ 增删过正文，与本次改动无关）。
+- [x] `SKILL.md` frontmatter 含非空 `compatibility`（实测 95 字符）。 — （episode）
+- [x] `compatibility` ≤ 500 字符。 — （episode）
+- [x] `compatibility` 写明"需要 Python 3（仅标准库）"与"缺 Python 时的手工降级路径"（"按 `references/` 的规范手工执行"）。 — （episode）
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。 — `check:skill-validate-ok`
+- [x] `SKILL.md` 正文行数不变（当时实测 38 行；运行前提只进 frontmatter。当前 45 行——后续 REQ 增删过正文，与本次改动无关）。 — （episode）
 
 ## 范围外
 

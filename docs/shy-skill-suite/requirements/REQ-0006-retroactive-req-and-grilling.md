@@ -3,6 +3,7 @@ id: REQ-0006
 title: 无 REQ 时的回溯补写与 grill 抽取
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 1
 created: 2026-09-16
 updated: 2026-09-16
@@ -51,13 +52,13 @@ related: []
 
 ## 验收标准
 
-- [x] `references/grilling.md` 含：机制 / 6 问 / 三动作 / 完成判据 / 可跳过 / 回溯补写。
-- [x] `lifecycle.md` 阶段 0 引用 `grilling.md`，不再重复其正文。
-- [x] `reviewing-skills.md` Step 0 给出"有 / 无 REQ"决策，且与 Step 3 不矛盾。
-- [x] 明写"禁止读技能反推 REQ"。
-- [x] `writing-requirements.md` 含"回溯补写"（从意图、`retroactive: true`）。
-- [x] `SKILL.md` 资源列出 `grilling.md`，路由含逼问入口。
-- [x] 自包含：`grilling.md` 不引用仓库 `docs/`。
+- [x] `references/grilling.md` 含：机制 / 6 问 / 三动作 / 完成判据 / 可跳过 / 回溯补写。 — （episode）
+- [x] `lifecycle.md` 阶段 0 引用 `grilling.md`，不再重复其正文。 — （episode）
+- [x] `reviewing-skills.md` Step 0 给出"有 / 无 REQ"决策，且与 Step 3 不矛盾。 — （episode）
+- [x] 明写"禁止读技能反推 REQ"。 — （episode）
+- [x] `writing-requirements.md` 含"回溯补写"（从意图、`retroactive: true`）。 — （episode）
+- [x] `SKILL.md` 资源列出 `grilling.md`，路由含逼问入口。 — （episode）
+- [x] 自包含：`grilling.md` 不引用仓库 `docs/`。 — （episode）
 
 ## 范围外
 

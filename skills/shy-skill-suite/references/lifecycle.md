@@ -57,13 +57,15 @@
 
 新建技能时用 `python "<SKILL_DIR>/scripts/scaffold_skill.py" <name> --description "<触发描述>"` 起骨架——**轻量，只生成 `SKILL.md`**（不建子目录、不生成 REQ），内容靠后续迭代补。
 
-实现收尾跑一次**静默秒级门**：`validate_skill.py` + `run_checks.py` + `selftest.py`。**静默 = 绿了就报"完成"、红了才说**；不产 findings、不出报告、**不自动进评审**。
+实现收尾跑一次 **Gate（静默秒级门）**：`validate_skill.py` + `run_checks.py` + `selftest.py`（末尾给出 `（episode）` / 迁移债 / 台账 open 计数）。**静默 = 绿了就报"完成"、红了才说**；不产 findings、不出报告、**不自动进评审**。
 
 **完成判据**：`validate_skill.py <skill_dir>` → `status: ok`；该增量每条验收标准都能指出证据（命令输出 / 文件 / 计数），无一条标「待验证」；**静默秒级门通过**。**实现完成 = 交付合格，不要求"审过一轮"。**
 
 ### 3 · 评审（评审路，用户主动触发）
 
 **只在用户明确要求时进入**（"帮我评审 / 检查一下 / 跑个复审"、`/shy-review`）。**实现路不会自动进这里。**
+
+> 本阶段即 **Discovery**——**低频、对抗式**，触发点**只有两个**：**真实失败**（任务做砸 / 真 bug）/ **用户显式要求**。**不是"每次改动都跑"**——那是 **Gate**（阶段 2 的静默门）的活。改动一律先过 Gate；Discovery 是额外的、偶尔的"找新问题"。
 
 按 `reviewing-skills.md` 执行**完整三轴**（行为轴：触发 + 有效性；需求轴：Spec——**先跑 `run_checks.py`，只有 `（语义）` 项才逐条读**；标准轴：结构 / 脚本 / 安全），用 `running-evals.md` 的脚本取证据。
 
@@ -101,8 +103,9 @@
 
 **收工判据**（评审路实施后 / 判断技能是否收敛时用）：
 
-- `run_checks.py` 全部 `check:` 项通过，`（行为）` / `（语义）` 项判定完毕（**本轮新写 / 改写的验收标准无未标**；存量 `done` REQ 的未标 = 迁移债，只报数、不阻断）；
-- 无 P0/P1（**P2 不阻断**；"文档 / 措辞自洽"类攒批清理，见 `reviewing-skills.md` Step 8）；
+- `run_checks.py` 全部 `check:` 项通过；`（行为）` / `（语义）` / `（未定）` 项判定完毕；`（episode）` 不读；
+- 无 P0/P1（**P2 不阻断**；"文档 / 措辞自洽"类进 `cleanup.md` 台账，见 `reviewing-skills.md` Step 8）；
+- **迁移债达标**（`state.json` 的 `debt_targets`）且**无已知不可靠 check 仍在跑**——否则**不判 `converged`**（设计说明 §4.7）；
 - 对照 delta 稳定，或再做也不见有意义的改进（过约束时**做减法**，见 `reviewing-skills.md` §3）。
 
 ### 6 · 复盘（retro）

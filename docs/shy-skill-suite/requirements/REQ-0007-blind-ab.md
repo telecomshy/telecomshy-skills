@@ -3,6 +3,7 @@ id: REQ-0007
 title: 盲测 A/B（comparator 落地）
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 1
 created: 2026-09-16
 updated: 2026-09-16
@@ -41,11 +42,11 @@ related: [REQ-0005]
 
 ## 验收标准
 
-- [x] `subagents.md` 的 `comparator` 含**何时 / 怎么做（匿名 + 随机 + 两顺序 + rubric）/ 注意**。
-- [x] 明确"与断言结果**并列报告、不合并**"。
-- [x] 明确"结果是**信号**、非证据"与 LLM 裁判偏差提醒。
-- [x] `reviewing-skills.md` Step 8 有指向 `comparator` 的指针。
-- [x] 未新增文件或脚本。
+- [x] `subagents.md` 的 `comparator` 含**何时 / 怎么做（匿名 + 随机 + 两顺序 + rubric）/ 注意**。 — （episode）
+- [x] 明确"与断言结果**并列报告、不合并**"。 — （episode）
+- [x] 明确"结果是**信号**、非证据"与 LLM 裁判偏差提醒。 — （episode）
+- [x] `reviewing-skills.md` Step 8 有指向 `comparator` 的指针。 — （episode）
+- [x] 未新增文件或脚本。 — （episode）
 
 ## 范围外
 

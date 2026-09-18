@@ -3,6 +3,7 @@ id: REQ-0009
 title: 前向写作指导（writing-skills.md）与 lever 单一事实源
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 1
 created: 2026-09-16
 updated: 2026-09-16
@@ -48,13 +49,13 @@ related: []
 
 ## 验收标准
 
-- [x] `references/writing-skills.md` 含上述 10 组 lever。
-- [x] `reviewing-skills.md` Step 4 / Step 5 改为指向 `writing-skills.md`，不再内联定义 lever。
-- [x] `reviewing-skills.md` Step 2 的 no-op / cache 定义改为指向 `writing-skills.md` §7。
-- [x] **单一事实源抽样**：定义句「模型默认就会做的」只出现在 `writing-skills.md`（`reviewing-skills.md` 中出现 0 次）。
-- [x] `lifecycle.md` 阶段 2 引用 `writing-skills.md`。
-- [x] `SKILL.md` 资源列出 `writing-skills.md`，路由含写作入口。
-- [x] 自包含：`writing-skills.md` 不引用仓库 `docs/`。
+- [x] `references/writing-skills.md` 含上述 10 组 lever。 — （episode）
+- [x] `reviewing-skills.md` Step 4 / Step 5 改为指向 `writing-skills.md`，不再内联定义 lever。 — （episode）
+- [x] `reviewing-skills.md` Step 2 的 no-op / cache 定义改为指向 `writing-skills.md` §7。 — （episode）
+- [x] **单一事实源抽样**：定义句「模型默认就会做的」只出现在 `writing-skills.md`（`reviewing-skills.md` 中出现 0 次）。 — （episode）
+- [x] `lifecycle.md` 阶段 2 引用 `writing-skills.md`。 — （episode）
+- [x] `SKILL.md` 资源列出 `writing-skills.md`，路由含写作入口。 — （episode）
+- [x] 自包含：`writing-skills.md` 不引用仓库 `docs/`。 — （episode）
 
 ## 范围外
 

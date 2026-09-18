@@ -3,6 +3,7 @@ id: REQ-0035
 title: description 优化停止规则（5 轮上限 + 卡住换结构性写法）
 skill: shy-skill-suite
 status: done
+kind: docs
 iteration: 1
 created: 2026-09-17
 updated: 2026-09-17
@@ -44,7 +45,7 @@ related: [REQ-0010, REQ-0021, REQ-0034]
 
 ## 验收标准
 
-- [ ] `reviewing-skills.md` Step 1 含「迭代停止规则」，写明 5 轮与结构性写法 — `check:req0035-stop-rule`
+- [ ] `reviewing-skills.md` Step 1 含「迭代停止规则」，写明 5 轮与结构性写法 — （episode）
 - [ ] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
 
 ## 范围外

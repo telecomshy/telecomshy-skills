@@ -3,6 +3,7 @@ id: REQ-0011
 title: 调用方式 lever 可执行 + 校验器扩展字段集
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 1
 created: 2026-09-16
 updated: 2026-09-16
@@ -52,14 +53,14 @@ related: [REQ-0002, REQ-0009]
 
 ## 验收标准
 
-- [x] `validate_skill.py` 对 `skills/shy-skill-suite` → `status: ok`、退出码 0（回归）。
-- [x] `validate_skill.py` 对含 `disable-model-invocation: true` 的技能（`retro`）→ `status: ok`、退出码 0。
-- [x] `validate_skill.py` 对含 `argument-hint` 的技能（`handoff`）→ `status: ok`、退出码 0。
-- [x] `validate_skill.py` 对含**未列入**字段（顶层 `name_cn`）的技能 → 仍报"多余字段"、退出码 1（未放宽过头）。
-- [x] 全量回归：对 `~/.agents/skills` 下 42 个已部署技能跑一遍 → **41 ok / 1 error**；改动前（`git stash` 回退本文件后实测）为 **20 ok / 22 error**。唯一残留 error 是 `setup-ts-deep-modules` 的悬空引用 `./src/packages/README.md`，与本改动无关。
-- [x] `validate_skill.py` 源码中 `disable-model-invocation` 与 `argument-hint` 出现在 `EXTENSION_FIELDS`；`BASE_FIELDS` 与 `agentskills.io` 基础集一致（对照 `quick_validate.py:42` 的 `ALLOWED_PROPERTIES`）。
-- [x] `references/writing-skills.md` §2 含 `disable-model-invocation` 与 `argument-hint` 两个字段名。
-- [x] 技能自包含：改动只引用技能自身与仓库 `docs/` 下的 REQ 文档，无新增外部引用。
+- [x] `validate_skill.py` 对 `skills/shy-skill-suite` → `status: ok`、退出码 0（回归）。 — `check:skill-validate-ok`
+- [x] `validate_skill.py` 对含 `disable-model-invocation: true` 的技能（`retro`）→ `status: ok`、退出码 0。 — `check:skill-validate-ok`
+- [x] `validate_skill.py` 对含 `argument-hint` 的技能（`handoff`）→ `status: ok`、退出码 0。 — `check:skill-validate-ok`
+- [x] `validate_skill.py` 对含**未列入**字段（顶层 `name_cn`）的技能 → 仍报"多余字段"、退出码 1（未放宽过头）。 — `check:validate-rejects-bad`
+- [x] 全量回归：对 `~/.agents/skills` 下 42 个已部署技能跑一遍 → **41 ok / 1 error**；改动前（`git stash` 回退本文件后实测）为 **20 ok / 22 error**。唯一残留 error 是 `setup-ts-deep-modules` 的悬空引用 `./src/packages/README.md`，与本改动无关。 — （episode）
+- [x] `validate_skill.py` 源码中 `disable-model-invocation` 与 `argument-hint` 出现在 `EXTENSION_FIELDS`；`BASE_FIELDS` 与 `agentskills.io` 基础集一致（对照 `quick_validate.py:42` 的 `ALLOWED_PROPERTIES`）。 — （语义）
+- [x] `references/writing-skills.md` §2 含 `disable-model-invocation` 与 `argument-hint` 两个字段名。 — （episode）
+- [x] 技能自包含：改动只引用技能自身与仓库 `docs/` 下的 REQ 文档，无新增外部引用。 — （episode）
 
 ## 范围外
 

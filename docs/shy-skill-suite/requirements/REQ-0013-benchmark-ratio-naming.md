@@ -3,6 +3,7 @@ id: REQ-0013
 title: benchmark 比率字段命名修正（token/time savings 语义反向）
 skill: shy-skill-suite
 status: done
+kind: fix
 iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
@@ -46,11 +47,11 @@ related: []
 
 ## 验收标准
 
-- [x] `benchmark.json` 的 summary 中不再有语义反向的 `*_savings_ratio` 字段（或该字段方向已与名字一致）。
-- [x] `benchmark.md` 的 token / time 行表头不再是裸 `Ratio`，读者无需反推方向。
-- [x] 构造一组 with 比 baseline 多花 token 的假数据 → 报告里的数值 > 1 且表头语义与之一致。
-- [x] `improvement_ratio`（通过率）行为不变。
-- [x] 对同一份假数据，脚本输出仍为合法 JSON、退出码 0。
+- [x] `benchmark.json` 的 summary 中不再有语义反向的 `*_savings_ratio` 字段（或该字段方向已与名字一致）。 — （episode）
+- [x] `benchmark.md` 的 token / time 行表头不再是裸 `Ratio`，读者无需反推方向。 — （episode）
+- [x] 构造一组 with 比 baseline 多花 token 的假数据 → 报告里的数值 > 1 且表头语义与之一致。 — （episode）
+- [x] `improvement_ratio`（通过率）行为不变。 — （episode）
+- [x] 对同一份假数据，脚本输出仍为合法 JSON、退出码 0。 — `check:benchmark-json`
 
 ## 范围外
 

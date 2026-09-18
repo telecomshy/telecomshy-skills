@@ -3,6 +3,7 @@ id: REQ-0027
 title: 脚本与资源硬化（第二批：退出码 / 流分离 / 占位符 / 破坏性护栏 / 输出规模 / 部署卫生）
 skill: shy-skill-suite
 status: done
+kind: fix
 iteration: 3
 created: 2026-09-17
 updated: 2026-09-17
@@ -55,17 +56,17 @@ related: [REQ-0012, REQ-0013, REQ-0019, REQ-0026]
 
 ## 验收标准
 
-- [x] `python scripts/agent_runner.py --runner cmd --cmd "no-such-exe {prompt}" --prompt x` → 退出码 **1**、诊断在 **stderr**、stdout 为空。
-- [x] `python scripts/scaffold_skill.py Bad_Name 1>o 2>e` → `e` 非空、`o` 为空或仅结果 JSON；`aggregate_benchmark.py` 空目录、`optimize_description.py` 空评测集同样诊断走 stderr。
-- [x] `optimize_description.py` 对 train 全过 / test 有失败的评测集 → 输出含 test 侧失败计数，且 `test.correct` 与失败数自洽（不再出现 `test` 未满分而 `failure_count: 0`）。
-- [x] `generate_eval_set.py skills/shy-skill-suite` → 不再出现 `req-nnnn`；无有效触发词时退出码非 0 或 stderr 有 warning（实测输出写入迭代记录）。
-- [x] `scaffold_skill.py <已存在技能> --force` → 覆盖前生成 `.bak`，`.bak` 内容为被覆盖前的原文。
-- [x] 连跑两次 `scaffold_skill.py <已存在技能>`（不带 `--force`）→ 第二次退出码 0、`status: skipped`。
-- [x] `track_requirements.py --help` 含 `--output` 与 `--full`；默认输出为摘要（有界），`--full` 输出与当前等价的完整 JSON。
-- [x] `SKILL.md` 的 `compatibility` 含最低 Python 版本，且版本号与实测环境一致（实测命令写入迭代记录）。
-- [x] `scripts/__pycache__/` 在交付时不存在；`SKILL.md` 注明复制部署时排除它。（注：跑脚本会重建，属正常，故只要求交付时清理 + 文档注明。）
-- [x] 全部 8 个脚本 `--help` → 退出码 0，且退出码节与实际行为一致。
-- [x] `python scripts/validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
+- [x] `python scripts/agent_runner.py --runner cmd --cmd "no-such-exe {prompt}" --prompt x` → 退出码 **1**、诊断在 **stderr**、stdout 为空。 — `check:agent-runner-error`
+- [x] `python scripts/scaffold_skill.py Bad_Name 1>o 2>e` → `e` 非空、`o` 为空或仅结果 JSON；`aggregate_benchmark.py` 空目录、`optimize_description.py` 空评测集同样诊断走 stderr。 — `check:scaffold-ok`
+- [x] `optimize_description.py` 对 train 全过 / test 有失败的评测集 → 输出含 test 侧失败计数，且 `test.correct` 与失败数自洽（不再出现 `test` 未满分而 `failure_count: 0`）。 — （episode）
+- [x] `generate_eval_set.py skills/shy-skill-suite` → 不再出现 `req-nnnn`；无有效触发词时退出码非 0 或 stderr 有 warning（实测输出写入迭代记录）。 — `check:generate-eval-set-ok`
+- [x] `scaffold_skill.py <已存在技能> --force` → 覆盖前生成 `.bak`，`.bak` 内容为被覆盖前的原文。 — （语义）
+- [x] 连跑两次 `scaffold_skill.py <已存在技能>`（不带 `--force`）→ 第二次退出码 0、`status: skipped`。 — `check:scaffold-ok`
+- [x] `track_requirements.py --help` 含 `--output` 与 `--full`；默认输出为摘要（有界），`--full` 输出与当前等价的完整 JSON。 — `check:scripts-help-ok`
+- [x] `SKILL.md` 的 `compatibility` 含最低 Python 版本，且版本号与实测环境一致（实测命令写入迭代记录）。 — （episode）
+- [x] `scripts/__pycache__/` 在交付时不存在；`SKILL.md` 注明复制部署时排除它。（注：跑脚本会重建，属正常，故只要求交付时清理 + 文档注明。） — （episode）
+- [x] 全部 8 个脚本 `--help` → 退出码 0，且退出码节与实际行为一致。 — `check:scripts-help-ok`
+- [x] `python scripts/validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。 — `check:skill-validate-ok`
 
 ## 范围外
 

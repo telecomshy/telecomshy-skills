@@ -3,6 +3,7 @@ id: REQ-0024
 title: 为 shy-skill-suite 取真实行为证据（触发率 + with/baseline delta）
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 2
 created: 2026-09-16
 updated: 2026-09-17
@@ -49,11 +50,11 @@ related: [REQ-0010, REQ-0019, REQ-0021]
 
 ## 验收标准
 
-- [x] 触发正例有真实轨迹（命令 + 输出 + 命中技能的证据）。（2026-09-17：`optimize_description.py --runner cmd` 真跑，5 正例全过；`raw/with_skill-*.json` 含 `"tool":"skill","input":{"name":"shy-skill-suite"}`）
-- [x] near-miss 有真实轨迹（命令 + 输出 + 未落盘/未进入技能流程）。（2026-09-17：5 条 near-miss，4 条正确未触发；#101 单跑触发 → 开 `REQ-0039`，**后经 3×3 复现判定为噪声**，见该 REQ）
-- [x] 至少 1 条 `benchmark.json` 含 with_skill vs baseline 的 `pass_rate` / `token_ratio` / `time_ratio`。（2026-09-17：`iteration-1/benchmark.json`，1.0 vs 0.33；**token 未采集，`token_ratio` 无效**）
-- [x] `<skill>-workspace/report.html` 的评测区非"无数据"。（2026-09-17：`iteration-1/report.html` 显示 100% / 33% / 3.0x）
-- [x] 结论（触发率、delta、是否有效）写入本 REQ 迭代记录；跑不了的项明确标「待验证」。（见第 3 行与「备注」的限制清单）
+- [x] 触发正例有真实轨迹（命令 + 输出 + 命中技能的证据）。（2026-09-17：`optimize_description.py --runner cmd` 真跑，5 正例全过；`raw/with_skill-*.json` 含 `"tool":"skill","input":{"name":"shy-skill-suite"}`） — （episode）
+- [x] near-miss 有真实轨迹（命令 + 输出 + 未落盘/未进入技能流程）。（2026-09-17：5 条 near-miss，4 条正确未触发；#101 单跑触发 → 开 `REQ-0039`，**后经 3×3 复现判定为噪声**，见该 REQ） — （episode）
+- [x] 至少 1 条 `benchmark.json` 含 with_skill vs baseline 的 `pass_rate` / `token_ratio` / `time_ratio`。（2026-09-17：`iteration-1/benchmark.json`，1.0 vs 0.33；**token 未采集，`token_ratio` 无效**） — （episode）
+- [x] `<skill>-workspace/report.html` 的评测区非"无数据"。（2026-09-17：`iteration-1/report.html` 显示 100% / 33% / 3.0x） — （episode）
+- [x] 结论（触发率、delta、是否有效）写入本 REQ 迭代记录；跑不了的项明确标「待验证」。（见第 3 行与「备注」的限制清单） — （episode）
 
 ## 范围外
 

@@ -35,6 +35,8 @@ id: REQ-0001
 title: <中文标题>
 skill: <所属技能目录名，如 knowledge-distill>
 status: draft | ready | in-progress | done | deferred | out-of-scope
+kind: feature | fix | refactor | docs | hygiene   # 工单性质（展示/筛选用，不影响复审范围）
+source: user | review | retro                      # 谁提的
 iteration: 1               # 当前轮次；每轮回写后 +1
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
@@ -76,11 +78,12 @@ superseded_by: REQ-NNNN    # 可选，整份被哪份 REQ 取代（见下）
 
 - **行为 + 自包含**：写"系统该做什么"，并**写明接口与涉及的文件**——命令名 / 参数 / 返回 / 配置字段 / 章节名，以及 `SKILL.md`、`scripts/`、`references/` 等（技能文件集小且稳定，写清才自包含、可执行）。**不写行号与易变的实现细节。**
 - **可验收**：每条标准能独立判定通过 / 失败，且以**具体证据**（命令输出 / 返回字段 / 计数）为准；避开过虚（"输出正确"）与过脆（精确到某句话）的措辞。
-- **验收标准按"怎么判定"分三类，各有去处**：
+- **验收标准按"怎么判定"分四类，各有去处**：
   - **静态可判**（命令 / grep / 计数 / 文件存在）→ 写成 `` `check: <name>` ``，实现在 `scripts/run_checks.py`；复审时 `python scripts/run_checks.py --root .` 一次跑完、秒级出结果。**这是"复审不循环"的前提**：产出的是"通过 / 失败"，不是又一轮措辞意见。
   - **行为类**（要真跑 agent 才知道，如触发率、with/baseline delta）→ 标 **`（行为）`**，进 Step 2 的对照 case set。
-  - **语义类**（只能人 / agent 判断，如主观质量）→ 标 **`（语义）`** 并写明判定方式。复审时**只逐条读这些**。
-- **自洽项不进验收标准**：纯粹"文档 / 措辞自洽"（数字漂移、重复、两处说法不一致）**不是**验收标准——它没有终点，每轮重扫必循环。攒进清理清单，见 `reviewing-skills.md` Step 8。
+  - **语义类**（只能人 / agent 判断，如主观质量）→ 标 **`（语义）`** 并写明判定方式。
+  - **一次性事实（episode）**（旧值、实测数字、某份文档被改、某 REQ 被取代）→ 标 **`（episode）`**——**冻结、不进 Gate、不复扫**（设计说明 §4.2）。**判不准的不设默认**：挂 `（未定）`，计入迁移债，由复审逐步消。
+- **自洽项不进验收标准**：纯粹"文档 / 措辞自洽"（数字漂移、重复、两处说法不一致）**不是**验收标准——它没有终点，每轮重扫必循环。写进 `docs/<skill>/cleanup.md` 台账，见 `reviewing-skills.md` Step 8。
 - **明确范围外**：显式列出不做的事。
 - **精简**：只写 AI 无法自行推断的信息；能一句说清就不写一段。
 - **单一事实源**：见 [`writing-skills.md`](writing-skills.md) §7。
@@ -106,6 +109,8 @@ id: REQ-NNNN
 title: <中文标题>
 skill: <skill-name>
 status: draft
+kind: feature
+source: user
 iteration: 1
 created: YYYY-MM-DD
 updated: YYYY-MM-DD

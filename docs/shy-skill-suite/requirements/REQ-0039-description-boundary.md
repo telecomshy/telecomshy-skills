@@ -3,6 +3,7 @@ id: REQ-0039
 title: 收紧 description 边界（修 near-miss 误触发）
 skill: shy-skill-suite
 status: out-of-scope
+kind: fix
 iteration: 2
 created: 2026-09-17
 updated: 2026-09-17
@@ -63,7 +64,7 @@ near-miss #101「什么是 Agent Skills 标准？」→ 误触发（should_trigg
 | 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-17 | 落需求并实施：`SKILL.md` description 末尾加负向边界句「不适用于仅询问 Agent Skills / 技能标准的概念、或与技能开发无关的一般编码与写作任务。」；`run_checks.py` 注册 `req0039-negative-boundary` | `run_checks.py` 全绿；`validate_skill` ok | 待重跑触发评测（行为证据） |
-| 2 | 2026-09-17 | **先证伪后回退（前提被推翻）**：加了负向句后重跑触发评测（10 条）→ #101 仍触发、其余不变（9/10）；改用**同一 prompt 连跑 3 次**做对照：**新描述 0/3**、**旧描述（git HEAD）也 0/3** → "#101 过宽"是**单跑噪声**，负向句**无可测效果**。按 `writing-skills.md §1`（"只在有真实误触发时加"）与预算原则**回退** description；`run_checks.py` 增 `skipped`（deferred/out-of-scope 的 `check:` 跳过，避免未采纳需求报红） | 探针对照：OLD desc 0/3、NEW desc 0/3；重跑报告 `iteration-1/raw/desc-opt-2.json` | **out-of-scope**：前提被证伪，变更未采纳 |
+| 2 | 2026-09-17 | **先证伪后回退（前提被推翻）**：加了负向句后重跑触发评测（10 条）→ #101 仍触发、其余不变（9/10）；改用**同一 prompt 连跑 3 次**做对照：**新描述 0/3**、**旧描述（git HEAD）也 0/3** → "#101 过宽"是**单跑噪声**，负向句**无可测效果**。按 `writing-skills.md §1`（"只在有真实误触发时加"）与预算原则**回退** description；`run_checks.py` 增 `skipped`（deferred/out-of-scope 的 `check:` 跳过，避免未采纳需求报红） | 探针对照：OLD desc 0/3、NEW desc 0/3（**原始 raw 报告未保留**；可复现命令见 `references/running-evals.md`，评测集见 `evals/evals.json`） | **out-of-scope**：前提被证伪，变更未采纳 |
 
 ## 备注 / 待办
 

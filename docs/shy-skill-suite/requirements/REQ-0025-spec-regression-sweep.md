@@ -3,6 +3,7 @@ id: REQ-0025
 title: 需求轴（Spec）回归扫 + 回归债跟踪
 skill: shy-skill-suite
 status: out-of-scope
+kind: feature
 iteration: 2
 created: 2026-09-17
 updated: 2026-09-17
@@ -74,14 +75,13 @@ superseded_by: REQ-0030
 
 ## 验收标准
 
-- [ ] `track_requirements.py --root .` 输出含 `regression_debt` 数组；对 `docs/shy-skill-suite` 跑，`REQ-0020` 以 `no last_verified` 出现在其中（实测命令与计数写进迭代记录）。
-- [ ] `track_requirements.py --help` 的说明含 `last_verified` 与「回归债」。
-- [ ] `REQ-0025` 落盘后跑一次：`REQ-0025` 自身**不**出现在 `regression_debt`（其 `status: in-progress` 不在 `done` 集）。
-- [ ] `writing-requirements.md` frontmatter 模板含 `last_verified`，§3 说明其含义与更新时机。
-- [ ] `reviewing-skills.md` Step 2 写明 case set = 全部 REQ 的行为类验收标准并集；Step 3 写明逐条走全部 REQ 的验收标准，并列出三个自动升级条件。
-- [ ] `lifecycle.md` 阶段 4 写明回写时更新 `last_verified`；「斜杠快捷」表说明 `/shy-next` 报回归债。
-- [ ] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
-- [ ] 自包含：本轮改动只引用技能自身相对路径，无仓库级 `docs/` 悬空指针（`commands/*.md` 除外，它引用的是安装说明）。
+- [ ] `track_requirements.py --root .` 输出含 `regression_debt` 数组；对 `docs/shy-skill-suite` 跑，`REQ-0020` 以 `no last_verified` 出现在其中（实测命令与计数写进迭代记录）。 — （episode）
+- [ ] `REQ-0025` 落盘后跑一次：`REQ-0025` 自身**不**出现在 `regression_debt`（其 `status: in-progress` 不在 `done` 集）。 — （episode）
+- [ ] `writing-requirements.md` frontmatter 模板含 `last_verified`，§3 说明其含义与更新时机。 — （episode）
+- [ ] `reviewing-skills.md` Step 2 写明 case set = 全部 REQ 的行为类验收标准并集；Step 3 写明逐条走全部 REQ 的验收标准，并列出三个自动升级条件。 — （episode）
+- [ ] `lifecycle.md` 阶段 4 写明回写时更新 `last_verified`；「斜杠快捷」表说明 `/shy-next` 报回归债。 — （episode）
+- [ ] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。 — `check:skill-validate-ok`
+- [ ] 自包含：本轮改动只引用技能自身相对路径，无仓库级 `docs/` 悬空指针（`commands/*.md` 除外，它引用的是安装说明）。 — （episode）
 
 ## 范围外
 

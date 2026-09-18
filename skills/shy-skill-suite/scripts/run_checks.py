@@ -8,6 +8,7 @@
 - 发现：扫描 `docs/<skill>/requirements/REQ-*.md` 的 `## 验收标准` 段。
 - 可执行条目写法：`` - [ ] <描述> — `check:<name>` ``；条目其余部分是人读的描述。
 - 语义条目写法：`` - [ ] <描述>（语义） ``——无法机械判定，交 Step 3 人/agent 判。
+- episode 写法：`` - [ ] <描述>（episode） ``——一次性事实，冻结、**不进 Gate**（见设计 §4.2）。
 - 检查实现：本文件底部的注册表（按 REQ 追加）。名称用 kebab-case，前缀 REQ id 防撞。
 
 用法:
@@ -16,8 +17,8 @@
 默认打有界摘要（每条 check 一行 + 计数）；`--list` 只列注册的检查名。
 
 退出码:
-    0  全部可执行条目通过
-    1  有失败，或引用了未注册的 check
+    0  全部可执行条目通过，且无未清迁移债
+    1  有失败 / 引用了未注册的 check / 带迁移债未收敛 / 无 docs（n/a）
     2  参数错误
 """
 
@@ -29,6 +30,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Callable
 
@@ -38,6 +40,7 @@ CRITERION_RE = re.compile(r"^\s*-\s*\[[ xX]\]\s*(?P<desc>.+)$")
 CHECK_TAG_RE = re.compile(r"`check:\s*(?P<name>[a-z0-9-]+)\s*`")
 BEHAVIOR_RE = re.compile(r"（行为）|\(behavior\)")
 SEMANTIC_RE = re.compile(r"（语义）|\(semantic\)")
+EPISODE_RE = re.compile(r"（episode）|\(episode\)")
 
 CheckFn = Callable[[Path, str], "tuple[bool, str]"]
 CHECKS: dict[str, CheckFn] = {}
@@ -99,6 +102,54 @@ def skill_dir(root: Path, skill: str) -> Path:
     return root / "skills" / skill
 
 
+def find_req(root: Path, skill: str, rid: str) -> Path | None:
+    """按 id 在技能需求目录里找 REQ 文件。
+
+    只按 ``<id>-*.md`` 匹配、不写死 slug——这样技能脚本不嵌入本仓库的具体
+    文件名，复制到别处也不会留下悬空指针（技能必须自包含）。
+    """
+    base = root / "docs" / skill / "requirements"
+    if not base.is_dir():
+        return None
+    hits = sorted(base.glob(f"{rid}-*.md"))
+    return hits[0] if hits else None
+
+
+def cleanup_counts(root: Path, skill: str) -> tuple[int, int] | None:
+    """`cleanup.md` 的 (open, fixed) 计数——Gate 消费台账（设计 §4.3）。无文件返回 None。"""
+    p = root / "docs" / skill / "cleanup.md"
+    if not p.is_file():
+        return None
+    o = f = 0
+    for ln in read_text(p).splitlines():
+        s = ln.lstrip()
+        if s.startswith("| CL-"):
+            cols = [c.strip().strip("*").strip() for c in s.strip().strip("|").split("|")]
+            if len(cols) >= 5:
+                if cols[4] == "open":
+                    o += 1
+                elif cols[4] == "fixed":
+                    f += 1
+    return o, f
+
+
+def fix_counts(root: Path, skill: str) -> tuple[int, int]:
+    """fix 类工单的 (open, fixed)：open = ready/in-progress，fixed = done。"""
+    base = root / "docs" / skill / "requirements"
+    o = f = 0
+    if base.is_dir():
+        for p in base.glob("REQ-*.md"):
+            fm = req_frontmatter(p)
+            if fm.get("kind") != "fix":
+                continue
+            st = fm.get("status", "")
+            if st in ("ready", "in-progress"):
+                o += 1
+            elif st == "done":
+                f += 1
+    return o, f
+
+
 # --------------------------------------------------------------------------- #
 # 检查注册表（按 REQ 追加；实现只依赖 root + skill，不硬编码仓库路径）
 # --------------------------------------------------------------------------- #
@@ -145,40 +196,6 @@ def req0030_no_debt_term(root: Path, skill: str) -> tuple[bool, str]:
     return (not hits), f"含『回归债』的文件={hits}"
 
 
-@check("req0030-step3-terms")
-def req0030_step3_terms(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "reviewing-skills.md")
-    need = {k: (k in text) for k in ("全部 REQ", "唯一豁免")}
-    banned = {k: (k in text) for k in ("三档范围", "自动升级条件")}
-    ok = all(need.values()) and not any(banned.values())
-    return ok, f"need={need} banned={banned}"
-
-
-@check("req0030-step2-no-sweep-ref")
-def req0030_step2_no_sweep_ref(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "reviewing-skills.md")
-    m = re.search(r"### Step 2[^\n]*\n(.*?)(?=\n### Step 3)", text, re.S)
-    if not m:
-        return False, "未找到 Step 2 段落"
-    seg = m.group(1)
-    return ("转全量" not in seg), f"Step2 含『转全量』={'转全量' in seg}"
-
-
-@check("req0030-writing-req-executable")
-def req0030_writing_req_executable(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "writing-requirements.md")
-    has_rule = all(m in text for m in ("check:", "（行为）", "（语义）"))
-    no_stale = "last_verified" not in text
-    return (has_rule and no_stale), f"含 check:/（行为）/（语义）={has_rule} 含 last_verified={not no_stale}"
-
-
-@check("req0030-req0025-superseded")
-def req0030_req0025_superseded(root: Path, skill: str) -> tuple[bool, str]:
-    fm = req_frontmatter(root / "docs" / skill / "requirements" / "REQ-0025-spec-regression-sweep.md")
-    ok = fm.get("superseded_by") == "REQ-0030" and fm.get("status") == "out-of-scope"
-    return ok, f"superseded_by={fm.get('superseded_by')} status={fm.get('status')}"
-
-
 @check("skill-validate-ok")
 def skill_validate_ok(root: Path, skill: str) -> tuple[bool, str]:
     """通用：validate_skill.py 对本技能返回 ok 且退出码 0（各 REQ 复用）。"""
@@ -208,31 +225,6 @@ def _make_iteration(base: Path, with_notes: bool, note_text: str = "PROBE-NOTE")
         (ws / "analyzer_notes.json").write_text(
             json.dumps({"notes": [note_text]}, ensure_ascii=False), encoding="utf-8")
     return ws
-
-
-@check("req0034-grader-duties")
-def req0034_grader_duties(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "subagents.md")
-    m = re.search(r"### grader.*?(?=\n### |\Z)", text, re.S)
-    seg = m.group(0) if m else ""
-    need = {k: (k in seg) for k in ("隐式主张", "评测集", "claims[]", "eval_feedback[]")}
-    return all(need.values()), f"need={need}"
-
-
-@check("req0034-analyzer-notes-doc")
-def req0034_analyzer_notes_doc(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "subagents.md")
-    m = re.search(r"### analyzer.*?(?=\n### |\Z)", text, re.S)
-    seg = m.group(0) if m else ""
-    need = {k: (k in seg) for k in ("恒过", "恒败", "analyzer_notes.json")}
-    return all(need.values()), f"need={need}"
-
-
-@check("req0034-schema-docs")
-def req0034_schema_docs(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "running-evals.md")
-    need = {k: (k in text) for k in ("claims[]", "eval_feedback[]", "analyzer_notes.json")}
-    return all(need.values()), f"need={need}"
 
 
 @check("req0034-notes-pipeline")
@@ -267,31 +259,6 @@ def req0034_notes_optional(root: Path, skill: str) -> tuple[bool, str]:
     return (not bench.get("notes")), f"无 notes 文件时 notes={bench.get('notes')!r} rc={rc}"
 
 
-@check("req0034-negative-trigger")
-def req0034_negative_trigger(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "writing-skills.md")
-    need = {k: (k in text) for k in ("负向触发", "Do NOT use for")}
-    return all(need.values()), f"need={need}"
-
-
-@check("req0035-stop-rule")
-def req0035_stop_rule(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "reviewing-skills.md")
-    need = {k: (k in text) for k in ("迭代停止规则", "5 轮", "结构性写法")}
-    return all(need.values()), f"need={need}"
-
-
-@check("req0038-plain-language")
-def req0038_plain_language(root: Path, skill: str) -> tuple[bool, str]:
-    sd = skill_dir(root, skill)
-    review = read_text(sd / "references" / "reviewing-skills.md")
-    skill_md = read_text(sd / "SKILL.md")
-    need_review = {k: (k in review) for k in ("说人话", "说 why", "白话")}
-    need_skill = "输出面向人" in skill_md
-    ok = all(need_review.values()) and need_skill
-    return ok, f"reviewing={need_review} SKILL.输出面向人={need_skill}"
-
-
 @check("skill-selftest")
 def skill_selftest(root: Path, skill: str) -> tuple[bool, str]:
     rc, out, err = run_script(root, skill_dir(root, skill) / "scripts" / "selftest.py")
@@ -306,22 +273,6 @@ def req0044_trials(root: Path, skill: str) -> tuple[bool, str]:
     return ok, f"optimize --help 含 --trials={('--trials' in out)}"
 
 
-@check("req0044-doc")
-def req0044_doc(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "running-evals.md")
-    ok = "--trials" in text
-    return ok, f"running-evals 含 --trials={ok}"
-
-
-@check("req0045-migration-debt")
-def req0045_migration_debt(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "reviewing-skills.md")
-    m = re.search(r"### Step 3.*?(?=\n### |\Z)", text, re.S)
-    seg = m.group(0) if m else ""
-    need = {k: (k in seg) for k in ("迁移债", "只报数", "新写")}
-    return all(need.values()), f"need={need}"
-
-
 @check("req0046-unimplemented-skipped")
 def req0046_unimplemented_skipped(root: Path, skill: str) -> tuple[bool, str]:
     """未实现的 REQ（ready/draft）的 `check:` 应跳过，不因未注册而报红。"""
@@ -330,58 +281,13 @@ def req0046_unimplemented_skipped(root: Path, skill: str) -> tuple[bool, str]:
         t = Path(tmp)
         d = t / "docs" / skill / "requirements"
         d.mkdir(parents=True)
-        (d / "REQ-9001-ready.md").write_text(
+        (d / "REQ-9001.md").write_text(
             f"---\nid: REQ-9001\ntitle: r\nskill: {skill}\nstatus: ready\niteration: 1\n"
             "created: 2026-01-01\nupdated: 2026-01-01\nblocked_by: []\n---\n\n"
             "## 验收标准\n\n- [ ] x — `check:no-such-check`\n", encoding="utf-8")
         rc, _out, _err = run_script(root, sd / "scripts" / "run_checks.py",
                                     "--root", str(t), "--skill", skill)
     return (rc == 0), f"ready REQ 的未注册 check 被跳过 → rc={rc}"
-
-
-@check("req0046-two-paths")
-def req0046_two_paths(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "lifecycle.md")
-    need = {k: (k in text) for k in ("实现路", "评审路")}
-    return all(need.values()), f"need={need}"
-
-
-@check("req0046-user-triggered")
-def req0046_user_triggered(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "lifecycle.md")
-    need = {k: (k in text) for k in ("用户主动触发", "实现路不会自动进这里")}
-    return all(need.values()), f"need={need}"
-
-
-@check("req0046-triage")
-def req0046_triage(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "lifecycle.md")
-    need = {k: (k in text) for k in ("立即修", "以后修", "丢弃", "不落盘", "不自动再审")}
-    return all(need.values()), f"need={need}"
-
-
-@check("req0046-skill-rule")
-def req0046_skill_rule(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "SKILL.md")
-    ok = "实现 / 评审两路分离" in text
-    return ok, f"SKILL 含『实现 / 评审两路分离』={ok}"
-
-
-@check("req0046-superseded")
-def req0046_superseded(root: Path, skill: str) -> tuple[bool, str]:
-    ok = True
-    ev = {}
-    for rid in ("REQ-0041", "REQ-0043"):
-        p = list((root / "docs" / skill / "requirements").glob(rid + "-*.md"))
-        if not p:
-            ev[rid] = "缺失"
-            ok = False
-            continue
-        fm = read_text(p[0]).split("---", 2)[1]
-        hit = "superseded_by: REQ-0046" in fm
-        ev[rid] = hit
-        ok = ok and hit
-    return ok, f"{ev}"
 
 
 @check("req0043-auto-writeback")
@@ -412,40 +318,6 @@ def req0043_review_step8(root: Path, skill: str) -> tuple[bool, str]:
     seg = m.group(0) if m else ""
     ok = ("呈现门禁" in seg) and ("机械记账" in seg) and ("不回写需求文档" not in seg)
     return ok, f"Step8 引呈现门禁且去掉旧措辞={ok}"
-
-
-@check("req0042-token-caveat")
-def req0042_token_caveat(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "running-evals.md")
-    ok = ("没测到" in text) and ("token_ratio" in text) and ("无效" in text)
-    return ok, f"含没测到/无效/token_ratio={ok}"
-
-
-@check("req0042-baseline-method")
-def req0042_baseline_method(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "running-evals.md")
-    need = {k: (k in text) for k in ("旧版快照", "无技能", "污染")}
-    return all(need.values()), f"need={need}"
-
-
-@check("req0042-pycache-warn")
-def req0042_pycache_warn(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "scripts" / "selftest.py")
-    ok = ("__pycache__" in text) and ("WARN" in text)
-    return ok, f"selftest 含 __pycache__ 警告={ok}"
-
-
-@check("req0042-count-free")
-def req0042_count_free(root: Path, skill: str) -> tuple[bool, str]:
-    p = root / "docs" / skill / "requirements" / "REQ-0026-req-doc-consistency.md"
-    if not p.is_file():
-        return False, "REQ-0026 未找到"
-    text = read_text(p)
-    m = re.search(r"^##\s+验收标准\s*$(.*?)(?=^##\s|\Z)", text, re.S | re.M)
-    seg = m.group(1) if m else ""
-    # 只认正向证据（去数字化措辞）——订正标注里引用旧值不算违反
-    ok = "不写死数量" in seg
-    return ok, f"验收判据含去数字化措辞『不写死数量』={ok}"
 
 
 @check("req0041-stage2-gate")
@@ -493,14 +365,6 @@ def req0040_selftest_pure(root: Path, skill: str) -> tuple[bool, str]:
     return (no_open and not third_party), f"含--no-open={no_open} 第三方import={third_party}"
 
 
-@check("req0040-step6-selftest")
-def req0040_step6_selftest(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "reviewing-skills.md")
-    m = re.search(r"### Step 6.*?(?=\n### |\Z)", text, re.S)
-    seg = m.group(0) if m else ""
-    return ("自测" in seg), f"Step6 含『自测』={'自测' in seg}"
-
-
 @check("req0040-registered")
 def req0040_registered(root: Path, skill: str) -> tuple[bool, str]:
     text = read_text(skill_dir(root, skill) / "scripts" / "run_checks.py")
@@ -514,6 +378,182 @@ def req0039_negative_boundary(root: Path, skill: str) -> tuple[bool, str]:
     desc = m.group(1) if m else ""
     has_boundary = "不适用于" in desc
     return (has_boundary and len(desc) <= 1024), f"含『不适用于』={has_boundary} 长度={len(desc)}"
+
+
+@check("req0048-no-hardcoded-req-file")
+def req0048_no_hardcoded_req_file(root: Path, skill: str) -> tuple[bool, str]:
+    """技能脚本不得嵌入具体 REQ 文件名（slug），否则复制部署即悬空。"""
+    hits: list[str] = []
+    for p in sorted((skill_dir(root, skill) / "scripts").glob("*.py")):
+        for ln, line in enumerate(read_text(p).splitlines(), 1):
+            if re.search(r"REQ-\d{4}-[a-z]", line):
+                hits.append(f"{p.name}:{ln}")
+    return (not hits), f"硬编码 REQ 文件名={hits}"
+
+
+@check("req0048-find-req-helper")
+def req0048_find_req_helper(root: Path, skill: str) -> tuple[bool, str]:
+    text = read_text(skill_dir(root, skill) / "scripts" / "run_checks.py")
+    ok = "def find_req(" in text
+    return ok, f"run_checks 含 find_req 助手={ok}"
+
+
+@check("req0049-evals-present")
+def req0049_evals_present(root: Path, skill: str) -> tuple[bool, str]:
+    p = skill_dir(root, skill) / "evals" / "evals.json"
+    if not p.is_file():
+        return False, "evals/evals.json 不存在"
+    try:
+        data = json.loads(read_text(p))
+    except Exception as exc:  # noqa: BLE001 - 报错即可
+        return False, f"解析失败：{exc}"
+    evals = data.get("evals") or []
+    pos = any(e.get("should_trigger") for e in evals)
+    neg = any(not e.get("should_trigger", True) for e in evals)
+    return (bool(evals) and pos and neg), f"evals={len(evals)} 正例={pos} 负例={neg}"
+
+
+@check("req0050-retired")
+def req0050_retired(root: Path, skill: str) -> tuple[bool, str]:
+    """4 条文档措辞子串 check 已退休：不在注册表、REQ-0046 里标了 （episode）。"""
+    gone = [n for n in ("req0046-two-paths", "req0046-user-triggered",
+                        "req0046-triage", "req0046-skill-rule") if n in CHECKS]
+    ep = 0
+    p = find_req(root, skill, "REQ-0046")
+    if p:
+        m = re.search(r"^##\s+验收标准\s*$\n(.*?)(?=^##\s|\Z)", read_text(p), re.S | re.M)
+        ep = m.group(1).count("（episode）") if m else 0
+    return (not gone and ep >= 4), f"仍注册={gone} REQ-0046 episode={ep}"
+
+
+@check("req0050-episode-recognized")
+def req0050_episode_recognized(root: Path, skill: str) -> tuple[bool, str]:
+    """run_checks 识别 （episode） 并单独计数（不再算未标）。"""
+    src = read_text(skill_dir(root, skill) / "scripts" / "run_checks.py")
+    ok = "EPISODE_RE" in src and '"episode": episode' in src
+    return ok, f"run_checks 识别 episode={ok}"
+
+
+@check("validate-rejects-bad")
+def validate_rejects_bad(root: Path, skill: str) -> tuple[bool, str]:
+    """validate_skill.py 对含多余字段的技能 → 非 0。"""
+    sd = skill_dir(root, skill)
+    with tempfile.TemporaryDirectory(prefix="shy-vrb-") as tmp:
+        d = Path(tmp) / "bad"
+        d.mkdir()
+        (d / "SKILL.md").write_text(
+            "---\nname: bad\ndescription: x\nname_cn: 坏\n---\n\n# bad\n", encoding="utf-8")
+        rc, _o, _e = run_script(root, sd / "scripts" / "validate_skill.py", str(d))
+    return rc != 0, f"多余字段 → rc={rc}"
+
+
+@check("scaffold-ok")
+def scaffold_ok(root: Path, skill: str) -> tuple[bool, str]:
+    """scaffold：创建 / 幂等 / 非法名拒绝 / --force 留 .bak。"""
+    s = skill_dir(root, skill) / "scripts" / "scaffold_skill.py"
+    with tempfile.TemporaryDirectory(prefix="shy-sco-") as tmp:
+        t = Path(tmp)
+        rc1, _o1, _e1 = run_script(root, s, "demo", "--path", str(t), "--description", "x")
+        created = (t / "demo" / "SKILL.md").is_file()
+        rc2, o2, _e2 = run_script(root, s, "demo", "--path", str(t), "--description", "x")
+        idem = rc2 == 0 and "skipped" in o2
+        rc3, _o3, _e3 = run_script(root, s, "Bad_Name", "--path", str(t))
+        bad = rc3 != 0
+        rc4, _o4, _e4 = run_script(root, s, "demo", "--path", str(t), "--force", "--description", "y")
+        bak = (t / "demo" / "SKILL.md.bak").is_file()
+    ok = rc1 == 0 and created and idem and bad and rc4 == 0 and bak
+    return ok, f"create={created} idem={idem} bad={bad} bak={bak}"
+
+
+@check("scripts-help-ok")
+def scripts_help_ok(root: Path, skill: str) -> tuple[bool, str]:
+    """全部脚本 --help → rc 0 且输出非空。"""
+    fails = []
+    for p in sorted((skill_dir(root, skill) / "scripts").glob("*.py")):
+        if p.name == "skill_utils.py":
+            continue
+        rc, out, err = run_script(root, p, "--help")
+        if rc != 0 or not (out or err).strip():
+            fails.append(f"{p.name}(rc={rc})")
+    return (not fails), f"--help 失败={fails}"
+
+
+@check("render-report-ok")
+def render_report_ok(root: Path, skill: str) -> tuple[bool, str]:
+    """render_report：有数据 rc 0 + report.html；无数据 rc 非 0 + stderr；--help 含 --no-open。"""
+    sd = skill_dir(root, skill)
+    with tempfile.TemporaryDirectory(prefix="shy-rro-") as tmp:
+        ws = _make_iteration(Path(tmp), False)
+        rc1, _o1, _e1 = run_script(root, sd / "scripts" / "render_report.py",
+                                   str(ws), "--skill-name", skill, "--no-open")
+        html = (ws / "report.html").is_file()
+        rc2, _o2, err2 = run_script(root, sd / "scripts" / "render_report.py",
+                                    str(Path(tmp) / "empty"), "--no-open")
+        nodata = rc2 != 0 and bool((err2 or "").strip())
+        rc3, out3, _e3 = run_script(root, sd / "scripts" / "render_report.py", "--help")
+        helpok = rc3 == 0 and "--no-open" in out3
+    ok = rc1 == 0 and html and nodata and helpok
+    return ok, f"rc={rc1} html={html} nodata={nodata} help={helpok}"
+
+
+@check("agent-runner-error")
+def agent_runner_error(root: Path, skill: str) -> tuple[bool, str]:
+    """agent_runner 坏命令 → rc 非 0、stderr 非空、stdout 空。"""
+    rc, out, err = run_script(root, skill_dir(root, skill) / "scripts" / "agent_runner.py",
+                              "--runner", "cmd", "--cmd", "no-such-exe {prompt}", "--prompt", "x")
+    ok = rc != 0 and bool(err.strip()) and not out.strip()
+    return ok, f"rc={rc} stderr={bool(err.strip())} stdout_empty={not out.strip()}"
+
+
+@check("track-ok")
+def track_ok(root: Path, skill: str) -> tuple[bool, str]:
+    """track_requirements → status ok。"""
+    rc, out, _e = run_script(root, skill_dir(root, skill) / "scripts" / "track_requirements.py",
+                             "--root", ".", "--skill", skill)
+    try:
+        ok = rc == 0 and json.loads(out).get("status") == "ok"
+    except Exception:  # noqa: BLE001
+        ok = False
+    return ok, f"rc={rc}"
+
+
+@check("optimize-ok")
+def optimize_ok(root: Path, skill: str) -> tuple[bool, str]:
+    """optimize_description 启发式 → rc 0、mode heuristic。"""
+    sd = skill_dir(root, skill)
+    rc, out, _e = run_script(root, sd / "scripts" / "optimize_description.py", str(sd),
+                             "--eval-set", str(sd / "evals" / "evals.json"))
+    try:
+        ok = rc == 0 and json.loads(out).get("mode") == "heuristic"
+    except Exception:  # noqa: BLE001
+        ok = False
+    return ok, f"rc={rc}"
+
+
+@check("benchmark-json")
+def benchmark_json(root: Path, skill: str) -> tuple[bool, str]:
+    """aggregate_benchmark → rc 0 + 合法 JSON。"""
+    with tempfile.TemporaryDirectory(prefix="shy-bj-") as tmp:
+        ws = _make_iteration(Path(tmp), False)
+        rc, out, _e = run_script(root, skill_dir(root, skill) / "scripts" / "aggregate_benchmark.py",
+                                 str(ws), "--skill-name", skill)
+    try:
+        json.loads(out)
+        ok = rc == 0
+    except Exception:  # noqa: BLE001
+        ok = False
+    return ok, f"rc={rc}"
+
+
+@check("generate-eval-set-ok")
+def generate_eval_set_ok(root: Path, skill: str) -> tuple[bool, str]:
+    """generate_eval_set → rc 0 + 产出 JSON。"""
+    with tempfile.TemporaryDirectory(prefix="shy-ges-") as tmp:
+        outp = Path(tmp) / "evals.json"
+        rc, _o, _e = run_script(root, skill_dir(root, skill) / "scripts" / "generate_eval_set.py",
+                                str(skill_dir(root, skill)), "-o", str(outp))
+        produced = outp.is_file()
+    return (rc == 0 and produced), f"rc={rc} produced={produced}"
 
 
 # --------------------------------------------------------------------------- #
@@ -541,10 +581,33 @@ def analyze(root: Path, skill: str | None) -> dict[str, Any]:
     errors: list[dict[str, Any]] = []
     behavior = 0
     semantic = 0
+    episode = 0
     untagged = 0
     skipped = 0
     passed = 0
     failed = 0
+    cache: dict[tuple[str, str], tuple[bool, str]] = {}
+    seen: set[tuple[str, str]] = set()   # 每个 check 只出一行、只计一次
+
+    # 预跑：把所有被引用的 check **去重**后**并行**跑一次。
+    # 两个目的：① 全局 check（skill-validate-ok 等）不随引用条数放大；② 子进程为主，串行太慢。
+    jobs: set[tuple[str, str]] = set()
+    for path in discover(root, skill):
+        fm0 = req_frontmatter(path)
+        if (fm0.get("status") or "").strip() not in ("in-progress", "done"):
+            continue
+        for desc in criteria(path):
+            tag = CHECK_TAG_RE.search(desc)
+            if tag and tag.group("name") in CHECKS:
+                jobs.add((tag.group("name"), fm0.get("skill", "")))
+    if jobs:
+        with ThreadPoolExecutor(max_workers=min(8, len(jobs))) as ex:
+            futs = {j: ex.submit(CHECKS[j[0]], root, j[1]) for j in jobs}
+            for j, fut in futs.items():
+                try:
+                    cache[j] = fut.result()
+                except Exception as exc:  # noqa: BLE001
+                    cache[j] = (False, f"check 异常: {exc}")
 
     for path in discover(root, skill):
         fm = req_frontmatter(path)
@@ -561,6 +624,8 @@ def analyze(root: Path, skill: str | None) -> dict[str, Any]:
                     behavior += 1
                 elif SEMANTIC_RE.search(desc):
                     semantic += 1
+                elif EPISODE_RE.search(desc):
+                    episode += 1
                 else:
                     untagged += 1
                 continue
@@ -570,15 +635,22 @@ def analyze(root: Path, skill: str | None) -> dict[str, Any]:
             name = tag.group("name")
             fn = CHECKS.get(name)
             if fn is None:
-                failed += 1
-                errors.append({"req": rid, "check": name, "error": "未注册的 check"})
-                rows.append({"req": rid, "check": name, "passed": False,
-                             "evidence": "未注册的 check"})
+                if (name, req_skill) not in seen:
+                    seen.add((name, req_skill))
+                    failed += 1
+                    errors.append({"req": rid, "check": name, "error": "未注册的 check"})
+                    rows.append({"req": rid, "check": name, "passed": False,
+                                 "evidence": "未注册的 check"})
                 continue
-            ok, evidence = fn(root, req_skill)
-            passed += 0 if not ok else 1
-            failed += 0 if ok else 1
-            rows.append({"req": rid, "check": name, "passed": ok, "evidence": evidence})
+            ckey = (name, req_skill)
+            if ckey not in cache:          # 全局 check 整轮只跑 1 次，不随引用条数放大
+                cache[ckey] = fn(root, req_skill)
+            ok, evidence = cache[ckey]
+            if ckey not in seen:           # 同一个 check 只出一行、只计一次
+                seen.add(ckey)
+                passed += 0 if not ok else 1
+                failed += 0 if ok else 1
+                rows.append({"req": rid, "check": name, "passed": ok, "evidence": evidence})
 
     total = passed + failed
     return {
@@ -586,11 +658,12 @@ def analyze(root: Path, skill: str | None) -> dict[str, Any]:
         "executable": {"total": total, "passed": passed, "failed": failed},
         "behavior": behavior,
         "semantic": semantic,
+        "episode": episode,
         "untagged": untagged,
         "skipped": skipped,
         "checks": rows,
         "errors": errors,
-        "hint": "untagged>0 表示有验收标准没标三类之一（check: / （行为） / （语义））——按 writing-requirements.md §3 补标；skipped 为 deferred / out-of-scope 的 REQ 跳过的 check 数",
+        "hint": "untagged>0 表示有验收标准没标四类之一（check: / （行为） / （语义） / （episode））——未分类项即**迁移债**（不设默认、挂 `（未定）`）；episode 为一次性事实、不进 Gate；skipped 为 deferred / out-of-scope 的 REQ 跳过的 check 数",
     }
 
 
@@ -609,8 +682,8 @@ def main() -> int:
             "  python run_checks.py --root . --output checks.json\n"
             "\n"
             "退出码:\n"
-            "  0  全部可执行条目通过\n"
-            "  1  有失败，或引用了未注册的 check\n"
+            "  0  全部可执行条目通过，且无未清迁移债\n"
+            "  1  有失败 / 未注册 check / 带迁移债未收敛 / 无 docs（n/a）\n"
             "  2  参数错误\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -628,6 +701,26 @@ def main() -> int:
     root = Path(args.root).resolve()
     result = analyze(root, args.skill)
     result["root"] = str(root)
+    cc = cleanup_counts(root, args.skill) if args.skill else None
+    fc = fix_counts(root, args.skill) if args.skill else None
+    result["cleanup_open"] = cc[0] if cc else None
+
+    # V6：没有 REQ = 不适用，不是"绿"（技能单独部署时不得假绿）。
+    if not result["checks"] and not result["executable"]["total"]:
+        if args.skill and not (root / "docs" / args.skill / "requirements").is_dir():
+            result["status"] = "n/a"
+    # V1：带迁移债不得判绿（债门，设计 §4.7）。
+    if args.skill:
+        st = root / "docs" / args.skill / "state.json"
+        if st.is_file():
+            try:
+                target = int((json.loads(read_text(st)).get("debt_targets") or {})
+                             .get("unclassified_criteria", 0))
+            except Exception:  # noqa: BLE001
+                target = 0
+            if result["untagged"] > target and result["status"] == "ok":
+                result["status"] = "debt"
+                result["debt_target"] = target
 
     if args.output:
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
@@ -636,11 +729,23 @@ def main() -> int:
     for row in result["checks"]:
         mark = "PASS" if row["passed"] else "FAIL"
         print(f"[{mark}] {row['req']} {row['check']}  {row['evidence']}")
+    if result["status"] == "n/a":
+        print("[n/a] 未发现任何 REQ（docs/<skill>/requirements 缺失）——Gate 不适用，**不得当绿**")
+    elif result["status"] == "debt":
+        print(f"[debt] 未分类迁移债 {result['untagged']} > 目标 {result.get('debt_target')}——**未收敛，Gate 不判绿**")
+    if cc is not None and fc is not None:
+        print(f"问题: open={cc[0] + fc[0]}（台账 {cc[0]} + fix 工单 {fc[0]}） "
+              f"fixed={cc[1] + fc[1]}（台账 {cc[1]} + fix 工单 {fc[1]}）")
     e = result["executable"]
+    cleanup_note = ""
+    if result.get("cleanup_open") is not None:
+        cleanup_note = f"；台账 open {result['cleanup_open']}"
     print(f"\ncheck: {e['total']} 条：{e['passed']} 通过 / {e['failed']} 失败；"
           f"（行为）{result['behavior']}；（语义）{result['semantic']}；"
-          f"未标型 {result['untagged']}；跳过（deferred/out-of-scope）{result['skipped']}")
-    return 1 if result["status"] != "ok" else 0
+          f"（episode）{result['episode']}；"
+          f"未分类(迁移债) {result['untagged']}；跳过（deferred/out-of-scope）{result['skipped']}"
+          f"{cleanup_note}")
+    return 0 if result["status"] == "ok" else 1
 
 
 if __name__ == "__main__":

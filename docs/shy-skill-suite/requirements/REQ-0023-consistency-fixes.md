@@ -3,6 +3,7 @@ id: REQ-0023
 title: 复审发现的一致性修正（闭环串 / 阶段计数 / 报告兜底名 / REQ-0012 矛盾）
 skill: shy-skill-suite
 status: done
+kind: hygiene
 iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
@@ -47,11 +48,11 @@ related: [REQ-0012, REQ-0018, REQ-0022]
 
 ## 验收标准
 
-- [x] `grep "复审 → 回写" SKILL.md` → 0 命中；三处均含「呈现」（命中 3）。
-- [x] `lifecycle.md` 标题与阶段数一致（改为「七个阶段」）。
-- [x] `render_report.py` 对不含 skill 字段的 `iteration-1` 运行 → 报告标题取父目录名（实测 `<h1>评估报告 · nofield</h1>`，不再是 `iteration-1`）。
-- [x] `REQ-0012`「脚本与资源」与「降级与边界」不再矛盾（`:44` 现为"改 `references/running-evals.md`"）。
-- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
+- [x] `grep "复审 → 回写" SKILL.md` → 0 命中；三处均含「呈现」（命中 3）。 — （episode）
+- [x] `lifecycle.md` 标题与阶段数一致（改为「七个阶段」）。 — （episode）
+- [x] `render_report.py` 对不含 skill 字段的 `iteration-1` 运行 → 报告标题取父目录名（实测 `<h1>评估报告 · nofield</h1>`，不再是 `iteration-1`）。 — （episode）
+- [x] `REQ-0012`「脚本与资源」与「降级与边界」不再矛盾（`:44` 现为"改 `references/running-evals.md`"）。 — （episode）
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。 — `check:skill-validate-ok`
 
 ## 范围外
 

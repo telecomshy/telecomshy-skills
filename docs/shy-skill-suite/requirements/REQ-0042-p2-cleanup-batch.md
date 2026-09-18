@@ -3,6 +3,7 @@ id: REQ-0042
 title: P2 清理批（复审 iteration-1 的 4 条 P2）
 skill: shy-skill-suite
 status: done
+kind: fix
 iteration: 2
 created: 2026-09-17
 updated: 2026-09-17
@@ -50,10 +51,10 @@ related: [REQ-0024, REQ-0026, REQ-0040, REQ-0041]
 
 ## 验收标准
 
-- [x] `running-evals.md` 含 token 无效提醒（"没测到" / `token_ratio` 无效） — `check:req0042-token-caveat`
-- [x] `running-evals.md` 含 baseline 约定（旧版快照 + 无技能 baseline 的适用条件） — `check:req0042-baseline-method`
-- [x] `selftest.py` 含 `__pycache__` 的非致命警告 — `check:req0042-pycache-warn`
-- [x] `REQ-0026` 验收判据不含写死的"= 8" — `check:req0042-count-free`
+- [x] `running-evals.md` 含 token 无效提醒（"没测到" / `token_ratio` 无效） — （episode）
+- [x] `running-evals.md` 含 baseline 约定（旧版快照 + 无技能 baseline 的适用条件） — （episode）
+- [x] `selftest.py` 含 `__pycache__` 的非致命警告 — （episode）
+- [x] `REQ-0026` 验收判据不含写死的"= 8" — （episode）
 - [x] `selftest.py` 仍全绿（加警告未破坏用例） — `check:skill-selftest`
 - [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
 

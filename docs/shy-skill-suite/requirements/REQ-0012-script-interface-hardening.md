@@ -3,6 +3,7 @@ id: REQ-0012
 title: 脚本接口硬化（agent_runner 注入面 + 7 脚本 --help 完整化）
 skill: shy-skill-suite
 status: done
+kind: fix
 iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
@@ -52,14 +53,14 @@ related: []
 
 ## 验收标准
 
-- [x] `agent_runner.py` 中不再出现 `shell=True`（`grep shell\s*=\s*True scripts/*.py` 无命中）。
-- [x] 回归（注入）：模板 `"{python}" "argv_dump.py" {prompt}`、prompt=`hi & echo PWNED` → 目标程序收到的 `argv[1:]` **恰为单元素** `["hi & echo PWNED"]`，无第二个命令被执行。
+- [x] `agent_runner.py` 中不再出现 `shell=True`（`grep shell\s*=\s*True scripts/*.py` 无命中）。 — （episode）
+- [x] 回归（注入）：模板 `"{python}" "argv_dump.py" {prompt}`、prompt=`hi & echo PWNED` → 目标程序收到的 `argv[1:]` **恰为单元素** `["hi & echo PWNED"]`，无第二个命令被执行。 — （语义）
   - 原判据「`--cmd "echo {prompt}"` → `output` 不含 `INJECTED_MARKER`」**被证伪**：回显程序会把 prompt 原文打印，substring 无法区分"被执行"与"作为数据被打印"；且 Windows 无 `echo.exe`，原命令本身跑不通。
-- [x] 回归（正常）：含空格与中文的 prompt（`帮 我 写 个 技能需求`）→ 目标程序收到**单参数原全文**，无截断、无拆分。
-- [x] 边界：不存在的命令 → 返回可行动 `error`（`could not run command: ...`），抛未捕获异常已消除。
-- [x] 7 个脚本的 `--help` 输出均含：一句简述、参数说明、至少 1 个示例、退出码含义。
-- [x] 7 个脚本的 `--help` 退出码仍为 0；缺必填参数时退出码仍为 2（抽查 `validate_skill` / `aggregate_benchmark`）。
-- [x] 成功路径行为不变：对 `skills/shy-skill-suite` 跑 `validate_skill.py` → 仍 `status: ok`、退出码 0；`optimize_description.py` 启发式路径仍 `mode: heuristic`、退出码 0。
+- [x] 回归（正常）：含空格与中文的 prompt（`帮 我 写 个 技能需求`）→ 目标程序收到**单参数原全文**，无截断、无拆分。 — （episode）
+- [x] 边界：不存在的命令 → 返回可行动 `error`（`could not run command: ...`），抛未捕获异常已消除。 — （episode）
+- [x] 7 个脚本的 `--help` 输出均含：一句简述、参数说明、至少 1 个示例、退出码含义。 — `check:scripts-help-ok`
+- [x] 7 个脚本的 `--help` 退出码仍为 0；缺必填参数时退出码仍为 2（抽查 `validate_skill` / `aggregate_benchmark`）。 — `check:scripts-help-ok`
+- [x] 成功路径行为不变：对 `skills/shy-skill-suite` 跑 `validate_skill.py` → 仍 `status: ok`、退出码 0；`optimize_description.py` 启发式路径仍 `mode: heuristic`、退出码 0。 — `check:skill-validate-ok`
 
 ## 范围外
 

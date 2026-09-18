@@ -3,6 +3,7 @@ id: REQ-0032
 title: 技能文档去重与判据补齐（第二批）
 skill: shy-skill-suite
 status: out-of-scope
+kind: hygiene
 iteration: 2
 created: 2026-09-17
 updated: 2026-09-17
@@ -54,16 +55,16 @@ related: [REQ-0028, REQ-0029, REQ-0030, REQ-0031]
 
 ## 验收标准
 
-- [ ] `grep -rn "优先删，其次改，最后才加" skills/shy-skill-suite` → 只命中 1 处（`reviewing-skills.md` §1）。
-- [ ] `grep -rn "终局产物\|只在 Step 8" skills/shy-skill-suite` → 1 处权威句（`reviewing-skills.md` Step 8）+ 指针，不再是 4 处完整规则。
-- [ ] `grep -rn "假 .done." skills/shy-skill-suite` → `superseded_by` 的理由只命中 1 处（`writing-requirements.md` §3）。
-- [ ] `reviewing-skills.md:60` 段内不含「不要只取本次 REQ 的」。
-- [ ] `grep -n "\`lifecycle\.md\`" SKILL.md` → 0 命中（应为 `references/lifecycle.md`）。
-- [ ] `subagents.md` 的「按『复审自身反模式』记」有对应条目：`reviewing-skills.md` §4 含副作用条，或该句已改为指向 `subagents.md` 本节。
-- [ ] `reviewing-skills.md` Step 3 完成判据括注含 `no spec available`（降级路径）。
-- [ ] `lifecycle.md:77` 判据括注含 `superseded_by`。
-- [ ] `python skills/shy-skill-suite/scripts/validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
-- [ ] 改动后 `SKILL.md` 行数不增（只做减法或持平）。
+- [ ] `grep -rn "优先删，其次改，最后才加" skills/shy-skill-suite` → 只命中 1 处（`reviewing-skills.md` §1）。 — （episode）
+- [ ] `grep -rn "终局产物\|只在 Step 8" skills/shy-skill-suite` → 1 处权威句（`reviewing-skills.md` Step 8）+ 指针，不再是 4 处完整规则。 — （episode）
+- [ ] `grep -rn "假 .done." skills/shy-skill-suite` → `superseded_by` 的理由只命中 1 处（`writing-requirements.md` §3）。 — （episode）
+- [ ] `reviewing-skills.md:60` 段内不含「不要只取本次 REQ 的」。 — （episode）
+- [ ] `grep -n "\`lifecycle\.md\`" SKILL.md` → 0 命中（应为 `references/lifecycle.md`）。 — （episode）
+- [ ] `subagents.md` 的「按『复审自身反模式』记」有对应条目：`reviewing-skills.md` §4 含副作用条，或该句已改为指向 `subagents.md` 本节。 — （episode）
+- [ ] `reviewing-skills.md` Step 3 完成判据括注含 `no spec available`（降级路径）。 — （episode）
+- [ ] `lifecycle.md:77` 判据括注含 `superseded_by`。 — （episode）
+- [ ] `python skills/shy-skill-suite/scripts/validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。 — `check:skill-validate-ok`
+- [ ] 改动后 `SKILL.md` 行数不增（只做减法或持平）。 — （episode）
 
 ## 范围外
 

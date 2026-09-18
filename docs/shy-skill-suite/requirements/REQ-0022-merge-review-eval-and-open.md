@@ -3,6 +3,7 @@ id: REQ-0022
 title: 复审与评测合并为单一入口 + 报告生成后自动打开
 skill: shy-skill-suite
 status: done
+kind: refactor
 iteration: 2
 created: 2026-09-16
 updated: 2026-09-17
@@ -52,14 +53,14 @@ related: [REQ-0019, REQ-0020, REQ-0023]
 
 ## 验收标准
 
-- [x] `commands/` 只剩 4 个：`shy-grill` / `shy-review` / `shy-apply` / `shy-next`；`shy-eval.md` 不存在。
-- [x] `commands/shy-review.md` body 写清：复审 + 评测 + `findings.json` + 渲染报告 + **自动打开** + 停下。
-- [x] `render_report.py --help` 含 `--no-open`；默认运行会打开报告（实测 `opened: true`）；`--no-open` 时不打开（实测 `opened` 缺失、调用数 0）。
-- [x] 无显示环境（`webbrowser.open` 抛错）下仍 `status: success`、`opened: false`、退出码 0。
-- [x] `references/running-evals.md` 说明默认自动打开与 `--no-open`。
-- [x] `references/lifecycle.md` 斜杠快捷表为 4 行，注明 `/shy-review` 含评测。
-- [x] `REQ-0019`/`REQ-0020` 各含指向本 REQ 的取代说明。
-- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
+- [x] `commands/` 只剩 4 个：`shy-grill` / `shy-review` / `shy-apply` / `shy-next`；`shy-eval.md` 不存在。 — （episode）
+- [x] `commands/shy-review.md` body 写清：复审 + 评测 + `findings.json` + 渲染报告 + **自动打开** + 停下。 — （episode）
+- [x] `render_report.py --help` 含 `--no-open`；默认运行会打开报告（实测 `opened: true`）；`--no-open` 时不打开（实测 `opened` 缺失、调用数 0）。 — `check:render-report-ok`
+- [x] 无显示环境（`webbrowser.open` 抛错）下仍 `status: success`、`opened: false`、退出码 0。 — `check:render-report-ok`
+- [x] `references/running-evals.md` 说明默认自动打开与 `--no-open`。 — （episode）
+- [x] `references/lifecycle.md` 斜杠快捷表为 4 行，注明 `/shy-review` 含评测。 — （episode）
+- [x] `REQ-0019`/`REQ-0020` 各含指向本 REQ 的取代说明。 — （episode）
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。 — `check:skill-validate-ok`
 
 ## 范围外
 

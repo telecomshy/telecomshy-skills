@@ -8,6 +8,7 @@
 - **deferred**：`status: deferred` 的（附 `defer_reason`），不算 frontier
 - **errors**：`blocked_by` / `superseded_by` 悬空、缺 `id`、同一技能内重复 `id`
 - **warnings**：`blocked_by` 指向 `out-of-scope` / `deferred`、缺 `skill` 字段
+- **by_kind**：按 `kind`（feature / fix / refactor / docs / hygiene）分组的 status 计数（供"功能 / 问题"两个读数）
 - 状态汇总
 
 本脚本只管**排期**（frontier / 依赖 / 状态），**不管回归**：Spec 轴的回归由复审
@@ -102,11 +103,15 @@ def analyze(reqs: list[dict[str, Any]]) -> dict[str, Any]:
     blocked: list[dict[str, Any]] = []
     deferred: list[dict[str, Any]] = []
     summary: dict[str, int] = {}
+    by_kind: dict[str, dict[str, int]] = {}
 
     for skill, rid in sorted(by_key):
         req = by_key[(skill, rid)]
         status = str(req.get("status", "")).strip() or "draft"
+        kind = str(req.get("kind", "")).strip() or "unspecified"
         summary[status] = summary.get(status, 0) + 1
+        by_kind.setdefault(kind, {})
+        by_kind[kind][status] = by_kind[kind].get(status, 0) + 1
         blockers = as_list(req.get("blocked_by"))
 
         missing: list[str] = []
@@ -143,6 +148,8 @@ def analyze(reqs: list[dict[str, Any]]) -> dict[str, Any]:
             "id": rid,
             "title": str(req.get("title", "")).strip(),
             "status": status,
+            "kind": kind,
+            "source": str(req.get("source", "")).strip(),
             "path": req["_path"],
         }
         if superseded_by:
@@ -159,12 +166,31 @@ def analyze(reqs: list[dict[str, Any]]) -> dict[str, Any]:
         "status": "errors" if errors else "ok",
         "total": len(by_key),
         "summary": summary,
+        "by_kind": by_kind,
         "frontier": frontier,
         "blocked": blocked,
         "deferred": deferred,
         "errors": errors,
         "warnings": warnings,
     }
+
+
+def filter_by_kind(result: dict[str, Any], kind: str) -> dict[str, Any]:
+    """按 kind 过滤**展示列表**（在 analyze 全集之后做）。
+
+    引用（blocked_by / superseded_by）已对照**全集**解析过，所以过滤不会
+    把跨 kind 的合法引用误判成悬空——kind 只影响展示与读数，不影响 status。
+    """
+    out = dict(result)
+    keep = lambda items: [e for e in items if e.get("kind") == kind]  # noqa: E731
+    out["frontier"] = keep(result["frontier"])
+    out["blocked"] = keep(result["blocked"])
+    out["deferred"] = keep(result["deferred"])
+    summary = result["by_kind"].get(kind, {})
+    out["summary"] = summary
+    out["total"] = sum(summary.values())
+    out["by_kind"] = {kind: summary}
+    return out
 
 
 def summarize(result: dict[str, Any]) -> dict[str, Any]:
@@ -183,6 +209,7 @@ def summarize(result: dict[str, Any]) -> dict[str, Any]:
         "status": result["status"],
         "total": result["total"],
         "summary": result["summary"],
+        "by_kind": result["by_kind"],
         "frontier": brief(result["frontier"]),
         "blocked": brief(result["blocked"]),
         "deferred": brief(result["deferred"]),
@@ -190,7 +217,7 @@ def summarize(result: dict[str, Any]) -> dict[str, Any]:
         "warnings": result["warnings"],
         "root": result["root"],
         "files": result["files"],
-        "hint": "完整数据（含 path / defer_reason）用 --full，或 --output <path> 写文件",
+        "hint": "完整数据（含 path / defer_reason）用 --full，或 --output <path> 写文件；--kind <feature|fix|...> 只看一类",
     }
 
 
@@ -217,15 +244,18 @@ def main() -> int:
     )
     parser.add_argument("--root", default=".", help="Repo root to scan (default: .)")
     parser.add_argument("--skill", help="Limit to docs/<skill>/requirements/")
+    parser.add_argument("--kind", help="Only include REQs with this kind（feature/fix/refactor/docs/hygiene）")
     parser.add_argument("--full", action="store_true", help="Print the full JSON instead of the bounded summary")
     parser.add_argument("--output", "-o", help="Write the full JSON to this path")
     args = parser.parse_args()
 
     root = Path(args.root).resolve()
     files = discover(root, args.skill)
-    result = analyze([load(p) for p in files])
+    result = analyze([load(p) for p in files])  # 全集分析：跨 kind 引用才能正确解析
     result["root"] = str(root)
     result["files"] = len(files)
+    if args.kind:
+        result = filter_by_kind(result, args.kind)
 
     if args.output:
         write_text(args.output, json.dumps(result, indent=2, ensure_ascii=False))

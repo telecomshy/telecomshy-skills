@@ -3,6 +3,7 @@ id: REQ-0037
 title: 跨客户端分发（.agents/skills 约定）与平台差异矩阵
 skill: shy-skill-suite
 status: deferred
+kind: feature
 iteration: 1
 created: 2026-09-17
 updated: 2026-09-17
@@ -51,9 +52,9 @@ shy 现状（证伪结果）：全技能 grep `Codex|when_to_use|1536|context: f
 
 （待启动时按 `writing-requirements.md` §4 逐条写成可执行检查；当前为草稿，故未标 `check:`。）
 
-- [ ] 平台差异矩阵覆盖标准 / Claude Code / opencode / Codex，每个字段有出处。
-- [ ] `writing-skills.md` 指向该矩阵，且 opencode 路线不被破坏。
-- [ ] 若采纳 `.agents/skills`，部署说明含该路径；不采纳则写明理由。
+- [ ] 平台差异矩阵覆盖标准 / Claude Code / opencode / Codex，每个字段有出处。 — （语义）
+- [ ] `writing-skills.md` 指向该矩阵，且 opencode 路线不被破坏。 — （episode）
+- [ ] 若采纳 `.agents/skills`，部署说明含该路径；不采纳则写明理由。 — （episode）
 
 ## 范围外
 

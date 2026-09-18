@@ -3,6 +3,7 @@ id: REQ-0033
 title: 脚本遗留硬化（第三批：输出规模 / 覆盖护栏 / 文档-实现一致 / 中文关键词）
 skill: shy-skill-suite
 status: out-of-scope
+kind: fix
 iteration: 2
 created: 2026-09-17
 updated: 2026-09-17
@@ -47,13 +48,13 @@ related: [REQ-0027, REQ-0032]
 
 ## 验收标准
 
-- [ ] 构造 60 条悬空 `blocked_by` 的仓库：`track_requirements.py` 默认输出显著小于 `--full`（实测两值写入迭代记录），且摘要里 `errors`/`warnings` 为计数 + 前 N 条。
-- [ ] `track_requirements.py --output <已存在文件>` → 出现 `.bak`（或需 `--force`）；`aggregate_benchmark.py` / `render_report.py` 对已存在产物的行为同理并实测。
-- [ ] `optimize_description.py` 对每类仅 1 条的评测集 → 要么报错并提示扩充，要么 docstring 已改为与实际一致（实测输出写入迭代记录）。
-- [ ] `generate_eval_set.py` 对 `Use this skill when the user wants to refactor a module` → 不再产出含 `wants` 的 prompt。
-- [ ] `generate_eval_set.py --help` 的退出码 1 含「无有效触发词」；实测全占位 description → rc=1 且文案与 `--help` 一致。
-- [ ] 8 个脚本 `--help` → 退出码 0，且退出码节与实际行为一致。
-- [ ] `python scripts/validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
+- [ ] 构造 60 条悬空 `blocked_by` 的仓库：`track_requirements.py` 默认输出显著小于 `--full`（实测两值写入迭代记录），且摘要里 `errors`/`warnings` 为计数 + 前 N 条。 — （episode）
+- [ ] `track_requirements.py --output <已存在文件>` → 出现 `.bak`（或需 `--force`）；`aggregate_benchmark.py` / `render_report.py` 对已存在产物的行为同理并实测。 — （episode）
+- [ ] `optimize_description.py` 对每类仅 1 条的评测集 → 要么报错并提示扩充，要么 docstring 已改为与实际一致（实测输出写入迭代记录）。 — `check:optimize-ok`
+- [ ] `generate_eval_set.py` 对 `Use this skill when the user wants to refactor a module` → 不再产出含 `wants` 的 prompt。 — （episode）
+- [ ] `generate_eval_set.py --help` 的退出码 1 含「无有效触发词」；实测全占位 description → rc=1 且文案与 `--help` 一致。 — `check:generate-eval-set-ok`
+- [ ] 8 个脚本 `--help` → 退出码 0，且退出码节与实际行为一致。 — `check:scripts-help-ok`
+- [ ] `python scripts/validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。 — `check:skill-validate-ok`
 
 ## 范围外
 

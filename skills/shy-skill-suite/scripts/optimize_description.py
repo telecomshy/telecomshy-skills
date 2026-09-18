@@ -42,7 +42,7 @@ def split_eval_set(
     train_ratio: float = 0.6,
     seed: int = 42,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """按 should_trigger 分层切分 train/test，保证两边都有正负例。"""
+    """按 should_trigger 分层切分 train/test；样本足够时尽量让两边都有正负例。"""
     rng = random.Random(seed)
     positives = [e for e in evals if e.get("should_trigger", True)]
     negatives = [e for e in evals if not e.get("should_trigger", True)]

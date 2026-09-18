@@ -3,6 +3,7 @@ id: REQ-0010
 title: description 触发精度（收窄过宽 + 补齐漏触发）
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 1
 created: 2026-09-16
 updated: 2026-09-17
@@ -50,13 +51,13 @@ related: [REQ-0002, REQ-0006]
 
 ## 验收标准
 
-- [x] `description` 不再把裸短语「写需求」「需求文档」「这个改动要做什么」「提改进意见」当作触发示例（全文每处「需求文档」都带「技能」域限定）。
-- [x] `description` 含「校验技能结构」。
-- [x] `description` ≤ 1024 字符（2026-09-17 实测 166；REQ-0021 加「逼问」域限定后由 150 增至 166）。
-- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
-- [x] 回归（正例）：「给 csv-cleaner 写需求文档」→ **触发**并走 `references/writing-requirements.md`，落盘 `docs/csv-cleaner/requirements/REQ-0001-*.md`，`track_requirements.py --skill csv-cleaner` 返回 `status: ok`。
-- [x] 回归（near-miss）：「这个改动要做什么，帮我写个需求文档吧——就是给我们的订单导出功能加个筛选」→ **不落盘**，并明确判定"不适用于技能需求"（保留：仍会加载 `SKILL.md` 后判定不适用，见「备注 / 待办」）。
-- [x] 路由表与 `references/` 未改动（`git diff --stat` 里 `SKILL.md` 只有 frontmatter 一行变化）。
+- [x] `description` 不再把裸短语「写需求」「需求文档」「这个改动要做什么」「提改进意见」当作触发示例（全文每处「需求文档」都带「技能」域限定）。 — （episode）
+- [x] `description` 含「校验技能结构」。 — （episode）
+- [x] `description` ≤ 1024 字符（2026-09-17 实测 166；REQ-0021 加「逼问」域限定后由 150 增至 166）。 — （episode）
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。 — `check:skill-validate-ok`
+- [x] 回归（正例）：「给 csv-cleaner 写需求文档」→ **触发**并走 `references/writing-requirements.md`，落盘 `docs/csv-cleaner/requirements/REQ-0001-*.md`，`track_requirements.py --skill csv-cleaner` 返回 `status: ok`。 — （行为）
+- [x] 回归（near-miss）：「这个改动要做什么，帮我写个需求文档吧——就是给我们的订单导出功能加个筛选」→ **不落盘**，并明确判定"不适用于技能需求"（保留：仍会加载 `SKILL.md` 后判定不适用，见「备注 / 待办」）。 — （episode）
+- [x] 路由表与 `references/` 未改动（`git diff --stat` 里 `SKILL.md` 只有 frontmatter 一行变化）。 — （episode）
 
 ## 范围外
 

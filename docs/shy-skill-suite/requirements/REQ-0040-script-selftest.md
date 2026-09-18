@@ -3,6 +3,7 @@ id: REQ-0040
 title: 脚本自测套件（smoke/contract，纯标准库）
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 2
 created: 2026-09-17
 updated: 2026-09-17
@@ -56,7 +57,7 @@ related: [REQ-0002, REQ-0012, REQ-0027, REQ-0033, REQ-0040]
 - [x] `selftest.py` 存在；对 9 个脚本每脚本 ≥1 条用例，且**每个脚本至少一条失败路径**断言（坏参数 / 坏输入 → 非 0 退出码） — `check:req0040-selftest-exists` ✅ 缺脚本用例=[]、含失败路径断言=True
 - [x] `python scripts/selftest.py` → 退出码 **0**，全部用例 PASS（实测数量写入迭代记录） — `check:skill-selftest` ✅ 20 条用例：20 通过 / 0 失败、rc=0
 - [x] `selftest.py` 纯标准库（无第三方 import）；`render_report` 用例带 `--no-open` — `check:req0040-selftest-pure` ✅
-- [x] `reviewing-skills.md` Step 6 完成判据含"自测" — `check:req0040-step6-selftest` ✅
+- [x] `reviewing-skills.md` Step 6 完成判据含"自测" — （episode） ✅
 - [x] `python scripts/run_checks.py --list` 含 `skill-selftest` — `check:req0040-registered` ✅
 - [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok` ✅
 

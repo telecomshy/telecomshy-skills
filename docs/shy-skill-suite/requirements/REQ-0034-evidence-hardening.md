@@ -3,6 +3,7 @@ id: REQ-0034
 title: 证据硬化：grader 兼评评测集与抽取隐式主张、analyzer notes 落地、description 负向触发
 skill: shy-skill-suite
 status: done
+kind: fix
 iteration: 1
 created: 2026-09-17
 updated: 2026-09-17
@@ -53,12 +54,12 @@ retroactive: true
 
 ## 验收标准
 
-- [ ] `subagents.md` 的 grader 段含「隐式主张」与「评测集」两项职责，并指向 `claims[]` / `eval_feedback[]` — `check:req0034-grader-duties`
-- [ ] `subagents.md` 的 analyzer 段含恒过 / 恒败与 `analyzer_notes.json` 落盘 — `check:req0034-analyzer-notes-doc`
-- [ ] `running-evals.md` 记录 `claims[]` / `eval_feedback[]` / `analyzer_notes.json` 三个契约 — `check:req0034-schema-docs`
+- [ ] `subagents.md` 的 grader 段含「隐式主张」与「评测集」两项职责，并指向 `claims[]` / `eval_feedback[]` — （episode）
+- [ ] `subagents.md` 的 analyzer 段含恒过 / 恒败与 `analyzer_notes.json` 落盘 — （episode）
+- [ ] `running-evals.md` 记录 `claims[]` / `eval_feedback[]` / `analyzer_notes.json` 三个契约 — （episode）
 - [ ] **notes 端到端**：fixture 跑 `aggregate_benchmark.py` → `benchmark.json.notes` 有条目；跑 `render_report.py --no-open` → HTML 含该条 — `check:req0034-notes-pipeline`
 - [ ] 无 `analyzer_notes.json` 时 notes 为空且退出码 0（向后兼容） — `check:req0034-notes-optional`
-- [ ] `writing-skills.md` §1 含「负向触发」规则 — `check:req0034-negative-trigger`
+- [ ] `writing-skills.md` §1 含「负向触发」规则 — （episode）
 - [ ] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
 
 ## 范围外

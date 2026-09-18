@@ -3,6 +3,7 @@ id: REQ-0015
 title: 结构去重（「自包含」「单一事实源」收敛到单一事实源）
 skill: shy-skill-suite
 status: done
+kind: hygiene
 iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
@@ -51,12 +52,12 @@ related: [REQ-0009]
 
 ## 验收标准
 
-- [x] 「不引用仓库级 `docs/` 等外部路径——技能会被单独复制部署，外部引用就是悬空指针」定义句全技能只出现 1 次（`reviewing-skills.md:118`，grep `外部引用就是悬空指针` → 1）。
-- [x] 「单一事实源」定义句只出现 1 次（`writing-skills.md:40` 的「一个含义只写一处」，grep → 1）；`SKILL.md`、`writing-requirements.md` 改为指针。
-- [x] `SKILL.md` 共用原则仍列出 4 条原则名 + 各自指针。
-- [x] `SKILL.md` 去重后**字符净删**（两行 188 → 108，净删 80）。**原判据「行数减少」被证伪**：两条定义各是**单行长文本**，替换成单行指针后行数不变（仍 38 行）；故改用字符数取证。
-- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0（引用无悬空）。
-- [x] 抽样验证：`SKILL.md` 指针 → `references/writing-skills.md` §7（单一事实源）、`references/reviewing-skills.md` Step 7（自包含），两条均可达。
+- [x] 「不引用仓库级 `docs/` 等外部路径——技能会被单独复制部署，外部引用就是悬空指针」定义句全技能只出现 1 次（`reviewing-skills.md:118`，grep `外部引用就是悬空指针` → 1）。 — （episode）
+- [x] 「单一事实源」定义句只出现 1 次（`writing-skills.md:40` 的「一个含义只写一处」，grep → 1）；`SKILL.md`、`writing-requirements.md` 改为指针。 — （episode）
+- [x] `SKILL.md` 共用原则仍列出 4 条原则名 + 各自指针。 — （episode）
+- [x] `SKILL.md` 去重后**字符净删**（两行 188 → 108，净删 80）。**原判据「行数减少」被证伪**：两条定义各是**单行长文本**，替换成单行指针后行数不变（仍 38 行）；故改用字符数取证。 — （episode）
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0（引用无悬空）。 — `check:skill-validate-ok`
+- [x] 抽样验证：`SKILL.md` 指针 → `references/writing-skills.md` §7（单一事实源）、`references/reviewing-skills.md` Step 7（自包含），两条均可达。 — （episode）
 
 ## 范围外
 

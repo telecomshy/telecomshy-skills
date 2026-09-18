@@ -3,6 +3,7 @@ id: REQ-0003
 title: 架构分层判据（轻量版）
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 1
 created: 2026-09-16
 updated: 2026-09-16
@@ -39,10 +40,10 @@ related: [REQ-0004]
 
 ## 验收标准
 
-- [x] `lifecycle.md` 阶段 1 含"要不要拆成套件？"小节。
-- [x] 含"升级信号"与"反向判据"两组。
-- [x] 含至少一个正例与一个反例。
-- [x] 未新增 `architecture.md`、未新增脚本。
+- [x] `lifecycle.md` 阶段 1 含"要不要拆成套件？"小节。 — （episode）
+- [x] 含"升级信号"与"反向判据"两组。 — （episode）
+- [x] 含至少一个正例与一个反例。 — （episode）
+- [x] 未新增 `architecture.md`、未新增脚本。 — （episode）
 
 ## 范围外
 

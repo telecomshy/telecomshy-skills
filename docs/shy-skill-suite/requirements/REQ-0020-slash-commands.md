@@ -3,6 +3,7 @@ id: REQ-0020
 title: opencode 斜杠命令集 + 调用方式落地（model-invoked 技能 + user 侧 command）
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 2
 created: 2026-09-16
 updated: 2026-09-17
@@ -55,12 +56,12 @@ related: [REQ-0011, REQ-0010]
 
 ## 验收标准
 
-- [x] `commands/` 下 **4** 个模板存在（`shy-grill/review/apply/next.md`），各含 `description` 且 body 引用技能内正确相对路径（`references/*.md`、`scripts/*.py`）。（`shy-eval` 已被 `REQ-0022` 删除；原写 5 个，2026-09-17 复审订正。）
-- [x] `/shy-apply` 的模板明确写"仅在用户显式确认后执行——没有这一步就停在呈现门禁"，与 `REQ-0018` 一致。
-- [x] `writing-skills.md §2` 含 opencode command 路线，且含"opencode 忽略 `disable-model-invocation`"这一句。
-- [x] `lifecycle.md` 的「斜杠快捷」小节列出 **4** 个命令与对应分支；`SKILL.md` 资源清单含 `commands/`。（原写 5 个，2026-09-17 复审订正。）
-- [x] 技能自包含：`commands/*.md` 无仓库级外部路径引用（grep `docs/`、绝对路径 → 0）；`validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
-- [ ] **待验证**：复制到 `~/.config/opencode/commands/` 后 `/shy-next` 真跑列出 frontier。按用户决策**只交模板、不碰本机配置**，故未安装、未取得真实轨迹；命令 body 只是 prompt 模板，其核心动作（`track_requirements.py --root .`）已单独验证通过。
+- [x] `commands/` 下 **4** 个模板存在（`shy-grill/review/apply/next.md`），各含 `description` 且 body 引用技能内正确相对路径（`references/*.md`、`scripts/*.py`）。（`shy-eval` 已被 `REQ-0022` 删除；原写 5 个，2026-09-17 复审订正。） — （episode）
+- [x] `/shy-apply` 的模板明确写"仅在用户显式确认后执行——没有这一步就停在呈现门禁"，与 `REQ-0018` 一致。 — （episode）
+- [x] `writing-skills.md §2` 含 opencode command 路线，且含"opencode 忽略 `disable-model-invocation`"这一句。 — （episode）
+- [x] `lifecycle.md` 的「斜杠快捷」小节列出 **4** 个命令与对应分支；`SKILL.md` 资源清单含 `commands/`。（原写 5 个，2026-09-17 复审订正。） — （episode）
+- [x] 技能自包含：`commands/*.md` 无仓库级外部路径引用（grep `docs/`、绝对路径 → 0）；`validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。 — `check:skill-validate-ok`
+- [ ] **待验证**：复制到 `~/.config/opencode/commands/` 后 `/shy-next` 真跑列出 frontier。按用户决策**只交模板、不碰本机配置**，故未安装、未取得真实轨迹；命令 body 只是 prompt 模板，其核心动作（`track_requirements.py --root .`）已单独验证通过。 — （episode）
 
 ## 范围外
 

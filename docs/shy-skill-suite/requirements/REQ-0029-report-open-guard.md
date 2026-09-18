@@ -3,6 +3,7 @@ id: REQ-0029
 title: 报告呈现守卫（auto-open 只在终局，复审中途不得弹窗）
 skill: shy-skill-suite
 status: done
+kind: fix
 iteration: 3
 created: 2026-09-17
 updated: 2026-09-17
@@ -60,16 +61,16 @@ related: [REQ-0018, REQ-0019, REQ-0022, REQ-0028]
 
 ## 验收标准
 
-- [x] `python scripts/render_report.py <it> --no-open` → `opened` 缺失或 false，`report.html` 已写出，退出码 0。
-- [x] 设 `SHY_NO_OPEN=1` 且**不传** `--no-open` → 不打开（实测 `opened: false`）、`report.html` 已写出、退出码 0。
-- [x] 设 `CI=1` 或 `NO_BROWSER=1` 同样不打开（实测写入迭代记录）。
-- [x] 无任何禁用条件时仍默认打开（回归 `REQ-0022`，实测 `opened: true`）。
-- [x] 无显示环境（`webbrowser.open` 抛错）下仍 `status: success`、`opened: false`、退出码 0（回归 `REQ-0022`）。
-- [x] `render_report.py --help` 说明含 `--no-open` 与 `SHY_NO_OPEN`（及 `CI` / `NO_BROWSER`）。
-- [x] `reviewing-skills.md` Step 8 含「报告是终局产物，只在 Step 8 生成一次；中途不得生成」。
-- [x] `subagents.md` 含「子 agent 不得触发用户可见副作用（弹浏览器 / 写仓库 / 改配置），测试用临时目录 + 静默开关」。
-- [x] `running-evals.md` 的 HTML 报告节说明守卫。
-- [x] `python scripts/validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
+- [x] `python scripts/render_report.py <it> --no-open` → `opened` 缺失或 false，`report.html` 已写出，退出码 0。 — `check:render-report-ok`
+- [x] 设 `SHY_NO_OPEN=1` 且**不传** `--no-open` → 不打开（实测 `opened: false`）、`report.html` 已写出、退出码 0。 — `check:render-report-ok`
+- [x] 设 `CI=1` 或 `NO_BROWSER=1` 同样不打开（实测写入迭代记录）。 — （episode）
+- [x] 无任何禁用条件时仍默认打开（回归 `REQ-0022`，实测 `opened: true`）。 — （episode）
+- [x] 无显示环境（`webbrowser.open` 抛错）下仍 `status: success`、`opened: false`、退出码 0（回归 `REQ-0022`）。 — `check:render-report-ok`
+- [x] `render_report.py --help` 说明含 `--no-open` 与 `SHY_NO_OPEN`（及 `CI` / `NO_BROWSER`）。 — `check:render-report-ok`
+- [x] `reviewing-skills.md` Step 8 含「报告是终局产物，只在 Step 8 生成一次；中途不得生成」。 — （episode）
+- [x] `subagents.md` 含「子 agent 不得触发用户可见副作用（弹浏览器 / 写仓库 / 改配置），测试用临时目录 + 静默开关」。 — （episode）
+- [x] `running-evals.md` 的 HTML 报告节说明守卫。 — （episode）
+- [x] `python scripts/validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。 — `check:skill-validate-ok`
 
 ## 范围外
 

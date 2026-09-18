@@ -3,6 +3,7 @@ id: REQ-0044
 title: 触发评测每条多跑（3 次）对齐规范，消除单跑抖动
 skill: shy-skill-suite
 status: done
+kind: fix
 iteration: 2
 created: 2026-09-17
 updated: 2026-09-17
@@ -54,7 +55,7 @@ iteration-2：8/10，误触发 #103（本周工作周报）、#104（渐进式�
 ## 验收标准
 
 - [x] `optimize_description.py --help` 含 `--trials`，默认 3 — `check:req0044-trials`
-- [x] `running-evals.md` 命令示例含 `--trials` 并写明默认 3 次 — `check:req0044-doc`
+- [x] `running-evals.md` 命令示例含 `--trials` 并写明默认 3 次 — （episode）
 - [x] 真跑一次 `--trials 3`：报告里每条给出触发率（0–1），且不再单次定生死 — （行为）
 - [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
 

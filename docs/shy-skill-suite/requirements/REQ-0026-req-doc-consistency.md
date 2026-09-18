@@ -3,6 +3,7 @@ id: REQ-0026
 title: 复审发现的 REQ 文档一致性修正（假 done / 数字漂移 / 漏记）
 skill: shy-skill-suite
 status: done
+kind: fix
 iteration: 3
 created: 2026-09-17
 updated: 2026-09-17
@@ -52,17 +53,17 @@ related: [REQ-0001, REQ-0008, REQ-0010, REQ-0014, REQ-0020, REQ-0022, REQ-0025, 
 
 ## 验收标准
 
-- [x] `REQ-0020` 的模板 / 命令计数与 `Get-ChildItem skills/shy-skill-suite/commands`（4 个）、`lifecycle.md` 斜杠快捷表（4 行）一致。（**订正标注里引用旧值不算违反**——判据针对的是"把旧值当**当前**计数"。）
-- [x] `REQ-0008`:49 的勾选状态与 `reviewing-skills.md` Step 8 完成判据的实际内容一致（补回则该条 `[x]` 成立；不补则该条已注明取代）。
-- [x] `REQ-0014` 的版本号与 `SKILL.md` 的 `compatibility` 一致（同为 `3.12`）；脚本清单与 `scripts/` 实际一致（**不写死数量**——本判据原写"CLI 数 = 8"，已按 `REQ-0042` 去数字，避免每加脚本就制造假 done）。
-- [x] `REQ-0010`:55 的数字与实测 `description` 长度一致（实测命令写入迭代记录）。
-- [x] `REQ-0001`:35 的 JSON 契约与 `scaffold_skill.py` 实际输出一致（或已登记差异）。
-- [x] `REQ-0022`「脚本与资源」含 `SKILL.md`。
-- [x] `REQ-0025` 验收 #4 的措辞与 `writing-requirements.md` §6 模板一致（若 `REQ-0030` 已先行删掉该机制，则本项按其取代说明处理）。
-- [x] `writing-requirements.md` 的 frontmatter 说明块含 `superseded_by`，且写明它与 `related` 的区别。
-- [x] `track_requirements.py` 对 `superseded_by` 悬空引用报 error（构造一个指向不存在 REQ 的样本验证，输出写入迭代记录）。
-- [x] 被修 REQ 就地加「2026-09-17 复审订正」标注，且 `updated` 改为当天。（**不**追加迭代记录——迭代记录记的是"本 REQ 被实施"，不是"被别的 REQ 改了文本"；与 `REQ-0023` 改 `REQ-0012` 时的既有做法一致。）
-- [x] `python skills/shy-skill-suite/scripts/track_requirements.py --root .` → `status: ok`、退出码 0（文档仍可解析）。
+- [x] `REQ-0020` 的模板 / 命令计数与 `Get-ChildItem skills/shy-skill-suite/commands`（4 个）、`lifecycle.md` 斜杠快捷表（4 行）一致。（**订正标注里引用旧值不算违反**——判据针对的是"把旧值当**当前**计数"。） — （episode）
+- [x] `REQ-0008`:49 的勾选状态与 `reviewing-skills.md` Step 8 完成判据的实际内容一致（补回则该条 `[x]` 成立；不补则该条已注明取代）。 — （episode）
+- [x] `REQ-0014` 的版本号与 `SKILL.md` 的 `compatibility` 一致（同为 `3.12`）；脚本清单与 `scripts/` 实际一致（**不写死数量**——本判据原写"CLI 数 = 8"，已按 `REQ-0042` 去数字，避免每加脚本就制造假 done）。 — （episode）
+- [x] `REQ-0010`:55 的数字与实测 `description` 长度一致（实测命令写入迭代记录）。 — （episode）
+- [x] `REQ-0001`:35 的 JSON 契约与 `scaffold_skill.py` 实际输出一致（或已登记差异）。 — （episode）
+- [x] `REQ-0022`「脚本与资源」含 `SKILL.md`。 — （episode）
+- [x] `REQ-0025` 验收 #4 的措辞与 `writing-requirements.md` §6 模板一致（若 `REQ-0030` 已先行删掉该机制，则本项按其取代说明处理）。 — （episode）
+- [x] `writing-requirements.md` 的 frontmatter 说明块含 `superseded_by`，且写明它与 `related` 的区别。 — （episode）
+- [x] `track_requirements.py` 对 `superseded_by` 悬空引用报 error（构造一个指向不存在 REQ 的样本验证，输出写入迭代记录）。 — （语义）
+- [x] 被修 REQ 就地加「2026-09-17 复审订正」标注，且 `updated` 改为当天。（**不**追加迭代记录——迭代记录记的是"本 REQ 被实施"，不是"被别的 REQ 改了文本"；与 `REQ-0023` 改 `REQ-0012` 时的既有做法一致。） — （episode）
+- [x] `python skills/shy-skill-suite/scripts/track_requirements.py --root .` → `status: ok`、退出码 0（文档仍可解析）。 — `check:track-ok`
 
 ## 范围外
 

@@ -3,6 +3,7 @@ id: REQ-0030
 title: Spec 轴改无条件全量扫 + 删除回归债跟踪
 skill: shy-skill-suite
 status: done
+kind: fix
 iteration: 3
 created: 2026-09-17
 updated: 2026-09-17
@@ -82,10 +83,10 @@ False False
 - [x] `track_requirements.py --help` 不含 `last_verified` / `regression_debt` / 「回归债」 — `check:req0030-help-clean`
 - [x] 技能内 0 命中 `last_verified` / `regression_debt`（机制描述已全删） — `check:req0030-no-removed-tokens`
 - [x] 技能内 0 命中「回归债」 — `check:req0030-no-debt-term`
-- [x] `reviewing-skills.md` Step 3 无「三档范围」「三个自动升级条件」，含「全部 REQ」与「唯一豁免」 — `check:req0030-step3-terms`
-- [x] `reviewing-skills.md` Step 2 的 case set 来源不引用 Step 3 的转全量 — `check:req0030-step2-no-sweep-ref`
-- [x] `writing-requirements.md` 含 `check:` / `（行为）` / `（语义）` 三类规则、无 `last_verified` — `check:req0030-writing-req-executable`
-- [x] `REQ-0025` 的 frontmatter 含 `superseded_by: REQ-0030`、`status: out-of-scope` — `check:req0030-req0025-superseded`
+- [x] `reviewing-skills.md` Step 3 无「三档范围」「三个自动升级条件」，含「全部 REQ」与「唯一豁免」 — （episode）
+- [x] `reviewing-skills.md` Step 2 的 case set 来源不引用 Step 3 的转全量 — （episode）
+- [x] `writing-requirements.md` 含 `check:` / `（行为）` / `（语义）` 三类规则、无 `last_verified` — （episode）
+- [x] `REQ-0025` 的 frontmatter 含 `superseded_by: REQ-0030`、`status: out-of-scope` — （episode）
 - [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
 - [x] **全量 Spec 扫仍能跑通**：全部 REQ 的验收标准逐条有判定（可执行项由 `run_checks.py` 跑，`（语义）` 项逐条读）。（语义）
 

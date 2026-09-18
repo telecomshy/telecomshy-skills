@@ -3,6 +3,7 @@ id: REQ-0021
 title: description 补逼问域限定触发词（修复逼问分支不可达）
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
@@ -45,13 +46,13 @@ related: [REQ-0006, REQ-0010, REQ-0020]
 
 ## 验收标准
 
-- [x] `description` 含"逼问"（措辞：「逼问 / 澄清某个技能该做什么」），每处出现都带"技能"域限定。
-- [x] `description` 不含裸短语触发（无「逼问一个需求」这类无域限定写法）。
-- [x] `description` ≤ 1024 字符（实测 166）。
-- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
-- [x] 本步只改 `SKILL.md` 的 frontmatter `description` 行；路由表与 `references/` 未改动。
-- [ ] **待验证**：回归（正例）「逼问一下这个技能该做什么」→ 触发并进入 `references/grilling.md`。本机 `shy-skill-suite` 未部署到 `~/.agents/skills`（子 agent 的 available_skills 不含它），无法取真实轨迹。
-- [ ] **待验证**：回归（near-miss）「帮我澄清这段代码要做什么」→ 不落盘、不进入技能开发流程。同上，无真实轨迹。
+- [x] `description` 含"逼问"（措辞：「逼问 / 澄清某个技能该做什么」），每处出现都带"技能"域限定。 — （episode）
+- [x] `description` 不含裸短语触发（无「逼问一个需求」这类无域限定写法）。 — （episode）
+- [x] `description` ≤ 1024 字符（实测 166）。 — （episode）
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。 — `check:skill-validate-ok`
+- [x] 本步只改 `SKILL.md` 的 frontmatter `description` 行；路由表与 `references/` 未改动。 — （episode）
+- [ ] **待验证**：回归（正例）「逼问一下这个技能该做什么」→ 触发并进入 `references/grilling.md`。本机 `shy-skill-suite` 未部署到 `~/.agents/skills`（子 agent 的 available_skills 不含它），无法取真实轨迹。 — （episode）
+- [ ] **待验证**：回归（near-miss）「帮我澄清这段代码要做什么」→ 不落盘、不进入技能开发流程。同上，无真实轨迹。 — （episode）
 
 ## 范围外
 

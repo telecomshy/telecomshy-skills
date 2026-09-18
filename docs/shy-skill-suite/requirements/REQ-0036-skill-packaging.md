@@ -3,6 +3,7 @@ id: REQ-0036
 title: .skill 打包（打包前跑校验门控）
 skill: shy-skill-suite
 status: deferred
+kind: feature
 iteration: 1
 created: 2026-09-17
 updated: 2026-09-17
@@ -50,9 +51,9 @@ defer_reason: 当前技能部署走 junction 本地连接（不导出包）；"�
 
 （待启动时按 `writing-requirements.md` §4 逐条写成可执行检查；当前为草稿，故未标 `check:`。）
 
-- [ ] `package_skill.py` 产出 `.skill`（ZIP）；含技能全部必需文件。
-- [ ] 打包前校验失败 → 拒绝打包、退出码非 0。
-- [ ] 产物不含 `__pycache__` / `*.pyc` / 密钥类文件。
+- [ ] `package_skill.py` 产出 `.skill`（ZIP）；含技能全部必需文件。 — （语义）
+- [ ] 打包前校验失败 → 拒绝打包、退出码非 0。 — （行为）
+- [ ] 产物不含 `__pycache__` / `*.pyc` / 密钥类文件。 — （语义）
 
 ## 范围外
 

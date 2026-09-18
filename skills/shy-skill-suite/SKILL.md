@@ -27,7 +27,7 @@ metadata:
 
 - **单一事实源**：定义见 `references/writing-skills.md` §7。
 - **技能必须自包含**：定义与检查见 `references/reviewing-skills.md` Step 7。
-- **先删后加**：优先删，其次改，最后才加。
+- **先删后加**：见 `references/reviewing-skills.md` §1。
 - **证据优先**：没有真实执行轨迹或对照证据的判断，只能标"待验证"，不能当结论。
 - **输出面向人**：复审结论与改进建议用**白话 + why**讲给用户听（为什么会出问题、为什么这么改），不许只丢术语或 `file:line`；详见 `references/reviewing-skills.md` Step 8。
 - **实现 / 评审两路分离**：实现完只跑**静默秒级门**（绿了报完成、红了才说），**不自动评审**；**评审由用户触发**，出报告后**逐条分拣**（立即修 / 以后修 / 丢弃），按所选实施一次即停，**不自动再审**。详见 `references/lifecycle.md`。
@@ -39,7 +39,8 @@ metadata:
 - `references/subagents.md` — 复审外派子 agent 的角色与窄 brief（executor / grader / spec-reviewer / analyzer / comparator）、派发 vs 内联。
 - `scripts/` — 纯标准库 CLI：脚手架、校验、评测集生成与选优、跑 agent 检测触发、聚合 benchmark、需求跟踪、跑 REQ 可执行验收检查（`run_checks.py`）、渲染报告；`selftest.py` 是脚本自测（冒烟 / 契约，成功 + 失败路径）。各脚本 `--help` 有简述 / 参数 / 示例 / 退出码。
 - `assets/report-template.html` — HTML 报告模板（内联样式、无外部资源）。
-- `commands/` — opencode 斜杠命令模板（`shy-grill` / `shy-review` / `shy-apply` / `shy-next`）；复制到 `~/.config/opencode/commands/` 生效，说明见 `lifecycle.md` 的「斜杠快捷」。
+- `commands/` — opencode 斜杠命令模板（`shy-grill` / `shy-review` / `shy-apply` / `shy-next`）；复制到 `~/.config/opencode/commands/` 生效，说明见 `references/lifecycle.md` 的「斜杠快捷」。
+- `evals/evals.json` — 随技能入库的起手触发评测集（复现触发结论用，见 `references/running-evals.md`）。
 - `scripts/__pycache__/` — 跑脚本时自动生成，**不进技能内容**；复制部署时排除（仓库 `.gitignore` 已忽略）。
 
 ## 范围外

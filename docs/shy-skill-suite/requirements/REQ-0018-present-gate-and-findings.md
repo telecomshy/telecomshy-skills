@@ -3,6 +3,7 @@ id: REQ-0018
 title: 复审门禁后移 + 结构化 findings（评估后只呈现、不自动落盘）
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
@@ -75,11 +76,11 @@ related: [REQ-0019, REQ-0020]
 
 ## 验收标准
 
-- [x] `lifecycle.md` 阶段 4 不再出现"必须把结果折回 REQ"；改为"仅当用户在上一步显式触发后，才把结果折回 REQ"（`grep "必须.*折回"` → 0 命中）。
-- [x] `lifecycle.md` 有且仅有一处「呈现门禁」规则句（`grep "只呈现、不落盘"` → 1 命中，`lifecycle.md:47`）；另两处为指针（`lifecycle.md:75`、`reviewing-skills.md:143`）。
-- [x] `reviewing-skills.md` Step 8 完成判据含"呈现给用户；然后停下 / 回写要等用户显式触发"，且不再含"必须回写需求文档"。
-- [x] `reviewing-skills.md` 含 `findings.json` 契约，字段名与 `REQ-0019` 的消费字段一致（`axis/priority/location/problem/impact/suggestion/expected/falsification/evidence/verified` + `verdict/summary`）。
-- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
+- [x] `lifecycle.md` 阶段 4 不再出现"必须把结果折回 REQ"；改为"仅当用户在上一步显式触发后，才把结果折回 REQ"（`grep "必须.*折回"` → 0 命中）。 — （episode）
+- [x] `lifecycle.md` 有且仅有一处「呈现门禁」规则句（`grep "只呈现、不落盘"` → 1 命中，`lifecycle.md:47`）；另两处为指针（`lifecycle.md:75`、`reviewing-skills.md:143`）。 — （episode）
+- [x] `reviewing-skills.md` Step 8 完成判据含"呈现给用户；然后停下 / 回写要等用户显式触发"，且不再含"必须回写需求文档"。 — （episode）
+- [x] `reviewing-skills.md` 含 `findings.json` 契约，字段名与 `REQ-0019` 的消费字段一致（`axis/priority/location/problem/impact/suggestion/expected/falsification/evidence/verified` + `verdict/summary`）。 — （episode）
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。 — `check:skill-validate-ok`
 
 ## 范围外
 

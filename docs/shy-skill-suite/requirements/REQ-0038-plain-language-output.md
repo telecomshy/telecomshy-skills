@@ -3,6 +3,7 @@ id: REQ-0038
 title: 复审输出面向人：白话解释 + 说明 why
 skill: shy-skill-suite
 status: done
+kind: docs
 iteration: 1
 created: 2026-09-17
 updated: 2026-09-17
@@ -47,8 +48,8 @@ related: [REQ-0018, REQ-0019, REQ-0024]
 
 ## 验收标准
 
-- [ ] `reviewing-skills.md` Step 8 含「说人话 / 说 why / 白话」规则 — `check:req0038-plain-language`
-- [ ] `SKILL.md` 共用原则含「输出面向人」 — `check:req0038-plain-language`
+- [ ] `reviewing-skills.md` Step 8 含「说人话 / 说 why / 白话」规则 — （episode）
+- [ ] `SKILL.md` 共用原则含「输出面向人」 — （episode）
 - [ ] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
 
 ## 范围外

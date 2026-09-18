@@ -1,0 +1,10 @@
+{
+  "converged": false,
+  "converged_since": null,
+  "cleanup_ttl_gate_runs": 3,
+  "invariant_budget_growth": 2,
+  "debt_targets": {
+    "unclassified_criteria": 0,
+    "unmigrated_reqs": 0
+  }
+}

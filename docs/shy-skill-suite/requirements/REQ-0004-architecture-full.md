@@ -3,6 +3,7 @@ id: REQ-0004
 title: 架构分层完整版（architecture.md + 路由表 + 命名约定）
 skill: shy-skill-suite
 status: deferred
+kind: feature
 iteration: 1
 created: 2026-09-16
 updated: 2026-09-16

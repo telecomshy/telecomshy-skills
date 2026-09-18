@@ -3,6 +3,7 @@ id: REQ-0002
 title: 自带技能校验器（validate_skill.py）
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
@@ -47,14 +48,14 @@ related: []
 
 ## 验收标准
 
-- [x] 对 `skills/shy-skill-suite` 运行 → `status: ok`、退出码 0。
-- [x] 顶层含 `name_cn` 的技能 → 报"多余字段"并退出码 1。
-- [x] `name` 与目录不同名 → 报错。
-- [x] 技能目录含 `README.md` → 报错。
-- [x] 引用 `references/nope.md`（不存在）→ 报"悬空引用"。
-- [x] `description` 含 `TODO`（引号包裹）→ 产出 warning（非 error）。
-- [x] 未加引号的 `description: TODO: ...` → 报"疑似非法 YAML"（与官方 PyYAML 结论一致）。
-- [x] 判定可用 `skills/shy-skill-suite/scripts/validate_skill.py` + 文本检查**独立复现**（不依赖技能包外文件）；额外规则（`name` == 目录名、目录内 `README.md`、悬空引用、`description` 不含尖括号、`compatibility` ≤ 500）为**有意收紧**。
+- [x] 对 `skills/shy-skill-suite` 运行 → `status: ok`、退出码 0。 — `check:skill-validate-ok`
+- [x] 顶层含 `name_cn` 的技能 → 报"多余字段"并退出码 1。 — `check:validate-rejects-bad`
+- [x] `name` 与目录不同名 → 报错。 — `check:validate-rejects-bad`
+- [x] 技能目录含 `README.md` → 报错。 — `check:validate-rejects-bad`
+- [x] 引用 `references/nope.md`（不存在）→ 报"悬空引用"。 — （episode）
+- [x] `description` 含 `TODO`（引号包裹）→ 产出 warning（非 error）。 — （episode）
+- [x] 未加引号的 `description: TODO: ...` → 报"疑似非法 YAML"（与官方 PyYAML 结论一致）。 — （episode）
+- [x] 判定可用 `skills/shy-skill-suite/scripts/validate_skill.py` + 文本检查**独立复现**（不依赖技能包外文件）；额外规则（`name` == 目录名、目录内 `README.md`、悬空引用、`description` 不含尖括号、`compatibility` ≤ 500）为**有意收紧**。 — （episode）
 
 ## 范围外
 

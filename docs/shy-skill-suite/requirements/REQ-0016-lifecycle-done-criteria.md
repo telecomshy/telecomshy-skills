@@ -3,6 +3,7 @@ id: REQ-0016
 title: lifecycle 阶段 1 / 阶段 2 补可判定的完成判据
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
@@ -51,11 +52,11 @@ related: []
 
 ## 验收标准
 
-- [x] `lifecycle.md` 阶段 1 含以"完成判据"标示的可判定条件，且提到 `status: ready`、验收标准可端到端验证、`blocked_by`、迭代记录（`lifecycle.md:47`）。
-- [x] `lifecycle.md` 阶段 2 含以"完成判据"标示的可判定条件，且提到 `validate_skill.py` 与"每条验收标准有证据"（`lifecycle.md:57`）。
-- [x] 两处判据措辞不与 `reviewing-skills.md` 的「完成判据」重复：`grep "待开发的 REQ 已达"` → 1（仅 lifecycle）、`grep "无一条标「待验证」"` → 1（仅 lifecycle）。
-- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
-- [x] 本步只改阶段 1/2；阶段 3–6 未由本步改动（阶段 3/4 的现状是 `REQ-0018` 的合法改动）。
+- [x] `lifecycle.md` 阶段 1 含以"完成判据"标示的可判定条件，且提到 `status: ready`、验收标准可端到端验证、`blocked_by`、迭代记录（`lifecycle.md:47`）。 — （episode）
+- [x] `lifecycle.md` 阶段 2 含以"完成判据"标示的可判定条件，且提到 `validate_skill.py` 与"每条验收标准有证据"（`lifecycle.md:57`）。 — `check:skill-validate-ok`
+- [x] 两处判据措辞不与 `reviewing-skills.md` 的「完成判据」重复：`grep "待开发的 REQ 已达"` → 1（仅 lifecycle）、`grep "无一条标「待验证」"` → 1（仅 lifecycle）。 — （episode）
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。 — `check:skill-validate-ok`
+- [x] 本步只改阶段 1/2；阶段 3–6 未由本步改动（阶段 3/4 的现状是 `REQ-0018` 的合法改动）。 — （episode）
 
 ## 范围外
 

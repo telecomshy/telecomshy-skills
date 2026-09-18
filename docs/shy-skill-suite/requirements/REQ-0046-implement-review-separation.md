@@ -3,9 +3,10 @@ id: REQ-0046
 title: 实现 / 评审两路分离 + 评审收敛到分拣 + 单次实施
 skill: shy-skill-suite
 status: done
-iteration: 1
+kind: docs
+iteration: 2
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-18
 blocked_by: []
 related: [REQ-0018, REQ-0041, REQ-0043]
 ---
@@ -56,11 +57,11 @@ related: [REQ-0018, REQ-0041, REQ-0043]
 
 ## 验收标准
 
-- [ ] `lifecycle.md` 含「实现路」与「评审路」两条路 — `check:req0046-two-paths`
-- [ ] `lifecycle.md` 阶段 3 含「用户主动触发 / 只在用户要求时进入」 — `check:req0046-user-triggered`
-- [ ] `lifecycle.md` 含分拣三选项 + 「不落盘」 + 「不自动再审」 — `check:req0046-triage`
-- [ ] `SKILL.md` 共用原则含「实现 / 评审两路分离」 — `check:req0046-skill-rule`
-- [ ] `REQ-0041` 与 `REQ-0043` 含 `superseded_by: REQ-0046` — `check:req0046-superseded`
+- [x] `lifecycle.md` 含「实现路」与「评审路」两条路 — （episode）子串 check 已退休（2026-09-18，见设计 §4.2）
+- [x] `lifecycle.md` 阶段 3 含「用户主动触发 / 只在用户要求时进入」 — （episode）
+- [x] `lifecycle.md` 含分拣三选项 + 「不落盘」 + 「不自动再审」 — （episode）
+- [x] `SKILL.md` 共用原则含「实现 / 评审两路分离」 — （episode）
+- [ ] `REQ-0041` 与 `REQ-0043` 含 `superseded_by: REQ-0046` — （episode）
 - [ ] **顺带修 `run_checks.py` 的跳过缺陷**：未实现的 REQ（`draft`/`ready`）的 `check:` 跳过，不因未注册报红 — `check:req0046-unimplemented-skipped`
 - [ ] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
 
@@ -76,6 +77,7 @@ related: [REQ-0018, REQ-0041, REQ-0043]
 | 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-17 | 落需求并实施：实现 / 评审两路分离；评审改为用户触发 + 报告 + 逐条分拣 + 单次实施；取代 REQ-0041/0043；同步 `SKILL.md` / `reviewing-skills` / `running-evals` / `commands/shy-apply`。**顺带修 `run_checks.py` 跳过缺陷**：原只跳过 `deferred/out-of-scope`，漏了 `ready/draft`——`REQ-0044/0045`（ready）的 `check:` 因此报红；改为只对 `in-progress/done` 跑 check | `run_checks` **40 通过 / 0 失败**；`validate` ok | **done**（按实现路：静默门绿，自动回写） |
+| 2 | 2026-09-18 | **迁移试点**（见 `REQ-0050`）：4 条文档措辞子串 check（`two-paths` / `user-triggered` / `triage` / `skill-rule`）退休为 `（episode）`、从 Gate 移除；`run_checks.py` 增 `（episode）` 识别与计数 | `design/pilot-0046.py` 通过：基线 48/48 → 措辞打磨 0 假警报 → 注入回归被抓 | **done** |
 
 ## 备注 / 待办
 

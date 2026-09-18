@@ -103,7 +103,7 @@ def make_reqs(base: Path, dangling: bool = False, unknown_check: bool = False) -
     d.mkdir(parents=True, exist_ok=True)
     sup = "\nsuperseded_by: REQ-9999" if dangling else ""
     tag = "no-such-check" if unknown_check else "skill-validate-ok"
-    (d / "REQ-0001-a.md").write_text(
+    (d / "REQ-0001.md").write_text(
         f"---\nid: REQ-0001\ntitle: a\nskill: demo-skill\nstatus: done\niteration: 1\n"
         f"created: 2026-01-01\nupdated: 2026-01-01\nblocked_by: []{sup}\n---\n\n"
         f"# REQ-0001 a\n\n## 验收标准\n\n- [ ] x — `check:{tag}`\n",

@@ -3,6 +3,7 @@ id: REQ-0019
 title: 评估结果 HTML 报告（单文件自包含，评测 + 复审意见合一）
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
@@ -60,14 +61,14 @@ related: [REQ-0018, REQ-0012]
 
 ## 验收标准
 
-- [x] 构造一份假 `iteration-1/`（含 `benchmark.json` + 2 个 eval 的 grading/timing + `findings.json`）→ `render_report.py` 退出码 0，生成 `report.html`（实测 `evals: 2, findings: 3`）。
-- [x] `report.html` 为单文件自包含：`grep "https?://"` 0 命中；`<script src>`/`<link href>` 0 命中（样式与数据全内联）。
-- [x] HTML 内嵌 JSON 可解析，且评测摘要与 findings 条目数与输入一致（`evals=2`、`findings=3`）。
-- [x] 只有 findings（无 benchmark）时仍生成 HTML、退出码 0；只有 benchmark（无 findings）同样退出 0。
-- [x] 缺工作区 / 无数据 → 退出码 1 且**错误 JSON 走 stderr**；缺必填参数 → 退出码 2。
-- [x] `--help` 含简述、参数、示例、退出码；`--help` 退出码 0。
-- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0；引用无悬空（模板在 `assets/` 内）。
-- [x] 无第三方依赖（只用标准库）。
+- [x] 构造一份假 `iteration-1/`（含 `benchmark.json` + 2 个 eval 的 grading/timing + `findings.json`）→ `render_report.py` 退出码 0，生成 `report.html`（实测 `evals: 2, findings: 3`）。 — `check:render-report-ok`
+- [x] `report.html` 为单文件自包含：`grep "https?://"` 0 命中；`<script src>`/`<link href>` 0 命中（样式与数据全内联）。 — （episode）
+- [x] HTML 内嵌 JSON 可解析，且评测摘要与 findings 条目数与输入一致（`evals=2`、`findings=3`）。 — （语义）
+- [x] 只有 findings（无 benchmark）时仍生成 HTML、退出码 0；只有 benchmark（无 findings）同样退出 0。 — `check:render-report-ok`
+- [x] 缺工作区 / 无数据 → 退出码 1 且**错误 JSON 走 stderr**；缺必填参数 → 退出码 2。 — `check:render-report-ok`
+- [x] `--help` 含简述、参数、示例、退出码；`--help` 退出码 0。 — `check:scripts-help-ok`
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0；引用无悬空（模板在 `assets/` 内）。 — `check:skill-validate-ok`
+- [x] 无第三方依赖（只用标准库）。 — （episode）
 
 ## 范围外
 

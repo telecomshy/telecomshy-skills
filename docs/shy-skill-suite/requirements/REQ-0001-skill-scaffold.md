@@ -3,6 +3,7 @@ id: REQ-0001
 title: 轻量脚手架（scaffold_skill.py）
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 2
 created: 2026-09-16
 updated: 2026-09-17
@@ -46,12 +47,12 @@ related: [REQ-0003]
 
 ## 验收标准
 
-- [x] `scaffold_skill.py demo --path <tmp> --description "测试用"` → 生成 `<tmp>/demo/SKILL.md`；`skill_utils.load_skill` 解析出 `name=demo`、`description="测试用"`。
-- [x] 省略 `--description` → 生成含 `TODO` 的占位 `description`，文件仍可解析。
-- [x] 非法 `name`（如 `Demo_Skill`）→ 报错、退出码非 0、且未创建任何文件。
-- [x] 生成目录内**只有** `SKILL.md`，无 `references/`、`scripts/`、`assets/`。
-- [x] 同名重复运行 → `status: skipped`、退出码 0、内容不变；`--force` 才覆盖（并留下 `SKILL.md.bak`）。（**2026-09-17 复审订正**：原写"报错"，实现按 `REQ-0027` 改为幂等。）
-- [x] 生成的 `SKILL.md` 满足规范硬约束：`name` == 目录名、kebab-case、≤64；`description` 非空、≤1024、不含尖括号 `<` / `>`；frontmatter 顶层字段在允许集内（可用 `scripts/validate_skill.py` 复现）。
+- [x] `scaffold_skill.py demo --path <tmp> --description "测试用"` → 生成 `<tmp>/demo/SKILL.md`；`skill_utils.load_skill` 解析出 `name=demo`、`description="测试用"`。 — （episode）
+- [x] 省略 `--description` → 生成含 `TODO` 的占位 `description`，文件仍可解析。 — （语义）
+- [x] 非法 `name`（如 `Demo_Skill`）→ 报错、退出码非 0、且未创建任何文件。 — `check:scaffold-ok`
+- [x] 生成目录内**只有** `SKILL.md`，无 `references/`、`scripts/`、`assets/`。 — （episode）
+- [x] 同名重复运行 → `status: skipped`、退出码 0、内容不变；`--force` 才覆盖（并留下 `SKILL.md.bak`）。（**2026-09-17 复审订正**：原写"报错"，实现按 `REQ-0027` 改为幂等。） — `check:scaffold-ok`
+- [x] 生成的 `SKILL.md` 满足规范硬约束：`name` == 目录名、kebab-case、≤64；`description` 非空、≤1024、不含尖括号 `<` / `>`；frontmatter 顶层字段在允许集内（可用 `scripts/validate_skill.py` 复现）。 — （episode）
 
 ## 范围外
 

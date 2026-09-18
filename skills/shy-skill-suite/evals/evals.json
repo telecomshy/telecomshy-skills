@@ -1,0 +1,176 @@
+{
+  "skill_name": "shy-skill-suite",
+  "skill_path": "D:\\code\\my_projects\\telecomshy-skills\\skills\\shy-skill-suite",
+  "generated_from": "手工构造（生成器产出为占位符噪声，见 findings F19）",
+  "lang": "zh",
+  "evals": [
+    {
+      "eval_id": 0,
+      "eval_name": "trigger-direct-0",
+      "prompt": "我想给这个技能补一份需求文档",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「shy-skill-suite」技能被触发并进入其工作流", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "trigger-direct-1",
+      "prompt": "这个技能老是不触发，帮我查查",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「shy-skill-suite」技能被触发并进入其工作流", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "trigger-direct-2",
+      "prompt": "帮我复审一下 knowledge-distill 这个技能",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「shy-skill-suite」技能被触发并进入其工作流", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "trigger-direct-3",
+      "prompt": "技能写完了，帮我检查一下结构对不对",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「shy-skill-suite」技能被触发并进入其工作流", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 4,
+      "eval_name": "trigger-casual-4",
+      "prompt": "我有个想法但说不清，你逼问一下我，把这个技能该做什么问清楚",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「shy-skill-suite」技能被触发并进入其工作流", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 5,
+      "eval_name": "trigger-casual-5",
+      "prompt": "帮我把上次复审的问题回写到需求里",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「shy-skill-suite」技能被触发并进入其工作流", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 6,
+      "eval_name": "trigger-casual-6",
+      "prompt": "新建一个技能，先给我搭个骨架",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「shy-skill-suite」技能被触发并进入其工作流", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 7,
+      "eval_name": "trigger-casual-7",
+      "prompt": "SKILL.md 的 description 怎么写才能触发准？",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「shy-skill-suite」技能被触发并进入其工作流", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 8,
+      "eval_name": "trigger-typo-8",
+      "prompt": "帮我看下这个技能够不够规范，要不要拆成多个",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「shy-skill-suite」技能被触发并进入其工作流", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 9,
+      "eval_name": "trigger-domainless-9",
+      "prompt": "这套东西怎么迭代？审完的结果下一步该怎么落",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「shy-skill-suite」技能被触发并进入其工作流", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 100,
+      "eval_name": "no-trigger-near-miss-0",
+      "prompt": "帮我写一份业务需求文档（PRD）给产品经理",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「shy-skill-suite」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 101,
+      "eval_name": "no-trigger-near-miss-1",
+      "prompt": "帮我复审一下这份合同，看看有没有风险",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「shy-skill-suite」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 102,
+      "eval_name": "no-trigger-near-miss-2",
+      "prompt": "这个软件有哪些功能，能给我列一下吗",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「shy-skill-suite」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 103,
+      "eval_name": "no-trigger-near-miss-3",
+      "prompt": "帮我校验一下这段 JSON 格式对不对",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「shy-skill-suite」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 104,
+      "eval_name": "no-trigger-near-miss-4",
+      "prompt": "给这个项目写一份 README 文档",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「shy-skill-suite」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 105,
+      "eval_name": "no-trigger-near-miss-5",
+      "prompt": "解释一下什么是 Agent Skills，我想了解一下概念",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「shy-skill-suite」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 106,
+      "eval_name": "no-trigger-near-miss-6",
+      "prompt": "帮我 review 一下这个 PR 的改动",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「shy-skill-suite」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 107,
+      "eval_name": "no-trigger-near-miss-7",
+      "prompt": "把这个技能文档翻译成英文",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「shy-skill-suite」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 108,
+      "eval_name": "no-trigger-near-miss-8",
+      "prompt": "帮我梳理一下这个项目的整体需求，理成一份清单",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「shy-skill-suite」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 109,
+      "eval_name": "no-trigger-near-miss-9",
+      "prompt": "帮我给这个模块补单元测试",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「shy-skill-suite」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    }
+  ],
+  "metadata": {
+    "trigger_phrases_found": 0,
+    "keywords_found": 0,
+    "total_evals": 20,
+    "should_trigger_count": 10,
+    "should_not_trigger_count": 10,
+    "note": "手工构造，替代生成器的占位符噪声产出"
+  }
+}

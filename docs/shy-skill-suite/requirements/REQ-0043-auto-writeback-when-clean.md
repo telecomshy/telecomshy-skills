@@ -3,6 +3,7 @@ id: REQ-0043
 title: 呈现门禁改为「有事才停」：机械记账自动回写，判断项才停
 skill: shy-skill-suite
 status: out-of-scope
+kind: docs
 iteration: 2
 created: 2026-09-17
 updated: 2026-09-17

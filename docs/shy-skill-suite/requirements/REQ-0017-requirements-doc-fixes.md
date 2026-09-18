@@ -3,6 +3,7 @@ id: REQ-0017
 title: 需求文档修正（验收去外部依赖 + 补记两条校验规则）
 skill: shy-skill-suite
 status: done
+kind: fix
 iteration: 2
 created: 2026-09-16
 updated: 2026-09-16
@@ -56,12 +57,12 @@ related: [REQ-0001, REQ-0002]
 
 ## 验收标准
 
-- [x] `REQ-0001` 的验收标准中不再出现对技能包外文件（`quick_validate.py` / `skill-creator`）的依赖（剩余提及只在迭代记录 / 备注的历史说明）。
-- [x] `REQ-0002` 的验收标准中不再出现对技能包外文件的依赖（剩余提及只在问题背景 / 迭代记录 / 备注）。
-- [x] 两份 REQ 的验收标准均可只用 `skills/shy-skill-suite/scripts/` 内的脚本 + 文本检查复现。
-- [x] `REQ-0002` 的「行为与步骤」含"`description` 不含尖括号 `<` / `>`"与"`compatibility`（可选）≤ 500 字符"两条。
-- [x] 两份 REQ 各有一条新迭代记录，`iteration` 已 +1（1→2）、`updated` 为改动当天（`status` 保持 `done`）。
-- [x] 本步只编辑这两份 `docs/` 文件，未修改 `skills/shy-skill-suite/` 下任何文件。
+- [x] `REQ-0001` 的验收标准中不再出现对技能包外文件（`quick_validate.py` / `skill-creator`）的依赖（剩余提及只在迭代记录 / 备注的历史说明）。 — （episode）
+- [x] `REQ-0002` 的验收标准中不再出现对技能包外文件的依赖（剩余提及只在问题背景 / 迭代记录 / 备注）。 — （episode）
+- [x] 两份 REQ 的验收标准均可只用 `skills/shy-skill-suite/scripts/` 内的脚本 + 文本检查复现。 — （episode）
+- [x] `REQ-0002` 的「行为与步骤」含"`description` 不含尖括号 `<` / `>`"与"`compatibility`（可选）≤ 500 字符"两条。 — （episode）
+- [x] 两份 REQ 各有一条新迭代记录，`iteration` 已 +1（1→2）、`updated` 为改动当天（`status` 保持 `done`）。 — （episode）
+- [x] 本步只编辑这两份 `docs/` 文件，未修改 `skills/shy-skill-suite/` 下任何文件。 — （episode）
   - **原判据「`git diff --stat` 只含这两份文件」被证伪**：本会话 `skills/` 下已有大量未提交改动，`git diff` 无法隔离单条 REQ；改用"本步只对这两份文件发出编辑"取证。
 
 ## 范围外

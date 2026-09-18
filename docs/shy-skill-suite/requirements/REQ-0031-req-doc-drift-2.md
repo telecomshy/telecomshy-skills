@@ -3,6 +3,7 @@ id: REQ-0031
 title: 复审发现的 REQ 文档漂移修正（第二批）
 skill: shy-skill-suite
 status: out-of-scope
+kind: fix
 iteration: 2
 created: 2026-09-17
 updated: 2026-09-17
@@ -57,18 +58,17 @@ related: [REQ-0006, REQ-0009, REQ-0012, REQ-0014, REQ-0015, REQ-0018, REQ-0020, 
 
 ## 验收标准
 
-- [ ] `REQ-0006`/`REQ-0009` 的该条验收改为「路由表含…入口」，且 `SKILL.md` 路由表确有对应行。
-- [ ] `REQ-0012` 备注含 `REQ-0027` 对退出码的修订说明。
-- [ ] `REQ-0014` 验收 #1 不含具体字符数（或为 ≤500）；#3 与 `SKILL.md` 的 `Python ≥ 3.7` 一致。
-- [ ] `REQ-0015` 验收 #3 与 `SKILL.md:28-31` 的实际情况一致（2/4 带指针）。
-- [ ] `grep "只呈现、不回写 REQ"` 命中 `lifecycle.md`，且 `REQ-0018` 的判据用当前用语。
-- [ ] `REQ-0020` 内不再把「五个命令」当作**当前**计数。
-- [ ] `REQ-0023` 的「呈现」处数标注与 `grep -c 呈现 SKILL.md`（=1）一致。
-- [ ] `REQ-0028` 的证据行与 `git cat-file -p HEAD:skills/shy-skill-suite/SKILL.md | Measure-Object -Line`（=48）一致。
-- [ ] `REQ-0030` 的计数为「全部 REQ（当前 30 份）」，与 `Get-ChildItem docs/shy-skill-suite/requirements`（=30）一致。
-- [ ] `REQ-0027` 的「脚本与资源」含 `validate_skill.py`。
-- [ ] 被修 REQ 的 `updated` 为 `2026-09-17`。
-- [ ] `python skills/shy-skill-suite/scripts/track_requirements.py --root .` → `status: ok`、退出码 0。
+- [ ] `REQ-0006`/`REQ-0009` 的该条验收改为「路由表含…入口」，且 `SKILL.md` 路由表确有对应行。 — （episode）
+- [ ] `REQ-0014` 验收 #1 不含具体字符数（或为 ≤500）；#3 与 `SKILL.md` 的 `Python ≥ 3.7` 一致。 — （episode）
+- [ ] `REQ-0015` 验收 #3 与 `SKILL.md:28-31` 的实际情况一致（2/4 带指针）。 — （episode）
+- [ ] `grep "只呈现、不回写 REQ"` 命中 `lifecycle.md`，且 `REQ-0018` 的判据用当前用语。 — （episode）
+- [ ] `REQ-0020` 内不再把「五个命令」当作**当前**计数。 — （episode）
+- [ ] `REQ-0023` 的「呈现」处数标注与 `grep -c 呈现 SKILL.md`（=1）一致。 — （episode）
+- [ ] `REQ-0028` 的证据行与 `git cat-file -p HEAD:skills/shy-skill-suite/SKILL.md | Measure-Object -Line`（=48）一致。 — （episode）
+- [ ] `REQ-0030` 的计数为「全部 REQ（当前 30 份）」，与 `Get-ChildItem docs/shy-skill-suite/requirements`（=30）一致。 — （episode）
+- [ ] `REQ-0027` 的「脚本与资源」含 `validate_skill.py`。 — （episode）
+- [ ] 被修 REQ 的 `updated` 为 `2026-09-17`。 — （episode）
+- [ ] `python skills/shy-skill-suite/scripts/track_requirements.py --root .` → `status: ok`、退出码 0。 — `check:track-ok`
 
 ## 范围外
 

@@ -3,6 +3,7 @@ id: REQ-0028
 title: 文档去重与判据补齐（单一事实源 / 悬空指针 / 阶段 4 完成判据 / 引用约定）
 skill: shy-skill-suite
 status: done
+kind: hygiene
 iteration: 3
 created: 2026-09-17
 updated: 2026-09-17
@@ -56,16 +57,15 @@ related: [REQ-0008, REQ-0009, REQ-0015, REQ-0016, REQ-0018, REQ-0025, REQ-0026, 
 
 ## 验收标准
 
-- [x] `grep -n "sprawl\|duplication" skills/shy-skill-suite/references/writing-skills.md` → `duplication` 有定义（或已改为 §7 用词）；`sprawl` 在全技能 0 命中。
-- [x] `reviewing-skills.md` Step 4 完成判据里的每个词都能在 `writing-skills.md` §7 找到定义。
-- [x] `lifecycle.md` 阶段 4 段内含「完成判据」，且该判据逐条可判定。
-- [x] `grep -n "不落盘" skills/shy-skill-suite/references/lifecycle.md` → 不再与 `:62` 的「落盘 findings.json」冲突（改为「不回写 REQ」）。
-- [x] `grep -rn "反推" skills/shy-skill-suite/references` → 1 处定义 + 引用，不再是 3 处完整规则。
-- [x] `grep -n "逼问 → 落需求" skills/shy-skill-suite/SKILL.md` → 只命中 1 处。
-- [x] `SKILL.md` 资源清单不再逐条重复路由表的描述，且不再抄脚本 `--help` 的一行简介。
-- [x] `grep -rn "](.*\.md)" skills/shy-skill-suite/references` → 引用基准唯一（全带 `references/` 前缀，或 §3 措辞已改）。
-- [x] `python scripts/validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。
-- [x] 改动后 `SKILL.md` 行数不增（只做减法或持平）。
+- [x] `grep -n "sprawl\|duplication" skills/shy-skill-suite/references/writing-skills.md` → `duplication` 有定义（或已改为 §7 用词）；`sprawl` 在全技能 0 命中。 — （episode）
+- [x] `reviewing-skills.md` Step 4 完成判据里的每个词都能在 `writing-skills.md` §7 找到定义。 — （episode）
+- [x] `lifecycle.md` 阶段 4 段内含「完成判据」，且该判据逐条可判定。 — （episode）
+- [x] `grep -n "不落盘" skills/shy-skill-suite/references/lifecycle.md` → 不再与 `:62` 的「落盘 findings.json」冲突（改为「不回写 REQ」）。 — （episode）
+- [x] `grep -rn "反推" skills/shy-skill-suite/references` → 1 处定义 + 引用，不再是 3 处完整规则。 — （episode）
+- [x] `grep -n "逼问 → 落需求" skills/shy-skill-suite/SKILL.md` → 只命中 1 处。 — （episode）
+- [x] `grep -rn "](.*\.md)" skills/shy-skill-suite/references` → 引用基准唯一（全带 `references/` 前缀，或 §3 措辞已改）。 — （episode）
+- [x] `python scripts/validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0。 — `check:skill-validate-ok`
+- [x] 改动后 `SKILL.md` 行数不增（只做减法或持平）。 — （episode）
 
 ## 范围外
 

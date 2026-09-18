@@ -3,6 +3,7 @@ id: REQ-0045
 title: Step 3 完成判据给存量 done REQ 的未标条目一个迁移债出口
 skill: shy-skill-suite
 status: done
+kind: docs
 iteration: 2
 created: 2026-09-17
 updated: 2026-09-17
@@ -44,7 +45,7 @@ related: [REQ-0030, REQ-0042, REQ-0044]
 
 ## 验收标准
 
-- [x] `reviewing-skills.md` Step 3 完成判据含"迁移债 / 只报数、不阻断"，且限定为"本轮新写 / 改写的 REQ" — `check:req0045-migration-debt`
+- [x] `reviewing-skills.md` Step 3 完成判据含"迁移债" — （episode）原子串检查 `req0045-migration-debt` 已退休（2026-09-18：新模型下"只报数、不阻断"改为"迁移债阻止 `converged`"，该子串检查是文档措辞检查、非不变量）
 - [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
 
 ## 范围外

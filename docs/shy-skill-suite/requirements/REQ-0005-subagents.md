@@ -3,6 +3,7 @@ id: REQ-0005
 title: 复审外派子 agent（executor / grader / spec-reviewer / analyzer / comparator）
 skill: shy-skill-suite
 status: done
+kind: feature
 iteration: 1
 created: 2026-09-16
 updated: 2026-09-16
@@ -50,13 +51,13 @@ skill-creator 与 skill-forge 都把"**跑**""**评**""**分析**"外派给子 a
 
 ## 验收标准
 
-- [x] `references/subagents.md` 含 5 个角色，每个有 输入 / 任务 / 输出 / 禁止事项。
-- [x] 明确"支持则派发、否则内联并注明未隔离"。
-- [x] 明确 grader 与 spec-reviewer **独立于作者**、executor 用**干净上下文**。
-- [x] `reviewing-skills.md` 的 Step 1 / 2 / 3 / 8 各有一处指向 `subagents.md` 的指针。
-- [x] 说明与 `agent_runner.py` 的关系（脚本版 vs 子 agent 版）。
-- [x] `SKILL.md` 资源列出 `subagents.md`。
-- [x] 技能自包含：`subagents.md` 不引用仓库 `docs/`。
+- [x] `references/subagents.md` 含 5 个角色，每个有 输入 / 任务 / 输出 / 禁止事项。 — （episode）
+- [x] 明确"支持则派发、否则内联并注明未隔离"。 — （episode）
+- [x] 明确 grader 与 spec-reviewer **独立于作者**、executor 用**干净上下文**。 — （episode）
+- [x] `reviewing-skills.md` 的 Step 1 / 2 / 3 / 8 各有一处指向 `subagents.md` 的指针。 — （episode）
+- [x] 说明与 `agent_runner.py` 的关系（脚本版 vs 子 agent 版）。 — （语义）
+- [x] `SKILL.md` 资源列出 `subagents.md`。 — （episode）
+- [x] 技能自包含：`subagents.md` 不引用仓库 `docs/`。 — （episode）
 
 ## 范围外
 
