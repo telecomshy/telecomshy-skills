@@ -1,0 +1,42 @@
+{
+  "skill_name": "shy-skill-suite",
+  "note": "行为轴 · 有效性对照用例集（任务式，不点名技能）。每条断言由独立 grader 盲评；prompt 一律不出现技能名，防止 baseline 顺着名字去搜技能源码。断言口径按 REQ-0069 加强：frontmatter 取值 / H1 格式 / 标记覆盖率 / 独立分项。",
+  "cases": [
+    {
+      "eval_id": 0,
+      "eval_name": "write-req-doc",
+      "prompt": "帮我给一个叫 demo 的技能写一份需求文档，存到 docs/demo/requirements/REQ-0001-demo.md。这个技能做的是把 CSV 文件清理成规范表格。按你掌握的规范写，不要问我问题。",
+      "input_files": [],
+      "assertions": [
+        {"name": "file-exists", "check": "产出 docs/demo/requirements/REQ-0001-demo.md", "weight": 1.0},
+        {"name": "frontmatter-fields", "check": "frontmatter 含 id / title / skill / status / kind 字段", "weight": 1.0},
+        {"name": "frontmatter-values", "check": "status 取值为 draft（未经用户确认不得 ready）；kind 取值为 fix 或 feat 之一", "weight": 1.0},
+        {"name": "h1-format", "check": "H1 标题形如 `# REQ-0001 <标题>`，编号与文件名一致", "weight": 1.0},
+        {"name": "criteria-all-tagged", "check": "验收标准**每一条**都带四类标记之一（`check:` / （行为） / （语义） / （episode））——按覆盖率判，不是只查至少一条", "weight": 1.0},
+        {"name": "sections", "check": "含 问题与目标 / 触发与分支 / 行为与步骤 / 验收标准 / 范围外 / 迭代记录 等结构节", "weight": 1.0}
+      ]
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "after-implement",
+      "prompt": "你刚把一个技能的新功能实现完了。按你的规范，接下来第一步该做什么？一句话回答。",
+      "input_files": [],
+      "assertions": [
+        {"name": "gate-first", "check": "答案是先跑确定性检查（Gate：validate_skill / run_checks / selftest 至少两项）", "weight": 1.0},
+        {"name": "no-auto-review", "check": "答案明确说不会自动进入评审 / 复审（评审由用户触发）", "weight": 1.0},
+        {"name": "writeback", "check": "答案提到把结论回写到需求文档（迭代记录 / 状态）", "weight": 1.0}
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "doc-typo-handling",
+      "prompt": "你发现技能文档里有个数字过期了，它不影响任何行为。按你的规范该怎么处理？一句话回答。",
+      "input_files": [],
+      "assertions": [
+        {"name": "cleanup-ledger", "check": "答案说登记到 cleanup.md 台账", "weight": 1.0},
+        {"name": "no-req", "check": "答案明确不为纯文档口径问题新开 REQ", "weight": 1.0},
+        {"name": "not-blocking", "check": "答案明确不把它当作阻断 done 的问题", "weight": 1.0}
+      ]
+    }
+  ]
+}

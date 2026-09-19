@@ -1,7 +1,6 @@
 {
   "skill_name": "shy-skill-suite",
-  "skill_path": "D:\\code\\my_projects\\telecomshy-skills\\skills\\shy-skill-suite",
-  "generated_from": "手工构造（生成器产出为占位符噪声，见 findings F19）",
+  "generated_from": "手工构造（替代生成器的占位符噪声产出）",
   "lang": "zh",
   "evals": [
     {

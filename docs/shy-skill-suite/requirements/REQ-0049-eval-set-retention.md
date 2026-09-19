@@ -71,6 +71,7 @@ REQ-0039/0044 引用「REQ-0024 的 evals.json」           → 文件不存在
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-18 | 落盘（`iteration-3` 复审需求轴 P2，用户分拣「立即修」） | 实测 raw 报告与 evals.json 均不存在、引用题 0 命中 | 待实施 |
 | 2 | 2026-09-18 | 实施：`evals/evals.json` 入库（复制工作区唯一现存的 20 条评测集）；`running-evals.md` 与 `SKILL.md` 补说明；`REQ-0039` 引用修正；注册 3 条检查 | 见下方「备注 / 待办」的门禁输出 | **done** |
+| 3 | 2026-09-18 | `iteration-4` 立即修：删 `evals.json` 的 `skill_path`（个人绝对路径）与 `findings F19` 悬空来源；`generate_eval_set.py` 不再写 `skill_path` | `req0049-evals-present` PASS；全仓 0 条 `D:\code` 绝对路径 | done |
 
 ## 备注 / 待办
 

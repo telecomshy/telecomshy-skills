@@ -5,7 +5,7 @@
 - frontmatter：必填 `name`/`description`；`name` 与目录同名、kebab-case、≤64；
   `description` ≤1024、不含尖括号、含 `TODO` 记 warning；
   顶层只允许 `agentskills.io` 基础字段 {name, description, license, compatibility, metadata, allowed-tools}
-  加上客户端扩展字段 {disable-model-invocation, argument-hint}；多余字段报错。
+  加上客户端扩展字段 {disable-model-invocation, argument-hint, name_cn, description_cn, create_source}；多余字段报错。
 - 结构：`SKILL.md` 大小写精确；技能目录内不得有 `README.md`。
 - 引用：`SKILL.md` 与 `references/*.md` 里的相对 `.md` / 脚本链接必须指向存在的文件。
 
@@ -26,13 +26,31 @@ from pathlib import Path
 from skill_utils import force_utf8_stdio, parse_frontmatter, read_text
 
 BASE_FIELDS = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
-EXTENSION_FIELDS = {"disable-model-invocation", "argument-hint"}
+EXTENSION_FIELDS = {"disable-model-invocation", "argument-hint",
+                    "name_cn", "description_cn", "create_source"}
 ALLOWED_FIELDS = BASE_FIELDS | EXTENSION_FIELDS
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 LINK_RE = re.compile(r"\]\(([^)]+)\)")
-FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
+FENCE_OPEN_RE = re.compile(r"^\s*(```|~~~)")
+INLINE_CODE_RE = re.compile(r"`+[^`]*`+")
 REF_EXT_RE = re.compile(r"\.(md|py|sh|ps1|js|ts)$")
 KEYVAL_RE = re.compile(r"^\s*[A-Za-z0-9_-]+:\s*(.+)$")
+
+
+def strip_code(text: str) -> str:
+    """去掉围栏代码块（按行开关，能容忍行内出现的 ```）与行内代码。
+
+    文档里的链接示例常写成代码（如 `[标题](标题.md)`），不去掉就会被当成真引用误报。
+    """
+    kept: list[str] = []
+    in_fence = False
+    for line in text.splitlines():
+        if FENCE_OPEN_RE.match(line):
+            in_fence = not in_fence
+            continue
+        if not in_fence:
+            kept.append(INLINE_CODE_RE.sub("", line))  # 逐行去行内代码，避免反引号跨行错配
+    return "\n".join(kept)
 
 
 def yaml_hazards(content: str) -> list[str]:
@@ -64,7 +82,7 @@ def check_references(skill_dir: Path) -> list[str]:
     for file in files:
         if not file.is_file():
             continue
-        text = FENCE_RE.sub("", read_text(file))
+        text = strip_code(read_text(file))
         for match in LINK_RE.finditer(text):
             target = match.group(1).strip().split("#", 1)[0]
             if not target or target.startswith(("http://", "https://", "mailto:", "/")):

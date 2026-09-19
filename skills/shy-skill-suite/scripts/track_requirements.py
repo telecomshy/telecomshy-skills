@@ -11,8 +11,8 @@
 - **by_kind**：按 `kind`（feature / fix / refactor / docs / hygiene）分组的 status 计数（供"功能 / 问题"两个读数）
 - 状态汇总
 
-本脚本只管**排期**（frontier / 依赖 / 状态），**不管回归**：Spec 轴的回归由复审
-**无条件全量扫**承担（见 `references/reviewing-skills.md` Step 3），不靠状态戳。
+本脚本只管**排期**（frontier / 依赖 / 状态），**不管回归**：Spec 轴的回归由复审的
+**不变量集**承担（见 `references/reviewing-skills.md` Step 3），不靠状态戳。
 
 编号约定：**每个技能各自从 `REQ-0001` 起**（唯一性按 `(skill, id)` 判定）。
 `blocked_by` 默认在同技能内解析；跨技能写 `<skill>:REQ-NNNN`。
@@ -149,13 +149,15 @@ def analyze(reqs: list[dict[str, Any]]) -> dict[str, Any]:
             "title": str(req.get("title", "")).strip(),
             "status": status,
             "kind": kind,
-            "source": str(req.get("source", "")).strip(),
             "path": req["_path"],
         }
         if superseded_by:
             entry["superseded_by"] = superseded_by
         if status == "deferred":
-            deferred.append({**entry, "defer_reason": str(req.get("defer_reason", "")).strip()})
+            defer_reason = str(req.get("defer_reason", "")).strip()
+            if not defer_reason:
+                warnings.append({"skill": skill, "id": rid, "warning": "deferred 缺 defer_reason"})
+            deferred.append({**entry, "defer_reason": defer_reason})
         elif status in ACTIONABLE:
             if unresolved:
                 blocked.append({**entry, "waiting_on": unresolved})

@@ -1,6 +1,6 @@
 ---
 name: shy-skill-suite
-description: 技能开发套件：面向「技能」这一产物的开发全流程操作规范。当你在逼问 / 澄清某个技能该做什么、新建或修改一个技能、为技能写需求文档（REQ-NNNN 命名 / 结构 / 验收标准）、复审某个技能（触发可靠性、行为有效性、结构预算、脚本与安全）、写或改技能的 SKILL.md、校验技能结构、或推进技能开发的迭代闭环并回写需求时使用。
+description: 技能开发套件：面向「技能」这一产物的开发全流程操作规范。当你在逼问 / 澄清某个技能该做什么、新建或修改一个技能（含搭骨架 / 脚手架）、为技能写需求文档（REQ-NNNN 命名 / 结构 / 验收标准）、调触发描述（description）与触发精度、复审某个技能（触发可靠性、行为有效性、结构预算、脚本与安全）、写或改技能的 SKILL.md、校验技能结构（含是否该拆分）、或推进技能开发的迭代闭环并回写需求时使用。
 compatibility: 需要 Python ≥ 3.7（仅标准库，实测 3.12）。scripts/ 只在校验、评测、需求跟踪、生成报告时用到；Python 版本过低时跳过脚本，按 references/ 的规范手工执行。
 metadata:
   name_cn: 技能开发套件
@@ -29,19 +29,20 @@ metadata:
 - **技能必须自包含**：定义与检查见 `references/reviewing-skills.md` Step 7。
 - **先删后加**：见 `references/reviewing-skills.md` §1。
 - **证据优先**：没有真实执行轨迹或对照证据的判断，只能标"待验证"，不能当结论。
-- **输出面向人**：复审结论与改进建议用**白话 + why**讲给用户听（为什么会出问题、为什么这么改），不许只丢术语或 `file:line`；详见 `references/reviewing-skills.md` Step 8。
+- **输出面向人**：报告三字段（存在问题 / 白话解释 / 修改建议）与白话写作规则见 `references/reviewing-skills.md` Step 8；用词以 `references/glossary.md` 为准。
 - **实现 / 评审两路分离**：实现完只跑**静默秒级门**（绿了报完成、红了才说），**不自动评审**；**评审由用户触发**，出报告后**逐条分拣**（立即修 / 以后修 / 丢弃），按所选实施一次即停，**不自动再审**。详见 `references/lifecycle.md`。
 
 ## 资源
 
 只列路由表未覆盖的（其余见上表）：
 
+- `references/glossary.md` — 套件自身词汇（术语 / 一行白话 / `_避免_`）；解释与报告的用词准绳。
 - `references/subagents.md` — 复审外派子 agent 的角色与窄 brief（executor / grader / spec-reviewer / analyzer / comparator）、派发 vs 内联。
-- `scripts/` — 纯标准库 CLI：脚手架、校验、评测集生成与选优、跑 agent 检测触发、聚合 benchmark、需求跟踪、跑 REQ 可执行验收检查（`run_checks.py`）、渲染报告；`selftest.py` 是脚本自测（冒烟 / 契约，成功 + 失败路径）。各脚本 `--help` 有简述 / 参数 / 示例 / 退出码。
-- `assets/report-template.html` — HTML 报告模板（内联样式、无外部资源）。
+- `scripts/` — 纯标准库 CLI；接口见各脚本 `--help`，评测脚本清单见 `references/running-evals.md`；Gate 用 `validate_skill.py` + `run_checks.py` + `selftest.py`。
+- `assets/report-template.html` — HTML 报告模板（内联样式、无外部资源）。**默认静态只读**；分拣控件只在 `--serve`（本机临时服务）下出现，末尾「提交给 agent」写 `triage.json`。
 - `commands/` — opencode 斜杠命令模板（`shy-grill` / `shy-review` / `shy-apply` / `shy-next`）；复制到 `~/.config/opencode/commands/` 生效，说明见 `references/lifecycle.md` 的「斜杠快捷」。
 - `evals/evals.json` — 随技能入库的起手触发评测集（复现触发结论用，见 `references/running-evals.md`）。
-- `scripts/__pycache__/` — 跑脚本时自动生成，**不进技能内容**；复制部署时排除（仓库 `.gitignore` 已忽略）。
+- `evals/effectiveness.json` — 随技能入库的行为轴对照用例集（with_skill vs baseline，任务式 prompt + 断言，见 `references/running-evals.md`）。
 
 ## 范围外
 

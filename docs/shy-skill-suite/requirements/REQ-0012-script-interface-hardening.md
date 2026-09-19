@@ -54,7 +54,7 @@ related: []
 ## 验收标准
 
 - [x] `agent_runner.py` 中不再出现 `shell=True`（`grep shell\s*=\s*True scripts/*.py` 无命中）。 — （episode）
-- [x] 回归（注入）：模板 `"{python}" "argv_dump.py" {prompt}`、prompt=`hi & echo PWNED` → 目标程序收到的 `argv[1:]` **恰为单元素** `["hi & echo PWNED"]`，无第二个命令被执行。 — （语义）
+- [x] 回归（注入）：模板 `"<python 解释器路径>" "argv_dump.py" {prompt}`（只有 `{prompt}` 会被替换，解释器路径需手填）、prompt=`hi & echo PWNED` → 目标程序收到的 `argv[1:]` **恰为单元素** `["hi & echo PWNED"]`，无第二个命令被执行。 — （语义）
   - 原判据「`--cmd "echo {prompt}"` → `output` 不含 `INJECTED_MARKER`」**被证伪**：回显程序会把 prompt 原文打印，substring 无法区分"被执行"与"作为数据被打印"；且 Windows 无 `echo.exe`，原命令本身跑不通。
 - [x] 回归（正常）：含空格与中文的 prompt（`帮 我 写 个 技能需求`）→ 目标程序收到**单参数原全文**，无截断、无拆分。 — （episode）
 - [x] 边界：不存在的命令 → 返回可行动 `error`（`could not run command: ...`），抛未捕获异常已消除。 — （episode）

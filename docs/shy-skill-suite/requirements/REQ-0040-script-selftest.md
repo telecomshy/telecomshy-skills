@@ -4,9 +4,9 @@ title: 脚本自测套件（smoke/contract，纯标准库）
 skill: shy-skill-suite
 status: done
 kind: feature
-iteration: 2
+iteration: 4
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-18
 blocked_by: []
 related: [REQ-0002, REQ-0012, REQ-0027, REQ-0033, REQ-0040]
 ---
@@ -55,7 +55,7 @@ related: [REQ-0002, REQ-0012, REQ-0027, REQ-0033, REQ-0040]
 ## 验收标准
 
 - [x] `selftest.py` 存在；对 9 个脚本每脚本 ≥1 条用例，且**每个脚本至少一条失败路径**断言（坏参数 / 坏输入 → 非 0 退出码） — `check:req0040-selftest-exists` ✅ 缺脚本用例=[]、含失败路径断言=True
-- [x] `python scripts/selftest.py` → 退出码 **0**，全部用例 PASS（实测数量写入迭代记录） — `check:skill-selftest` ✅ 20 条用例：20 通过 / 0 失败、rc=0
+- [x] `python scripts/selftest.py` → 退出码 **0**，全部用例 PASS（实测数量写入迭代记录） — `check:skill-selftest` ✅ 25 条用例：25 通过 / 0 失败、rc=0
 - [x] `selftest.py` 纯标准库（无第三方 import）；`render_report` 用例带 `--no-open` — `check:req0040-selftest-pure` ✅
 - [x] `reviewing-skills.md` Step 6 完成判据含"自测" — （episode） ✅
 - [x] `python scripts/run_checks.py --list` 含 `skill-selftest` — `check:req0040-registered` ✅
@@ -74,6 +74,8 @@ related: [REQ-0002, REQ-0012, REQ-0027, REQ-0033, REQ-0040]
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-17 | 落需求（P1「脚本质量」收窄版：不搬 code-review，做可执行自测） | `*test*` 文件=0；本会话踩到 3 个脚本级问题 | 开工 |
 | 2 | 2026-09-17 | 实施：新增 `scripts/selftest.py`（10 组用例 / 20 条断言，覆盖 9 个 CLI 的成功 + 失败路径；纯标准库；临时 fixture；`--no-open`）；`reviewing-skills.md` Step 6 完成判据加"自测"；`run_checks.py` 注册 `skill-selftest` 等 5 条；`SKILL.md` 资源清单同步 | `selftest.py` → **20 条用例：20 通过 / 0 失败**、rc=0；`run_checks` → 27 通过 / 0 失败；`validate` ok | **done** |
+| 3 | 2026-09-18 | `iteration-4` 立即修：`agent_runner` 补成功路径用例（heuristic → rc0 + JSON）；docstring 删未实现的 `[--verbose]`；`--help` 补「示例」 | `selftest.py` → **21 条用例：21 通过 / 0 失败**、rc=0；`skill-selftest` PASS | done |
+| 4 | 2026-09-18 | `iteration-8`–`12` 复审循环：补 4 条用例（零 REQ → n/a、空验收 → FAIL、缺 `{prompt}` → rc1、非活动 REQ 标签不计工作集）；`main` 补 `force_utf8_stdio` | `selftest.py` → **25 条用例：25 通过 / 0 失败**、rc=0（UTF-8 无乱码）；`skill-selftest` PASS | done |
 
 ## 备注 / 待办
 

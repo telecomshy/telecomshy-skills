@@ -8,7 +8,7 @@
 - 发现：扫描 `docs/<skill>/requirements/REQ-*.md` 的 `## 验收标准` 段。
 - 可执行条目写法：`` - [ ] <描述> — `check:<name>` ``；条目其余部分是人读的描述。
 - 语义条目写法：`` - [ ] <描述>（语义） ``——无法机械判定，交 Step 3 人/agent 判。
-- episode 写法：`` - [ ] <描述>（episode） ``——一次性事实，冻结、**不进 Gate**（见设计 §4.2）。
+- episode 写法：`` - [ ] <描述>（episode） ``——一次性事实，冻结、**不进 Gate**。
 - 检查实现：本文件底部的注册表（按 REQ 追加）。名称用 kebab-case，前缀 REQ id 防撞。
 
 用法:
@@ -26,10 +26,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import socket
 import subprocess
 import sys
 import tempfile
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Callable
@@ -116,7 +119,7 @@ def find_req(root: Path, skill: str, rid: str) -> Path | None:
 
 
 def cleanup_counts(root: Path, skill: str) -> tuple[int, int] | None:
-    """`cleanup.md` 的 (open, fixed) 计数——Gate 消费台账（设计 §4.3）。无文件返回 None。"""
+    """`cleanup.md` 的 (open, fixed) 计数——Gate 消费台账。无文件返回 None。"""
     p = root / "docs" / skill / "cleanup.md"
     if not p.is_file():
         return None
@@ -290,59 +293,6 @@ def req0046_unimplemented_skipped(root: Path, skill: str) -> tuple[bool, str]:
     return (rc == 0), f"ready REQ 的未注册 check 被跳过 → rc={rc}"
 
 
-@check("req0043-auto-writeback")
-def req0043_auto_writeback(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "lifecycle.md")
-    need = {k: (k in text) for k in ("机械记账", "不停", "有 P0/P1")}
-    return all(need.values()), f"need={need}"
-
-
-@check("req0043-html-timing")
-def req0043_html_timing(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "lifecycle.md")
-    ok = "HTML 报告的时机" in text
-    return ok, f"含『HTML 报告的时机』={ok}"
-
-
-@check("req0043-stage4-trigger")
-def req0043_stage4_trigger(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "lifecycle.md")
-    ok = "机械记账不需确认" in text
-    return ok, f"阶段4 含『机械记账不需确认』={ok}"
-
-
-@check("req0043-review-step8")
-def req0043_review_step8(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "reviewing-skills.md")
-    m = re.search(r"### Step 8.*?(?=\n### |\Z)", text, re.S)
-    seg = m.group(0) if m else ""
-    ok = ("呈现门禁" in seg) and ("机械记账" in seg) and ("不回写需求文档" not in seg)
-    return ok, f"Step8 引呈现门禁且去掉旧措辞={ok}"
-
-
-@check("req0041-stage2-gate")
-def req0041_stage2_gate(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "lifecycle.md")
-    m = re.search(r"### 2 · 实现.*?(?=\n### |\Z)", text, re.S)
-    seg = m.group(0) if m else ""
-    ok = ("findings.json" in seg) and ("阶段 3" in seg)
-    return ok, f"阶段2 完成判据含 findings.json={('findings.json' in seg)} 含阶段3={('阶段 3' in seg)}"
-
-
-@check("req0041-layered")
-def req0041_layered(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "references" / "lifecycle.md")
-    need = {k: (k in text) for k in ("秒级门", "行为 eval", "跳过")}
-    return all(need.values()), f"need={need}"
-
-
-@check("req0041-skill-rule")
-def req0041_skill_rule(root: Path, skill: str) -> tuple[bool, str]:
-    text = read_text(skill_dir(root, skill) / "SKILL.md")
-    ok = "实现 → 必审" in text
-    return ok, f"SKILL 含『实现 → 必审』={ok}"
-
-
 @check("req0040-selftest-exists")
 def req0040_selftest_exists(root: Path, skill: str) -> tuple[bool, str]:
     p = skill_dir(root, skill) / "scripts" / "selftest.py"
@@ -350,7 +300,8 @@ def req0040_selftest_exists(root: Path, skill: str) -> tuple[bool, str]:
         return False, "selftest.py 不存在"
     text = read_text(p)
     clis = ["validate_skill.py", "scaffold_skill.py", "generate_eval_set.py",
-            "optimize_description.py", "agent_runner.py", "aggregate_benchmark.py",
+            "optimize_description.py", "agent_runner.py", "run_effectiveness.py",
+            "aggregate_benchmark.py",
             "render_report.py", "track_requirements.py", "run_checks.py"]
     missing = [c for c in clis if c not in text]
     has_failure = ("!= 0" in text) or ("== 1" in text)
@@ -369,15 +320,6 @@ def req0040_selftest_pure(root: Path, skill: str) -> tuple[bool, str]:
 def req0040_registered(root: Path, skill: str) -> tuple[bool, str]:
     text = read_text(skill_dir(root, skill) / "scripts" / "run_checks.py")
     return ('"skill-selftest"' in text), f"注册 skill-selftest={chr(34) + 'skill-selftest' + chr(34) in text}"
-
-
-@check("req0039-negative-boundary")
-def req0039_negative_boundary(root: Path, skill: str) -> tuple[bool, str]:
-    fm = read_text(skill_dir(root, skill) / "SKILL.md")
-    m = re.search(r"^description:\s*(.+)$", fm, re.M)
-    desc = m.group(1) if m else ""
-    has_boundary = "不适用于" in desc
-    return (has_boundary and len(desc) <= 1024), f"含『不适用于』={has_boundary} 长度={len(desc)}"
 
 
 @check("req0048-no-hardcoded-req-file")
@@ -434,6 +376,286 @@ def req0050_episode_recognized(root: Path, skill: str) -> tuple[bool, str]:
     return ok, f"run_checks 识别 episode={ok}"
 
 
+@check("req0053-report-human")
+def req0053_report_human(root: Path, skill: str) -> tuple[bool, str]:
+    """HTML 报告只渲染人字段；证伪 / 证据（过程字段）不得出现。"""
+    sd = skill_dir(root, skill)
+    sentinel_f = "SENTINEL-FALSIFY-XYZZY"
+    sentinel_e = "SENTINEL-EVIDENCE-XYZZY"
+    with tempfile.TemporaryDirectory(prefix="shy-r53-") as tmp:
+        ws = _make_iteration(Path(tmp), False)
+        (ws / "findings.json").write_text(json.dumps({
+            "skill": skill, "verdict": "可合入",
+            "findings": [{
+                "axis": "行为", "priority": "P1", "location": "x:1",
+                "problem": "存在问题白话 {{TRIAGE_ACTIONS}}", "plain": "白话解释白话",
+                "suggestion": "建议白话",
+                "falsification": sentinel_f, "evidence": sentinel_e,
+            }],
+        }, ensure_ascii=False), encoding="utf-8")
+        rc, _out, err = run_script(root, sd / "scripts" / "render_report.py",
+                                   str(ws), "--skill-name", skill, "--no-open")
+        report = ws / "report.html"
+        html = report.read_text(encoding="utf-8") if rc == 0 and report.is_file() else ""
+    # 可见字段检查 + 整份文件不得含过程字段（含内嵌数据载荷）。
+    visible = re.sub(r"<script>.*?</script>", "", html, flags=re.S)
+    human = all(t in visible for t in ("存在问题白话", "白话解释白话", "建议白话",
+                                        "存在问题", "白话解释", "修改建议"))
+    leaked = (sentinel_f in html) or (sentinel_e in html)
+    match = re.search(r"const DATA = (\{.*?\});</script>", html, re.S)
+    embedded_ok = bool(match)
+    if match:
+        try:
+            json.loads(match.group(1))
+        except Exception:  # noqa: BLE001 - 载荷必须可解析（数据含占位符字面量时也要成立）
+            embedded_ok = False
+    return (rc == 0 and human and not leaked and embedded_ok), \
+        f"rc={rc} 人字段={human} 泄漏={leaked} 内嵌JSON可解析={embedded_ok}"
+
+
+@check("req0053-glossary")
+def req0053_glossary(root: Path, skill: str) -> tuple[bool, str]:
+    """套件词汇表存在且 ≥5 条（术语 / 一行白话 / `_避免_`）。"""
+    p = skill_dir(root, skill) / "references" / "glossary.md"
+    if not p.is_file():
+        return False, "references/glossary.md 不存在"
+    terms = re.findall(r"^\*\*(.+?)\*\*", read_text(p), re.M)
+    return (len(terms) >= 5), f"术语数={len(terms)}"
+
+
+@check("req0054-triage-ui")
+def req0054_triage_ui(root: Path, skill: str) -> tuple[bool, str]:
+    """serve 报告每条 finding 带三选一（默认立即修），动作栏只有「提交给 agent」。"""
+    import render_report as rr
+
+    template = read_text(skill_dir(root, skill) / "assets" / "report-template.html")
+    data = {
+        "skill_name": "x", "iteration": 1, "generated_at": "t",
+        "benchmark": None, "evals": [],
+        "findings": {"findings": [{"axis": "行为", "priority": "P1", "location": "x:1",
+                                   "problem": "p", "plain": "pl", "suggestion": "s"}]},
+    }
+    served = re.sub(r"<script>.*?</script>", "",
+                    rr.build_html(data, template, "/triage?t=TOKEN"), flags=re.S)
+    need = ['data-fid="F1"', 'data-location=', 'value="立即修" checked', 'value="以后修"', 'value="丢弃"',
+            'id="btnSubmit"']
+    missing = [n for n in need if n not in served]
+    extra = [n for n in ('id="btnCopy"', 'id="btnDownload"', 'id="btnReset"') if n in served]
+    external = re.findall(r"https?://", served)
+    ok = not missing and not extra and not external
+    return ok, f"缺={missing} 多余按钮={extra} 外链={len(external)}"
+
+
+@check("req0056-serve")
+def req0056_serve(root: Path, skill: str) -> tuple[bool, str]:
+    """--serve：GET 含端点、坏 token 403、正确 POST 写 triage.json 并退出；静态版无端点。"""
+    import urllib.error
+    import urllib.request
+
+    sd = skill_dir(root, skill)
+    with tempfile.TemporaryDirectory(prefix="shy-r56-") as tmp:
+        ws = _make_iteration(Path(tmp), False)
+        (ws / "findings.json").write_text(json.dumps({
+            "skill": skill, "verdict": "可合入",
+            "findings": [{"axis": "行为", "priority": "P1", "location": "x:1",
+                          "problem": "p", "impact": "i", "suggestion": "s", "expected": "e"}],
+        }, ensure_ascii=False), encoding="utf-8")
+        # 静态模式：页面无端点
+        run_script(root, sd / "scripts" / "render_report.py",
+                   str(ws), "--skill-name", skill, "--no-open")
+        static_html = (ws / "report.html").read_text(encoding="utf-8")
+        static_ok = 'var ENDPOINT = "";' in static_html
+        # 选一个空闲端口
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        env = dict(os.environ, PYTHONIOENCODING="utf-8", SHY_NO_OPEN="1")
+        proc = subprocess.Popen(
+            [sys.executable, str(sd / "scripts" / "render_report.py"), str(ws),
+             "--skill-name", skill, "--serve", "--no-open",
+             "--serve-port", str(port), "--serve-timeout", "20"],
+            cwd=str(root), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, encoding="utf-8", errors="replace", env=env)
+        token = ""
+        deadline = time.time() + 15
+        while time.time() < deadline and not token:
+            try:
+                with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=1) as resp:
+                    page = resp.read().decode("utf-8")
+                match = re.search(r"/triage\?t=([A-Za-z0-9_\-]+)", page)
+                if match:
+                    token = match.group(1)
+            except Exception:  # noqa: BLE001 - 服务未起时重试
+                time.sleep(0.2)
+        bad = post_ok = False
+        if token:
+            body = json.dumps({"triage": [{"id": "F1", "choice": "立即修"}]}).encode("utf-8")
+            try:
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{port}/triage?t=WRONG", data=body, method="POST",
+                    headers={"Content-Type": "application/json"})
+                urllib.request.urlopen(req, timeout=2)
+            except urllib.error.HTTPError as exc:
+                bad = exc.code == 403
+            except Exception:  # noqa: BLE001
+                bad = False
+            try:
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{port}/triage?t={token}", data=body, method="POST",
+                    headers={"Content-Type": "application/json"})
+                post_ok = urllib.request.urlopen(req, timeout=2).status == 200
+            except Exception:  # noqa: BLE001
+                post_ok = False
+        try:
+            proc.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+        triage = ws / "triage.json"
+        written = triage.is_file() and "F1" in triage.read_text(encoding="utf-8")
+    ok = static_ok and bool(token) and bad and post_ok and written
+    return ok, (f"静态无端点={static_ok} token={bool(token)} 坏token403={bad} "
+                f"POST={post_ok} triage.json={written}")
+
+
+@check("req0057-serve-actions")
+def req0057_serve_actions(root: Path, skill: str) -> tuple[bool, str]:
+    """serve 底栏只有「提交给 agent」；静态报告只读（无控件 / 按钮）；两者都无顶部工具条。"""
+    import render_report as rr
+
+    template = read_text(skill_dir(root, skill) / "assets" / "report-template.html")
+    data = {
+        "skill_name": "x", "iteration": 1, "generated_at": "t",
+        "benchmark": None, "evals": [],
+        "findings": {"findings": [{"axis": "行为", "priority": "P1", "location": "x:1",
+                                   "problem": "问题 {{TRIAGE_ACTIONS}}", "plain": "白话",
+                                   "suggestion": "建议"}]},
+    }
+    served = re.sub(r"<script>.*?</script>", "",
+                    rr.build_html(data, template, "/triage?t=TOKEN"), flags=re.S)
+    static = re.sub(r"<script>.*?</script>", "", rr.build_html(data, template), flags=re.S)
+    no_buttons = ('id="btnCopy"', 'id="btnDownload"', 'id="btnReset"')
+    checks = {
+        "serve有提交": 'id="btnSubmit"' in served,
+        "serve提交唯一": served.count('id="btnSubmit"') == 1,
+        "serve动作栏唯一": served.count('id="actions"') == 1,
+        "serve无复制/下载/清空": all(x not in served for x in no_buttons),
+        "serve有控件": 'data-fid="F1"' in served,
+        "静态无控件": 'data-fid="F1"' not in static and 'class="triage"' not in static,
+        "静态无按钮": 'id="btnSubmit"' not in static and all(x not in static for x in no_buttons),
+        "静态只读提示": "只读版" in static,
+        "无顶部工具条": "toolbar" not in served,
+        "默认立即修": 'value="立即修" checked' in served,
+        "占位符字面量保留(不注入正文)": '{{TRIAGE_ACTIONS}}' in served and '{{TRIAGE_ACTIONS}}' in static,
+    }
+    failed = [k for k, v in checks.items() if not v]
+    return (not failed), f"未过={failed}"
+
+
+@check("req0067-detect-skill-line")
+def req0067_detect_skill_line(root: Path, skill: str) -> tuple[bool, str]:
+    """skill-line 模式：只提及技能名不算触发，出现 `Skill "名"` 加载行才算。"""
+    sd = skill_dir(root, skill)
+    with tempfile.TemporaryDirectory(prefix="shy-r67-") as tmp:
+        t = Path(tmp)
+        mention = t / "mention.py"
+        mention.write_text("print('see shy-skill-suite docs')\n", encoding="utf-8")
+        loadline = t / "loadline.py"
+        loadline.write_text("print('-> Skill \"shy-skill-suite\"')\n", encoding="utf-8")
+        tpl_m = f'"{sys.executable}" "{mention}" {{prompt}}'
+        tpl_l = f'"{sys.executable}" "{loadline}" {{prompt}}'
+        rc1, out1, _ = run_script(root, sd / "scripts" / "agent_runner.py",
+                                  "--runner", "cmd", "--cmd", tpl_m, "--detect", skill,
+                                  "--detect-mode", "skill-line", "--prompt", "x")
+        rc2, out2, _ = run_script(root, sd / "scripts" / "agent_runner.py",
+                                  "--runner", "cmd", "--cmd", tpl_l, "--detect", skill,
+                                  "--detect-mode", "skill-line", "--prompt", "x")
+    mention_ok = rc1 == 1 and '"triggered": false' in out1
+    load_ok = rc2 == 0 and '"triggered": true' in out2
+    return (mention_ok and load_ok), f"仅提及 未触发={mention_ok}(rc={rc1})；加载行 触发={load_ok}(rc={rc2})"
+
+
+@check("req0065-cwd-isolation")
+def req0065_cwd_isolation(root: Path, skill: str) -> tuple[bool, str]:
+    """--isolate-cwd：每次运行在基目录下用独立空目录（跑完即删），基目录零残留。"""
+    sd = skill_dir(root, skill)
+    with tempfile.TemporaryDirectory(prefix="shy-r65-") as tmp:
+        t = Path(tmp)
+        base = t / "runs"
+        base.mkdir()
+        writer = t / "writer.py"
+        writer.write_text(
+            "import pathlib\n"
+            "pathlib.Path('artifact.txt').write_text('x', encoding='utf-8')\n"
+            "print('SENTINEL-TRIGGER')\n",
+            encoding="utf-8",
+        )
+        evals = t / "evals.json"
+        evals.write_text(json.dumps({
+            "skill_name": "x",
+            "evals": [
+                {"eval_id": i, "eval_name": f"t{i}", "prompt": f"p{i}", "input_files": [],
+                 "assertions": [], "should_trigger": True}
+                for i in (0, 1)
+            ],
+        }, ensure_ascii=False), encoding="utf-8")
+        tpl = f'"{sys.executable}" "{writer}" {{prompt}}'
+        rc, out, _err = run_script(root, sd / "scripts" / "optimize_description.py", str(sd),
+                                   "--eval-set", str(evals), "--runner", "cmd", "--cmd", tpl,
+                                   "--detect", "SENTINEL-TRIGGER", "--cwd", str(base),
+                                   "--isolate-cwd", "--trials", "1")
+        leftovers = sorted(p.name for p in base.iterdir()) if base.is_dir() else ["<none>"]
+    try:
+        mode_ok = json.loads(out).get("mode") == "agent:cmd"
+    except Exception:  # noqa: BLE001
+        mode_ok = False
+    ok = rc == 0 and mode_ok and not leftovers
+    return ok, f"rc={rc} mode_ok={mode_ok} 基目录残留={leftovers}"
+
+
+@check("req0063-streaming-stop")
+def req0063_streaming_stop(root: Path, skill: str) -> tuple[bool, str]:
+    """命中触发标记即结束会话（不等进程跑完），避免超时误判。"""
+    import time as _time
+
+    sd = skill_dir(root, skill)
+    with tempfile.TemporaryDirectory(prefix="shy-r63-") as tmp:
+        marker = Path(tmp) / "slow_marker.py"
+        marker.write_text("import time\nprint('SENTINEL-TRIGGER', flush=True)\ntime.sleep(60)\n",
+                          encoding="utf-8")
+        tpl = f'"{sys.executable}" "{marker}" {{prompt}}'
+        t0 = _time.monotonic()
+        rc, out, _err = run_script(root, sd / "scripts" / "agent_runner.py",
+                                   "--runner", "cmd", "--cmd", tpl,
+                                   "--detect", "SENTINEL-TRIGGER", "--prompt", "x", "--timeout", "90")
+        elapsed = _time.monotonic() - t0
+    ok = rc == 0 and '"triggered": true' in out and elapsed < 30
+    return ok, f"rc={rc} 用时={elapsed:.1f}s"
+
+
+@check("req0060-report-summary")
+def req0060_report_summary(root: Path, skill: str) -> tuple[bool, str]:
+    """报告可见摘要必须含「候选 N / 通过 M / 被证伪 K」淘汰数。"""
+    import render_report as rr
+
+    template = read_text(skill_dir(root, skill) / "assets" / "report-template.html")
+    data = {
+        "skill_name": "x", "iteration": 1, "generated_at": "t",
+        "benchmark": None, "evals": [],
+        "findings": {
+            "verdict": "可合入",
+            "summary": {"candidates": 7, "passed": 5, "falsified": 2},
+            "findings": [{"axis": "行为", "priority": "P1", "location": "x:1",
+                          "problem": "问题", "plain": "白话", "suggestion": "建议"}],
+        },
+    }
+    served = re.sub(r"<script>.*?</script>", "",
+                    rr.build_html(data, template, "/triage?t=TOKEN"), flags=re.S)
+    need = ["候选 7", "通过 5", "被证伪 2"]
+    missing = [n for n in need if n not in served]
+    return (not missing), f"缺={missing}"
+
+
 @check("validate-rejects-bad")
 def validate_rejects_bad(root: Path, skill: str) -> tuple[bool, str]:
     """validate_skill.py 对含多余字段的技能 → 非 0。"""
@@ -442,7 +664,7 @@ def validate_rejects_bad(root: Path, skill: str) -> tuple[bool, str]:
         d = Path(tmp) / "bad"
         d.mkdir()
         (d / "SKILL.md").write_text(
-            "---\nname: bad\ndescription: x\nname_cn: 坏\n---\n\n# bad\n", encoding="utf-8")
+            "---\nname: bad\ndescription: x\nbogus_field: 坏\n---\n\n# bad\n", encoding="utf-8")
         rc, _o, _e = run_script(root, sd / "scripts" / "validate_skill.py", str(d))
     return rc != 0, f"多余字段 → rc={rc}"
 
@@ -558,10 +780,104 @@ def generate_eval_set_ok(root: Path, skill: str) -> tuple[bool, str]:
 
 @check("converged-mechanical")
 def converged_mechanical(root: Path, skill: str) -> tuple[bool, str]:
-    """converged 由 run_checks 机械算出（非 agent 手写，去自证）。"""
-    src = read_text(skill_dir(root, skill) / "scripts" / "run_checks.py")
-    ok = 'result["converged"]' in src
-    return ok, f"run_checks 含机械 converged 计算={ok}"
+    """converged 由 run_checks 机械算出（行为验证）：达标 → true、带债 → false。"""
+    script = skill_dir(root, skill) / "scripts" / "run_checks.py"
+    base = ("---\nid: REQ-0001\ntitle: x\nskill: demo\nstatus: done\niteration: 1\n"
+            "created: 2026-01-01\nupdated: 2026-01-01\nblocked_by: []\n---\n\n"
+            "# REQ-0001 x\n\n## 验收标准\n\n")
+    with tempfile.TemporaryDirectory(prefix="shy-cm-") as tmp:
+        t = Path(tmp)
+        d = t / "docs" / "demo" / "requirements"
+        d.mkdir(parents=True)
+        (d / "REQ-0001.md").write_text(base + "- [ ] 稳定项（语义）\n", encoding="utf-8")
+        rc_ok, out_ok, _ = run_script(t, script, "--root", str(t), "--skill", "demo")
+        (d / "REQ-0001.md").write_text(base + "- [ ] 未分类项\n", encoding="utf-8")
+        rc_debt, out_debt, _ = run_script(t, script, "--root", str(t), "--skill", "demo")
+    good = rc_ok == 0 and "converged: true" in out_ok
+    bad = rc_debt != 0 and "converged: false" in out_debt
+    return (good and bad), f"达标 rc={rc_ok}/true={good}；带债 rc={rc_debt}/false={bad}"
+
+
+@check("req0069-effectiveness-set")
+def req0069_effectiveness_set(root: Path, skill: str) -> tuple[bool, str]:
+    """用例集：≥3 条任务式用例、每条 ≥1 断言，且 prompt 不点名技能。"""
+    p = skill_dir(root, skill) / "evals" / "effectiveness.json"
+    if not p.is_file():
+        return False, "evals/effectiveness.json 不存在"
+    try:
+        data = json.loads(read_text(p))
+    except Exception as exc:  # noqa: BLE001 - 报错即可
+        return False, f"解析失败：{exc}"
+    name = data.get("skill_name", "")
+    cases = data.get("cases") or []
+    bad = [c.get("eval_name", "?") for c in cases
+           if not c.get("prompt") or not c.get("assertions")]
+    named = [c.get("eval_name", "?") for c in cases if name and name in (c.get("prompt") or "")]
+    ok = len(cases) >= 3 and not bad and not named
+    return ok, f"用例={len(cases)} 缺 prompt/断言={bad} prompt 点名技能={named}"
+
+
+@check("req0069-effectiveness-harness")
+def req0069_effectiveness_harness(root: Path, skill: str) -> tuple[bool, str]:
+    """运行器端到端（桩命令）：布局 + 污染字段 + 技能恢复 + 隔离根清理。"""
+    sd = skill_dir(root, skill)
+    with tempfile.TemporaryDirectory(prefix="shy-r69-") as tmp:
+        t = Path(tmp)
+        stub = t / "stub.py"
+        stub.write_text(
+            "import pathlib\n"
+            "print('-> Read C:/outside/foreign.md')\n"
+            "print('Skill \"other-skill\"')\n"
+            "pathlib.Path('artifact.txt').write_text('x', encoding='utf-8')\n"
+            "print('ANSWER-OK')\n",
+            encoding="utf-8",
+        )
+        cases = t / "cases.json"
+        cases.write_text(json.dumps({
+            "skill_name": "demo",
+            "cases": [{"eval_id": 0, "eval_name": "stub", "prompt": "x",
+                       "assertions": [{"name": "a", "check": "c"}]}],
+        }, ensure_ascii=False), encoding="utf-8")
+        tpl = f'"{sys.executable}" "{stub}" {{prompt}}'
+        skills = t / "skills"
+        for n in ("demo", "other"):
+            (skills / n).mkdir(parents=True)
+            (skills / n / "SKILL.md").write_text("x", encoding="utf-8")
+        ws1 = t / "ws1"
+        rc, out, err = run_script(root, sd / "scripts" / "run_effectiveness.py",
+                                  "--arm", "baseline", "--cases", str(cases),
+                                  "--ws", str(ws1), "--trials", "1", "--workers", "1",
+                                  "--cmd", tpl, "--detect-skill", "demo",
+                                  "--cwd-base", str(t / "root"), "--keep",
+                                  "--skills-dir", str(skills),
+                                  "--disable-skills", "demo,other")
+        run_dir = ws1 / "eval-0" / "baseline_0"
+        response = (run_dir / "outputs" / "response.txt")
+        timing_p = run_dir / "timing.json"
+        timing = json.loads(timing_p.read_text(encoding="utf-8")) if timing_p.is_file() else {}
+        contam = timing.get("contamination") or {}
+        restored = all((skills / n / "SKILL.md").is_file() for n in ("demo", "other"))
+        layout_ok = (rc == 0 and response.is_file() and "ANSWER-OK" in read_text(response)
+                     and (run_dir / "outputs" / "workspace" / "artifact.txt").is_file())
+        contam_ok = (timing.get("loaded_skills") == ["other-skill"]
+                     and contam.get("other_skills_loaded") == ["other-skill"]
+                     and any("foreign.md" in p for p in contam.get("foreign_reads") or [])
+                     and contam.get("target_loaded") is False)
+        # 第二跑：缺省隔离根 → 跑完应自动删除
+        ws2 = t / "ws2"
+        rc2, out2, _err2 = run_script(root, sd / "scripts" / "run_effectiveness.py",
+                                      "--arm", "with_skill", "--cases", str(cases),
+                                      "--ws", str(ws2), "--trials", "1", "--workers", "1",
+                                      "--cmd", tpl, "--detect-skill", "demo")
+        try:
+            info2 = json.loads(out2)
+        except Exception:  # noqa: BLE001
+            info2 = {}
+        root2 = info2.get("cwd_root")
+        cleaned = bool(root2) and info2.get("cwd_root_kept") is False and not Path(root2).exists()
+    ok = layout_ok and contam_ok and restored and rc2 == 0 and cleaned
+    return ok, (f"rc={rc} 布局={layout_ok} 污染字段={contam_ok} 技能恢复={restored} "
+                f"隔离根清理={cleaned}")
 
 
 # --------------------------------------------------------------------------- #
@@ -625,15 +941,34 @@ def analyze(root: Path, skill: str | None) -> dict[str, Any]:
         # 未实现的（draft / ready）与不做的（deferred / out-of-scope）一律跳过——
         # 它们的 check: 是"未来契约"，此刻跑必红，是噪声。
         skip_exec = (fm.get("status") or "").strip() not in ("in-progress", "done")
-        for desc in criteria(path):
+        crits = criteria(path)
+        if not skip_exec and not crits:
+            # 已实现 / 已完成的 REQ 必须有验收标准——零证据不得过门。
+            failed += 1
+            errors.append({"req": rid, "error": "done/in-progress REQ 无验收标准"})
+            rows.append({"req": rid, "check": "(空验收标准)", "passed": False,
+                         "evidence": "done/in-progress REQ 必须有验收标准"})
+        for desc in crits:
             tag = CHECK_TAG_RE.search(desc)
             if not tag:
-                if BEHAVIOR_RE.search(desc):
-                    behavior += 1
-                elif SEMANTIC_RE.search(desc):
-                    semantic += 1
-                elif EPISODE_RE.search(desc):
-                    episode += 1
+                # 取行内**最后一个**类别标记：一行提到多个词时，以行尾标注为准。
+                marks: list[tuple[int, str]] = []
+                for kind, pattern in (("behavior", BEHAVIOR_RE),
+                                      ("semantic", SEMANTIC_RE),
+                                      ("episode", EPISODE_RE)):
+                    marks.extend((m.start(), kind) for m in pattern.finditer(desc))
+                if marks:
+                    if skip_exec:
+                        # 未实现 / 延后 / 不做的 REQ：标签是未来契约，不计入本轮工作集。
+                        skipped += 1
+                        continue
+                    kind = max(marks)[1]
+                    if kind == "behavior":
+                        behavior += 1
+                    elif kind == "semantic":
+                        semantic += 1
+                    else:
+                        episode += 1
                 else:
                     untagged += 1
                 continue
@@ -671,7 +1006,7 @@ def analyze(root: Path, skill: str | None) -> dict[str, Any]:
         "skipped": skipped,
         "checks": rows,
         "errors": errors,
-        "hint": "untagged>0 表示有验收标准没标四类之一（check: / （行为） / （语义） / （episode））——未分类项即**迁移债**（不设默认、挂 `（未定）`）；episode 为一次性事实、不进 Gate；skipped 为 deferred / out-of-scope 的 REQ 跳过的 check 数",
+        "hint": "untagged>0 表示有验收标准没标四类之一（check: / （行为） / （语义） / （episode））——未分类项即**迁移债**（不设默认、挂 `（未定）`；含未实现 / 延后 / 不做 REQ 的未标行——分类债全局计）；episode 为一次性事实、不进 Gate；skipped 为未实现 / 延后 / 不做的 REQ 跳过的 check 与标签行数",
     }
 
 
@@ -713,22 +1048,29 @@ def main() -> int:
     fc = fix_counts(root, args.skill) if args.skill else None
     result["cleanup_open"] = cc[0] if cc else None
 
-    # V6：没有 REQ = 不适用，不是"绿"（技能单独部署时不得假绿）。
-    if not result["checks"] and not result["executable"]["total"]:
-        if args.skill and not (root / "docs" / args.skill / "requirements").is_dir():
-            result["status"] = "n/a"
-    # V1：带迁移债不得判绿（债门，设计 §4.7）。
+    # V6：没有 REQ = 不适用，不是"绿"（技能单独部署 / 空需求目录时不得假绿）。
+    if not discover(root, args.skill):
+        result["status"] = "n/a"
+    # V1：带迁移债不得判绿（债门）。`state.json` 缺失按目标 0；全仓扫描时聚合各技能目标——
+    # 任何路径都不得因缺文件 / 缺 `--skill` 而跳过债门。
+    def _debt_target(skill_name: str) -> int:
+        st = root / "docs" / skill_name / "state.json"
+        if not st.is_file():
+            return 0
+        try:
+            return int((json.loads(read_text(st)).get("debt_targets") or {})
+                       .get("unclassified_criteria", 0))
+        except Exception:  # noqa: BLE001
+            return 0
+
     if args.skill:
-        st = root / "docs" / args.skill / "state.json"
-        if st.is_file():
-            try:
-                target = int((json.loads(read_text(st)).get("debt_targets") or {})
-                             .get("unclassified_criteria", 0))
-            except Exception:  # noqa: BLE001
-                target = 0
-            if result["untagged"] > target and result["status"] == "ok":
-                result["status"] = "debt"
-                result["debt_target"] = target
+        debt_target = _debt_target(args.skill)
+    else:
+        debt_target = sum(_debt_target(p.parent.name)
+                          for p in root.glob("docs/*/requirements"))
+    if result["untagged"] > debt_target and result["status"] == "ok":
+        result["status"] = "debt"
+        result["debt_target"] = debt_target
     # converged = 机械判据（非 agent 自证）：无失败 / 无未注册 check / 债达标 ⇔ status == "ok"
     result["converged"] = (result["status"] == "ok")
 
@@ -740,7 +1082,7 @@ def main() -> int:
         mark = "PASS" if row["passed"] else "FAIL"
         print(f"[{mark}] {row['req']} {row['check']}  {row['evidence']}")
     if result["status"] == "n/a":
-        print("[n/a] 未发现任何 REQ（docs/<skill>/requirements 缺失）——Gate 不适用，**不得当绿**")
+        print("[n/a] 未发现任何 REQ（docs/<skill>/requirements 缺失或为空）——Gate 不适用，**不得当绿**")
     elif result["status"] == "debt":
         print(f"[debt] 未分类迁移债 {result['untagged']} > 目标 {result.get('debt_target')}——**未收敛，Gate 不判绿**")
     if cc is not None and fc is not None:
@@ -754,7 +1096,7 @@ def main() -> int:
     print(f"\ncheck: {e['total']} 条：{e['passed']} 通过 / {e['failed']} 失败；"
           f"（行为）{result['behavior']}；（语义）{result['semantic']}；"
           f"（episode）{result['episode']}；"
-          f"未分类(迁移债) {result['untagged']}；跳过（deferred/out-of-scope）{result['skipped']}"
+          f"未分类(迁移债) {result['untagged']}；跳过（未实现 / 延后 / 不做）{result['skipped']}"
           f"{cleanup_note}")
     return 0 if result["status"] == "ok" else 1
 

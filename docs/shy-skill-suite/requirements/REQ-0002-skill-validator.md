@@ -30,7 +30,7 @@ related: []
    - `name` 与目录同名；仅小写字母 / 数字 / 连字符；≤64；无首尾连字符、无连续连字符。
    - `description` ≤ 1024 字符；**不含尖括号 `<` / `>`**；含 `TODO` → **warning**（脚手架占位未替换）。
    - `compatibility`（可选）≤ 500 字符。
-   - 允许字段集 = `{name, description, license, compatibility, metadata, allowed-tools}`；**顶层多余字段报错**（如 `name_cn`/`description_cn`/`create_source`）。
+   - 允许字段集 = `{name, description, license, compatibility, metadata, allowed-tools}` + 客户端扩展字段（见 `REQ-0011`、`REQ-0070`）；**顶层多余字段报错**（如 `bogus_field`）。
 3. **结构**：`SKILL.md` 存在（大小写精确）；技能目录内不得出现 `README.md`。
 4. **引用**：`SKILL.md` 与 `references/` 内的相对 `.md` / 脚本引用必须指向存在的文件，悬空引用报错。
 5. 输出 JSON：`{status, errors: [...], warnings: [...]}`；有 error 时退出码 1。
@@ -49,7 +49,7 @@ related: []
 ## 验收标准
 
 - [x] 对 `skills/shy-skill-suite` 运行 → `status: ok`、退出码 0。 — `check:skill-validate-ok`
-- [x] 顶层含 `name_cn` 的技能 → 报"多余字段"并退出码 1。 — `check:validate-rejects-bad`
+- [x] 顶层含未列入字段（如 `bogus_field`）的技能 → 报"多余字段"并退出码 1。 — `check:validate-rejects-bad`（原示例 `name_cn` 已由 `REQ-0070` 放行为客户端扩展字段，改为中性未知字段）
 - [x] `name` 与目录不同名 → 报错。 — `check:validate-rejects-bad`
 - [x] 技能目录含 `README.md` → 报错。 — `check:validate-rejects-bad`
 - [x] 引用 `references/nope.md`（不存在）→ 报"悬空引用"。 — （episode）
@@ -67,10 +67,11 @@ related: []
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-16 | 落需求 + 实现 `validate_skill.py`（结构/规范，stdlib，无 PyYAML）；补"未加引号 `: `"的 YAML 隐患检查；接入 `SKILL.md` 资源与 `lifecycle.md` 阶段 2 | 8/8 验收通过；与官方在覆盖规则上一致 | 收敛（done） |
 | 2 | 2026-09-16 | 文档修正（`REQ-0017`）：验收「与官方 `quick_validate.py` 一致」改为仓库内可复现断言；「行为与步骤」补记两条已实现规则（`description` 不含尖括号、`compatibility` ≤ 500） | 两条规则已在 `validate_skill.py` 实现（`:134` 尖括号、`:140` compatibility）；本步只改本文档 | done（无行为变化） |
+| 3 | 2026-09-19 | `REQ-0070`：放行 TeleAgent 客户端扩展字段（`name_cn` / `description_cn` / `create_source`）；`validate-rejects-bad` 夹具改用中性未知字段 `bogus_field`；订正本文件过期的 `name_cn` 示例 | `validate_skill.py skills/knowledge-distill` → `status: ok`；`check:validate-rejects-bad` 仍绿 | done |
 
 ## 备注 / 待办
 
 - 与 `REQ-0001`（脚手架）无硬依赖：脚手架只生成 frontmatter，不必调用本校验器。若后续让脚手架内联校验，再加 `blocked_by`。
-- **允许字段集已由 `REQ-0011` 扩展**：在 `agentskills.io` 基础字段之外，另放行客户端扩展字段 `disable-model-invocation` / `argument-hint`（`BASE_FIELDS` / `EXTENSION_FIELDS`）。以 `REQ-0011` 为准。
+- **允许字段集已由 `REQ-0011` / `REQ-0070` 扩展**：在 `agentskills.io` 基础字段之外，另放行客户端扩展字段 `disable-model-invocation` / `argument-hint`（opencode / Claude Code）与 `name_cn` / `description_cn` / `create_source`（TeleAgent）。以 `REQ-0011` / `REQ-0070` 为准。
 - **与官方校验器的关系（实测）**：官方 `quick_validate.py` 是我们规则的**真子集**——它不查 `name` == 目录名、不查技能内 `README.md`、不查悬空引用；而我们的轻量解析器比 PyYAML 宽松（曾放过未加引号的 `: `），故补了 YAML 隐患检查以对齐。结论：**在我们覆盖的规则上不冲突；额外规则为有意收紧。**
 - 历史说明（`REQ-0017`）：验收原先要求每次与官方 `quick_validate.py` 对照；该文件不在技能包内、不可复现。现已把上述**已固化的对照结论**留在本备注，验收改为仓库内断言，不再要求每次跑外部脚本。

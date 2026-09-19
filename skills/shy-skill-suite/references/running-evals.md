@@ -9,6 +9,7 @@
 | `generate_eval_set.py` | 从 `SKILL.md` 的 description 生成起手触发评测集（should-trigger / near-miss） |
 | `optimize_description.py` | 按 train/held-out test 给 description 打分、给改进建议（选优按 test 分） |
 | `agent_runner.py` | 把一条 prompt 跑过 agent 客户端并检测技能是否被触发（适配 opencode / TeleAgent） |
+| `run_effectiveness.py` | 行为轴有效性对照：with_skill / baseline 两臂跑任务式用例，隔离根 + 技能屏蔽 + 污染扫描 |
 | `aggregate_benchmark.py` | 聚合 iteration 结果成 `benchmark.json` / `benchmark.md`（含 with_skill vs baseline 的 delta） |
 
 ## 工作区布局
@@ -65,15 +66,40 @@ python "<SKILL_DIR>/scripts/generate_eval_set.py" <skill_dir> -o evals/evals.jso
 # 2) 给 description 打分（离线启发式）
 python "<SKILL_DIR>/scripts/optimize_description.py" <skill_dir> --eval-set evals/evals.json -o reports/desc-opt.json
 
-# 2') 真跑触发（opencode / TeleAgent）——每条默认跑 3 次、按触发率 ≥ 0.5 判触发
+# 2') 真跑触发——每条默认跑 3 次、按触发率 ≥ 0.5 判触发；钉模型 + 隔离 cwd + 并发
 #     单跑有抖动（同一 description 换一次跑，误触发的题会变），别用单跑结论改 description
 python "<SKILL_DIR>/scripts/optimize_description.py" <skill_dir> --eval-set evals/evals.json \
-  --runner opencode --detect <skill-name> --trials 3
+  --runner cmd --cmd 'opencode run --model <provider>/<id> "{prompt}"' \
+  --detect <skill-name> --detect-mode skill-line --trials 5 --workers 4 \
+  --cwd <临时目录> --isolate-cwd --verbose
 
 # 3) 聚合 benchmark
 python "<SKILL_DIR>/scripts/aggregate_benchmark.py" <workspace>/iteration-1 \
   --skill-name <name> --previous <workspace>/iteration-0
 ```
+
+## 有效性对照（with_skill vs baseline）
+
+触发轴问"会不会用"，有效性轴问"用了有没有更好"。用 `run_effectiveness.py` 跑：**任务式** prompt（不点名技能）、每臂 × 每用例 × `--trials` 次，产出与工作区布局同构（`eval-<id>/<arm>_<t>/`）。
+
+```bash
+# with_skill 臂
+python "<SKILL_DIR>/scripts/run_effectiveness.py" --arm with_skill \
+  --cases "<SKILL_DIR>/evals/effectiveness.json" --ws <workspace>/iteration-N \
+  --model <provider>/<id> --workers 3
+
+# baseline 臂：整批屏蔽目标技能 + 易抢答的其他技能（跑完自动恢复）
+python "<SKILL_DIR>/scripts/run_effectiveness.py" --arm baseline \
+  --cases "<SKILL_DIR>/evals/effectiveness.json" --ws <workspace>/iteration-N \
+  --model <provider>/<id> --workers 3 \
+  --skills-dir "<技能目录>" --disable-skills shy-skill-suite,skill-creator,writing-for-agents
+```
+
+**隔离（硬要求）**：每批在系统临时目录新建**唯一隔离根**，所有运行目录都在其下、跑完删除（`--keep` 保留）。**不要**把运行目录放进共享目录——agent 会上溯父目录搜索；实测 baseline 从共享 temp 的旧副本里读到了技能内容（REQ-0069）。
+
+**污染可见化**：每次运行把扫描结果写进 `timing.json`——`loaded_skills`（`Skill "名"` 加载行）与 `contamination{foreign_reads, other_skills_loaded, target_loaded, ancestor_scans}`。**判读规则**：baseline 出现 `target_loaded`、或 `foreign_reads` 命中目标技能的任何副本 ⇒ 该 run 作废或降权；出现 `other_skills_loaded` ⇒ 该 run 是"别的指导"，不是"无指导"。污染 run 一律在报告里点名，**不得静默计入 delta**。
+
+**无技能 baseline 的天花板**（见「边界」）：技能内容在磁盘上可被搜到 ⇒ baseline 天然偏弱。要"干净的无技能对照"须同时做到：技能源码不在可搜索路径 + 屏蔽其他技能；做不到时优先用**旧版快照**做 baseline。
 
 ## HTML 报告（评审路的呈现）
 
@@ -81,12 +107,17 @@ python "<SKILL_DIR>/scripts/aggregate_benchmark.py" <workspace>/iteration-1 \
 
 ```bash
 python "<SKILL_DIR>/scripts/render_report.py" <workspace>/iteration-1 --skill-name <name>
+
+# 页面直接提交分拣（可选；默认静态单文件）
+python "<SKILL_DIR>/scripts/render_report.py" <workspace>/iteration-1 --skill-name <name> --serve
 ```
 
 - 读 `benchmark.json` + `eval-*/` + `findings.json`（schema 见 `reviewing-skills.md`），输出 `<iteration>/report.html`（`--out` 可改）。
 - **生成后默认自动用浏览器打开**；关闭方式（任一即可）：`--no-open`，或环境变量 `SHY_NO_OPEN` / `CI` / `NO_BROWSER` 为真值。无显示环境不报错，仍写出文件。
 - **报告是复审的终局产物**：只在 `reviewing-skills.md` Step 8 生成一次。复审中途、以及**子 agent 测试渲染**时，一律关闭自动打开（否则会中途弹浏览器打断用户）。
 - 单文件、无服务器、无外部资源：opencode / TeleAgent 直接打开即可。
+- **分拣只在 `--serve` 模式出现**：每条 finding 带三选一（立即修 / 以后修 / 丢弃，默认立即修），报告末尾只有一个「提交给 agent」按钮 → `POST /triage` 写**与报告同目录**的 `triage.json`（每项 `{id, choice, note, location}`；`id` 为报告渲染顺序，回写按 `location` 对应 `findings.json`），服务随即退出。无复制 / 下载 / 清空。
+- **静态报告（无 `--serve`）是只读归档**：无分拣控件、无按钮，**不会自动回传任何数据**；提交只在 `--serve` 下由用户点击触发。`--serve-timeout`（默认 1800 秒）控制等待；超时未提交 → 服务退出、静态 `report.html` 仍可用。
 - 只有 findings（无 benchmark）或反之都能出；两者都无 → 退出码 1。
 
 ## runner 适配（客户端无关）
@@ -98,9 +129,15 @@ python "<SKILL_DIR>/scripts/render_report.py" <workspace>/iteration-1 --skill-na
 | `teleagent` | `--cmd` 或环境变量 `TELEAGENT_RUN_CMD` | TeleAgent 的调用方式因环境而异，用模板注入 |
 | `cmd` | `--cmd`（必须含 `{prompt}`） | 任意客户端 |
 
-**检测**：`--detect` 传技能名或正则；命中命令的 stdout/stderr 即判为触发。客户端日志格式不同，检测串可能需要按客户端微调。
+**检测**：`--detect` 传技能名或正则；**流式检测**——逐行读取输出，命中即结束会话（正例常会继续干活到超时，等它跑完纯属浪费，且超时会误判未触发）。跨行正则可用的前提不成立（逐行匹配）；客户端日志格式不同，检测串可能需要按客户端微调。
 
 **命令模板按 argv 切分、不经 shell**（`shell=False`）：`{prompt}` 始终作为**单个参数**注入，模板里的 `&` / `|` / 反引号不会被解释；代价是模板不能用管道、重定向等 shell 语法（需要时写一个包装脚本，再让 `{prompt}` 调用它）。
+
+**评测隔离（`--isolate-cwd`）**：嵌套 agent 会在 `--cwd` 里写文件；共用目录会让后跑的用例看到前一轮的产物、结果失真（实测同一负例在脏/净目录里触发率 1.0 vs 0/3）。真跑评测一律加 `--isolate-cwd`——每次运行在 `--cwd` 下新建空目录、跑完即删。
+
+**必须钉模型**：`opencode run` 的**默认模型解析不可控**——实测嵌套会话 `model=None`、落到免费模型后循环 / 超时 / 不加载技能（整批数据作废），且桌面所选模型不会传播给 CLI。真跑一律用 `--cmd 'opencode run --model <provider>/<id> "{prompt}"'`，并把**所用模型 ID** 写进报告 / 迭代记录；不钉模型的结论不可复现。
+
+**并发与检测模式**：`--workers`（默认 4）并发跑各 (查询, trial)——每次预测一个独立子进程，互不共享状态（实测 3 并发 11.7s vs 串行 36s）；`--detect-mode`（默认 `auto`：opencode → `skill-line`，其余 `substring`）——`skill-line` 只认 `Skill "名"` 加载行，防"只是提到名字"被算作触发。单次超时默认 **120s**（实测检测中位 ~15s，但存在"晚触发"用例——数十 KB 输出后才加载技能——且并发会抬高单次延迟；60s 会把它们误杀成假阴性。超时按未触发 fail-fast）。
 
 ## 边界
 

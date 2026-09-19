@@ -26,7 +26,10 @@ import argparse
 import json
 import random
 import re
+import shutil
 import sys
+import tempfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Callable
 
@@ -81,15 +84,31 @@ def build_predictor(
     detect: str | None,
     cwd: str | None,
     timeout: int,
+    isolate_cwd: bool = False,
+    detect_mode: str = "auto",
 ) -> tuple[Callable[[str], bool | None], str]:
-    """返回 (predict_fn, mode)；predict_fn 返回 True/False，或 None 表示无法判定。"""
+    """返回 (predict_fn, mode)；predict_fn 返回 True/False，或 None 表示无法判定。
+
+    ``isolate_cwd``：每次运行都在 ``cwd`` 下新建一个空目录并跑完即删——
+    agent 会写文件，共享目录会被历次运行污染，让后跑的用例结果失真。
+    """
     if runner != "heuristic" and resolve_command(runner, cmd):
         def predict(prompt: str) -> bool | None:
-            result = run_prompt(
-                prompt, runner=runner, cmd=cmd,
-                detect_pattern=detect, cwd=cwd, timeout=timeout,
-            )
-            return result.get("triggered")
+            run_cwd = cwd
+            tmp_dir: str | None = None
+            if isolate_cwd and cwd:
+                tmp_dir = tempfile.mkdtemp(prefix="run-", dir=cwd)
+                run_cwd = tmp_dir
+            try:
+                result = run_prompt(
+                    prompt, runner=runner, cmd=cmd,
+                    detect_pattern=detect, cwd=run_cwd, timeout=timeout,
+                    detect_mode=detect_mode,
+                )
+                return result.get("triggered")
+            finally:
+                if tmp_dir:
+                    shutil.rmtree(tmp_dir, ignore_errors=True)
 
         return predict, f"agent:{runner}"
 
@@ -105,20 +124,52 @@ def score(
     predict: Callable[[str], bool | None],
     split: str = "",
     trials: int = 1,
+    workers: int = 1,
+    verbose: bool = False,
 ) -> dict[str, Any]:
     """每条查询跑 ``trials`` 次，按触发率 ≥ 0.5 判"是否触发"。
 
     真跑 agent 时单次判定有抖动（同一 description 换一次跑，误触发的题会变），
     故规范要求**每条 ≥3 次取多数**；heuristic 无随机性，``trials`` 由上层强制为 1。
+    ``workers > 1`` 时并发跑各 (查询, trial)——每次预测一个独立子进程，互不共享状态。
     """
+    n = max(1, trials)
+    jobs = [(i, t, item.get("prompt", "")) for i, item in enumerate(eval_set) for t in range(n)]
+    outcomes: dict[tuple[int, int], bool | None] = {}
+
+    def _run(i: int, t: int, prompt: str) -> tuple[tuple[int, int], bool | None]:
+        try:
+            return (i, t), predict(prompt)
+        except Exception:  # noqa: BLE001 - 单次失败按"未判定"计
+            return (i, t), None
+
+    if workers > 1 and len(jobs) > 1:
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futures = [ex.submit(_run, i, t, p) for i, t, p in jobs]
+            for fut in as_completed(futures):
+                key, value = fut.result()
+                outcomes[key] = value
+                if verbose:
+                    item = eval_set[key[0]]
+                    print(f"[{split or 'eval'}] done #{item.get('eval_id')} "
+                          f"trial {key[1] + 1}/{n}", file=sys.stderr)
+    else:
+        for i, t, p in jobs:
+            key, value = _run(i, t, p)
+            outcomes[key] = value
+            if verbose:
+                item = eval_set[i]
+                print(f"[{split or 'eval'}] done #{item.get('eval_id')} "
+                      f"trial {t + 1}/{n}", file=sys.stderr)
+
     details: list[dict[str, Any]] = []
     correct = 0
-    for item in eval_set:
+    for i, item in enumerate(eval_set):
         should = bool(item.get("should_trigger", True))
         hits = 0
         decided = 0
-        for _ in range(max(1, trials)):
-            p = predict(item.get("prompt", ""))
+        for t in range(n):
+            p = outcomes.get((i, t))
             if p is None:
                 continue
             decided += 1
@@ -144,10 +195,25 @@ def score(
             "split": split,
         })
     total = len(eval_set)
+    tp = sum(1 for d in details if d["should_trigger"] and d["predicted_trigger"] is True)
+    fp = sum(1 for d in details if not d["should_trigger"] and d["predicted_trigger"] is True)
+    fn = sum(1 for d in details if d["should_trigger"] and d["predicted_trigger"] is not True)
+    tn = sum(1 for d in details if not d["should_trigger"] and d["predicted_trigger"] is not True)
+    precision = tp / (tp + fp) if (tp + fp) else 1.0
+    recall = tp / (tp + fn) if (tp + fn) else 1.0
+    accuracy = (tp + tn) / total if total else 0.0
+    f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) else 0.0
     return {
         "score": round(correct / total, 4) if total else 0.0,
         "correct": correct,
         "total": total,
+        "metrics": {
+            "tp": tp, "fp": fp, "fn": fn, "tn": tn,
+            "precision": round(precision, 4),
+            "recall": round(recall, 4),
+            "accuracy": round(accuracy, 4),
+            "f1": round(f1, 4),
+        },
         "details": details,
     }
 
@@ -182,6 +248,10 @@ def optimize(
     cwd: str | None = None,
     timeout: int = 120,
     trials: int = 3,
+    isolate_cwd: bool = False,
+    workers: int = 1,
+    verbose: bool = False,
+    detect_mode: str = "auto",
 ) -> dict[str, Any]:
     path = Path(skill_dir).resolve()
     frontmatter, _body, errors = load_skill(path)
@@ -195,15 +265,25 @@ def optimize(
 
     original = str(frontmatter.get("description", ""))
     candidate = description_override if description_override is not None else original
+    if runner != "heuristic" and candidate.strip() != original.strip():
+        return {
+            "error": (
+                "agent 模式不读取 --description：技能由客户端加载，候选描述不会生效。"
+                "请先把候选描述部署到 SKILL.md（或临时替换）再跑，或改用 --runner heuristic。"
+            )
+        }
 
     train_set, test_set = split_eval_set(all_evals, seed=seed)
-    predict, mode = build_predictor(candidate, runner, cmd, detect, cwd, timeout)
+    predict, mode = build_predictor(candidate, runner, cmd, detect, cwd, timeout,
+                                    isolate_cwd, detect_mode)
 
     if runner == "heuristic":
         trials = 1  # heuristic 无随机性，重复无意义
 
-    train_result = score(candidate, train_set, predict, "train", trials=trials)
-    test_result = score(candidate, test_set, predict, "test", trials=trials)
+    train_result = score(candidate, train_set, predict, "train", trials=trials,
+                         workers=workers, verbose=verbose)
+    test_result = score(candidate, test_set, predict, "test", trials=trials,
+                        workers=workers, verbose=verbose)
 
     train_failures = [d for d in train_result["details"] if not d["correct"]]
     test_failures = [d for d in test_result["details"] if not d["correct"]]
@@ -227,8 +307,8 @@ def optimize(
         "candidate_description": candidate,
         "train_set_size": len(train_set),
         "test_set_size": len(test_set),
-        "train": {k: train_result[k] for k in ("score", "correct", "total")},
-        "test": {k: test_result[k] for k in ("score", "correct", "total")},
+        "train": {k: train_result[k] for k in ("score", "correct", "total", "metrics", "details")},
+        "test": {k: test_result[k] for k in ("score", "correct", "total", "metrics", "details")},
         "train_failure_count": len(train_failures),
         "test_failure_count": len(test_failures),
         "failure_count": len(train_failures) + len(test_failures),
@@ -267,13 +347,20 @@ def main() -> int:
                         help="How to judge triggering (default: heuristic)")
     parser.add_argument("--cmd", help="Command template for runner=cmd/teleagent")
     parser.add_argument("--detect", help="Substring/regex marking skill activation (default: skill name)")
-    parser.add_argument("--description", help="Evaluate this candidate description instead of the current one")
+    parser.add_argument("--description", help="候选描述（仅 heuristic 生效；agent 模式请先部署到 SKILL.md）")
     parser.add_argument("--previous", help="Previous report JSON; keeps the higher test score")
     parser.add_argument("--seed", type=int, default=42, help="Train/test split seed (default: 42)")
     parser.add_argument("--cwd", help="Working directory for agent runs")
     parser.add_argument("--timeout", type=int, default=120, help="Per-run timeout seconds (default: 120)")
     parser.add_argument("--trials", type=int, default=3,
                         help="每条查询跑 N 次、按触发率 ≥ 0.5 判触发（默认 3；heuristic 强制 1）")
+    parser.add_argument("--workers", type=int, default=4,
+                        help="并发 worker 数（默认 4；1=串行。每次预测一个独立子进程）")
+    parser.add_argument("--verbose", action="store_true", help="逐条进度打到 stderr")
+    parser.add_argument("--detect-mode", default="auto", choices=["auto", "substring", "skill-line"],
+                        help='检测方式：auto（opencode→skill-line）/ substring / skill-line（锚定 Skill "名" 行）')
+    parser.add_argument("--isolate-cwd", action="store_true",
+                        help="每次运行在 --cwd 下新建空目录、跑完即删（防跨轮污染；需 --cwd 指向临时目录）")
     parser.add_argument("--out", "-o", help="Write the full report JSON to this path")
     args = parser.parse_args()
 
@@ -294,6 +381,8 @@ def main() -> int:
         runner=args.runner, cmd=args.cmd, detect=detect,
         description_override=args.description, previous_path=args.previous,
         seed=args.seed, cwd=args.cwd, timeout=args.timeout, trials=args.trials,
+        isolate_cwd=args.isolate_cwd, workers=args.workers, verbose=args.verbose,
+        detect_mode=args.detect_mode,
     )
     if args.out and "error" not in result:
         write_text(args.out, json.dumps(result, indent=2, ensure_ascii=False))

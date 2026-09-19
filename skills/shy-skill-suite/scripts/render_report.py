@@ -7,7 +7,7 @@ schema 见 `references/reviewing-skills.md`），用 `assets/report-template.htm
 渲染出内嵌数据、无服务器、无外部资源的 `report.html`。
 
 用法:
-    python render_report.py <iteration-dir> [--skill-name <name>] [--findings <findings.json>] [--out report.html]
+    python render_report.py <iteration-dir> [--skill-name <name>] [--findings <findings.json>] [--out report.html] [--serve]
 """
 
 from __future__ import annotations
@@ -194,7 +194,7 @@ def render_benchmark(bench: dict[str, Any] | None, evals: list[dict[str, Any]]) 
     return "\n".join(out)
 
 
-def render_finding(f: dict[str, Any]) -> str:
+def render_finding(f: dict[str, Any], fid: str, triage: bool = False) -> str:
     head = []
     if f.get("axis"):
         head.append(f'<span class="badge">{esc(f["axis"])}</span>')
@@ -206,14 +206,25 @@ def render_finding(f: dict[str, Any]) -> str:
         head.append(' <span class="unverified">待验证</span>')
 
     fields = (
-        ("问题", "problem"), ("影响", "impact"), ("建议", "suggestion"),
-        ("预期", "expected"), ("证伪", "falsification"), ("证据", "evidence"),
+        ("存在问题", "problem"), ("白话解释", "plain"), ("修改建议", "suggestion"),
     )
     dl = "".join(f"<dt>{esc(label)}</dt><dd>{esc(f.get(key))}</dd>" for label, key in fields if f.get(key))
-    return f'<div class="finding"><div>{"".join(head)}</div>' + (f"<dl>{dl}</dl>" if dl else "") + "</div>"
+    block = ""
+    if triage:
+        block = (
+            f'<div class="triage" data-fid="{esc(fid)}" data-location="{esc(f.get("location", ""))}">'
+            "<strong>分拣：</strong>"
+            f'<label><input type="radio" name="tri-{esc(fid)}" value="立即修" checked> 立即修</label>'
+            f'<label><input type="radio" name="tri-{esc(fid)}" value="以后修"> 以后修</label>'
+            f'<label><input type="radio" name="tri-{esc(fid)}" value="丢弃"> 丢弃</label>'
+            '<input class="note" type="text" placeholder="备注（可选）">'
+            "</div>"
+        )
+    return (f'<div class="finding"><div>{"".join(head)}</div>'
+            + (f"<dl>{dl}</dl>" if dl else "") + block + "</div>")
 
 
-def render_findings(findings: dict[str, Any] | None) -> str:
+def render_findings(findings: dict[str, Any] | None, triage: bool = False) -> str:
     if not findings:
         return '<section><h2>复审意见</h2><p class="muted">无复审数据</p></section>'
     out = ["<section><h2>复审意见</h2>"]
@@ -224,26 +235,67 @@ def render_findings(findings: dict[str, Any] | None) -> str:
         out.append(f'<p class="muted">候选 {esc(s.get("candidates", "-"))} · '
                    f'通过 {esc(s.get("passed", "-"))} · 被证伪 {esc(s.get("falsified", "-"))}</p>')
     items = findings.get("findings") or []
+    seq = [0]
+
+    def next_fid() -> str:
+        seq[0] += 1
+        return f"F{seq[0]}"
+
+    def render_group(group: list[dict[str, Any]]) -> None:
+        """优先级内再按轴分组（Step 8「分轴报告、不合并」）。"""
+        axes: list[str] = []
+        for item in group:
+            axis = str(item.get("axis") or "").strip()
+            if axis and axis not in axes:
+                axes.append(axis)
+        if any(not str(item.get("axis") or "").strip() for item in group):
+            axes.append("")
+        for axis in axes:
+            sub = [item for item in group if str(item.get("axis") or "").strip() == axis]
+            if axis:
+                out.append(f'<h4 style="font-size:13px;margin:12px 0 4px;color:var(--muted)">'
+                           f'{esc(axis)}</h4>')
+            out.extend(render_finding(item, next_fid(), triage) for item in sub)
+
     for prio in ("P0", "P1", "P2"):
         group = [f for f in items if str(f.get("priority", "")).upper() == prio]
         if not group:
             continue
         out.append(f'<h3 style="font-size:14px;margin:18px 0 6px">'
                    f'<span class="prio {prio.lower()}">{prio}</span>（{len(group)}）</h3>')
-        out.extend(render_finding(f) for f in group)
+        render_group(group)
     rest = [f for f in items if str(f.get("priority", "")).upper() not in ("P0", "P1", "P2")]
-    out.extend(render_finding(f) for f in rest)
+    render_group(rest)
     out.append("</section>")
     return "\n".join(out)
 
 
-def build_html(data: dict[str, Any], template: str) -> str:
+def build_html(data: dict[str, Any], template: str, triage_endpoint: str = "") -> str:
     title = f"评估报告 · {data['skill_name']}"
     meta = f"iteration {data['iteration']} · 生成于 {data['generated_at']}"
     out = template.replace("{{TITLE}}", esc(title)).replace("{{META}}", esc(meta))
+    # 占位符替换**先于**任何渲染内容插入：finding 文本里的 `{{...}}` 字面量不得被换成按钮 / 端点。
+    if triage_endpoint:
+        actions = ('<button id="btnSubmit" type="button">提交给 agent</button>'
+                   '<span id="triageStatus">请逐条确认后提交（默认：立即修）</span>')
+    else:
+        actions = '<span class="muted">只读版（归档）；分拣请用 --serve 打开</span>'
+    out = out.replace("{{TRIAGE_ENDPOINT}}", json.dumps(triage_endpoint))
+    out = out.replace("{{TRIAGE_ACTIONS}}", actions)
     out = out.replace("<!--BENCHMARK-->", render_benchmark(data.get("benchmark"), data.get("evals") or []))
-    out = out.replace("<!--FINDINGS-->", render_findings(data.get("findings")))
-    payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
+    out = out.replace("<!--FINDINGS-->",
+                      render_findings(data.get("findings"), triage=bool(triage_endpoint)))
+    # 内嵌数据不含过程字段（falsification / evidence）：报告可被转发 / 归档。
+    embed = dict(data)
+    findings_block = embed.get("findings")
+    if isinstance(findings_block, dict) and isinstance(findings_block.get("findings"), list):
+        embed["findings"] = dict(findings_block)
+        embed["findings"]["findings"] = [
+            {k: v for k, v in item.items() if k not in ("falsification", "evidence")}
+            for item in findings_block["findings"]
+        ]
+    # 载荷最后注入：数据里即便含 `{{...}}` 字面量，也不会再被模板替换命中。
+    payload = json.dumps(embed, ensure_ascii=False).replace("</", "<\\/")
     out = out.replace("/*__EMBEDDED_DATA__*/", f"const DATA = {payload};")
     return out
 
@@ -270,6 +322,99 @@ def open_report(path: Path) -> bool:
         return webbrowser.open(path.as_uri())
     except Exception:
         return False
+
+
+def open_url(url: str) -> bool:
+    """用默认浏览器打开 URL；无显示环境不抛错，返回是否成功。"""
+    try:
+        return webbrowser.open(url)
+    except Exception:
+        return False
+
+
+def serve_report(
+    result: dict[str, Any],
+    data: dict[str, Any],
+    template: str,
+    timeout: int,
+    port: int,
+    no_open: bool,
+) -> dict[str, Any]:
+    """起本地临时服务：页面勾选 POST /triage → 写 triage.json 后退出。
+
+    只绑 127.0.0.1，URL 带一次性 token；超时未提交则以 timed_out 返回，
+    静态 report.html 仍在（只读归档）。
+    """
+    import http.server
+    import secrets
+    import threading
+    from urllib.parse import parse_qs, urlparse
+
+    token = secrets.token_urlsafe(16)
+    html = build_html(data, template, f"/triage?t={token}")
+    triage_path = Path(result["report"]).resolve().parent / "triage.json"
+    state = {"submitted": False, "choices": 0}
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *args: Any) -> None:  # noqa: D102 - 静默访问日志
+            return
+
+        def _send(self, code: int, body: bytes = b"",
+                  ctype: str = "text/plain; charset=utf-8") -> None:
+            self.send_response(code)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self) -> None:  # noqa: N802
+            if urlparse(self.path).path not in ("/", "/report.html"):
+                return self._send(404, b"not found")
+            self._send(200, html.encode("utf-8"), "text/html; charset=utf-8")
+
+        def do_POST(self) -> None:  # noqa: N802
+            parsed = urlparse(self.path)
+            if parsed.path != "/triage" or parse_qs(parsed.query).get("t", [""])[0] != token:
+                return self._send(403, b"forbidden")
+            length = int(self.headers.get("Content-Length") or 0)
+            if length <= 0 or length > 64 * 1024:
+                return self._send(413, b"bad size")
+            try:
+                body = json.loads(self.rfile.read(length).decode("utf-8"))
+            except (ValueError, UnicodeDecodeError):
+                return self._send(400, b"bad json")
+            if not isinstance(body.get("triage"), list):
+                return self._send(400, b"missing triage")
+            write_text(triage_path, json.dumps(body, indent=2, ensure_ascii=False))
+            state["submitted"] = True
+            state["choices"] = len(body["triage"])
+            self._send(200, b'{"status":"ok"}', "application/json; charset=utf-8")
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
+
+    try:
+        httpd = http.server.ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    except OSError as exc:
+        return {"serve": False, "serve_error": f"端口不可用: {exc}"}
+
+    url = f"http://127.0.0.1:{httpd.server_address[1]}/"
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    opened = False if no_open else open_url(url)
+    thread.join(timeout)
+    timed_out = thread.is_alive()
+    if timed_out:
+        httpd.shutdown()
+        thread.join(2)
+    httpd.server_close()
+    return {
+        "serve": True,
+        "serve_url": url,
+        "opened": opened,
+        "submitted": state["submitted"],
+        "choices": state["choices"],
+        "triage": str(triage_path) if state["submitted"] else None,
+        "timed_out": False if state["submitted"] else timed_out,
+    }
 
 
 def _fallback_skill_name(itdir: Path) -> str:
@@ -323,13 +468,16 @@ def render(
         "evals": evals,
     }
     destination = Path(out_path) if out_path else (itdir / "report.html")
-    write_text(destination, build_html(data, read_text(template_path)))
+    template = read_text(template_path)
+    write_text(destination, build_html(data, template))
     return {
         "status": "success",
         "report": str(destination),
         "evals": len(evals),
         "findings": len((findings or {}).get("findings") or []),
         "has_benchmark": bool(benchmark),
+        "_data": data,
+        "_template": template,
     }
 
 
@@ -342,10 +490,13 @@ def main() -> int:
             "  python render_report.py my-skill-workspace/iteration-1\n"
             "  python render_report.py my-skill-workspace/iteration-1 --skill-name my-skill -o report.html\n"
             "  python render_report.py my-skill-workspace/iteration-1 --no-open\n"
+            "  python render_report.py my-skill-workspace/iteration-1 --serve   # 页面提交分拣，写 triage.json 后退出\n"
             "\n"
             "默认生成后自动用浏览器打开报告；关闭方式（任一即可）：--no-open，\n"
             "或设环境变量 SHY_NO_OPEN / CI / NO_BROWSER 为真值。\n"
             "无显示环境不报错，仍写出 HTML。\n"
+            "--serve 只绑 127.0.0.1 + 一次性 token，等用户点「提交给 agent」或超时；\n"
+            "默认（无 --serve）是静态单文件、无服务器。\n"
             "\n"
             "报告是复审的终局产物：**只在复审 Step 8 生成一次**；复审中途（含子 agent\n"
             "测试渲染）必须关闭自动打开，否则会中途弹浏览器打断用户。\n"
@@ -362,16 +513,29 @@ def main() -> int:
     parser.add_argument("--findings", help="findings.json 路径（缺省 <dir>/findings.json）")
     parser.add_argument("--out", "-o", help="输出 HTML 路径（缺省 <dir>/report.html）")
     parser.add_argument("--no-open", action="store_true", help="生成后不自动打开浏览器（默认会自动打开）")
+    parser.add_argument("--serve", action="store_true",
+                        help="起本地临时服务并打开；页面点「提交给 agent」写 triage.json 后退出（默认静态、无服务器）")
+    parser.add_argument("--serve-timeout", type=int, default=1800, help="--serve 等待提交的秒数（默认 1800）")
+    parser.add_argument("--serve-port", type=int, default=0, help="--serve 监听端口（默认 0=随机）")
     args = parser.parse_args()
 
     result = render(args.path, args.skill_name, args.findings, args.out)
+    data = result.pop("_data", None)
+    template = result.pop("_template", None)
+    has_findings = bool(((data or {}).get("findings") or {}).get("findings"))
     if result.get("status") == "success":
-        skip = "--no-open" if args.no_open else open_disabled_reason()
-        if skip:
-            result["opened"] = False
-            result["open_skipped"] = skip
+        if args.serve and not has_findings:
+            result["serve_skipped"] = "无 findings 可分拣，直接出只读报告"
+        if args.serve and has_findings and data is not None and template is not None:
+            result.update(serve_report(result, data, template,
+                                       args.serve_timeout, args.serve_port, args.no_open))
         else:
-            result["opened"] = open_report(Path(result["report"]))
+            skip = "--no-open" if args.no_open else open_disabled_reason()
+            if skip:
+                result["opened"] = False
+                result["open_skipped"] = skip
+            else:
+                result["opened"] = open_report(Path(result["report"]))
     stream = sys.stderr if result.get("status") == "error" else sys.stdout
     print(json.dumps(result, indent=2, ensure_ascii=False), file=stream)
     return 1 if result.get("status") == "error" else 0

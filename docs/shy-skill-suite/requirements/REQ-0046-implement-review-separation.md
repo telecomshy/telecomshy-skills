@@ -61,9 +61,9 @@ related: [REQ-0018, REQ-0041, REQ-0043]
 - [x] `lifecycle.md` 阶段 3 含「用户主动触发 / 只在用户要求时进入」 — （episode）
 - [x] `lifecycle.md` 含分拣三选项 + 「不落盘」 + 「不自动再审」 — （episode）
 - [x] `SKILL.md` 共用原则含「实现 / 评审两路分离」 — （episode）
-- [ ] `REQ-0041` 与 `REQ-0043` 含 `superseded_by: REQ-0046` — （episode）
-- [ ] **顺带修 `run_checks.py` 的跳过缺陷**：未实现的 REQ（`draft`/`ready`）的 `check:` 跳过，不因未注册报红 — `check:req0046-unimplemented-skipped`
-- [ ] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
+- [x] `REQ-0041` 与 `REQ-0043` 含 `superseded_by: REQ-0046` — （episode）
+- [x] **顺带修 `run_checks.py` 的跳过缺陷**：未实现的 REQ（`draft`/`ready`）的 `check:` 跳过，不因未注册报红 — `check:req0046-unimplemented-skipped`
+- [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
 
 ## 范围外
 

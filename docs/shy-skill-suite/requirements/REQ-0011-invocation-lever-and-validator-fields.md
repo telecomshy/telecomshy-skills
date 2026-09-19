@@ -34,7 +34,7 @@ related: [REQ-0002, REQ-0009]
 1. `references/writing-skills.md` §2 补一段"落地"：user-invoked 写 `disable-model-invocation: true`；需要参数提示时再写 `argument-hint: "<提示>"`；并注明二者是**客户端扩展字段**（不在 `agentskills.io` 基础字段集内），`validate_skill.py` 已列入允许集。
 2. `scripts/validate_skill.py`：把字段集拆成
    - `BASE_FIELDS = {name, description, license, compatibility, metadata, allowed-tools}`（对齐 `agentskills.io`）
-   - `EXTENSION_FIELDS = {disable-model-invocation, argument-hint}`（客户端扩展）
+   - `EXTENSION_FIELDS = {disable-model-invocation, argument-hint}`（客户端扩展；TeleAgent 的 `name_cn` / `description_cn` / `create_source` 另由 `REQ-0070` 加入）
    - `ALLOWED_FIELDS = BASE_FIELDS | EXTENSION_FIELDS`
    并同步更新模块 docstring 里"顶层只允许……"那句。
 3. `docs/shy-skill-suite/requirements/REQ-0002-skill-validator.md` 的「备注 / 待办」加一行：字段集已由本 REQ 扩展，以本 REQ 为准。
@@ -56,7 +56,7 @@ related: [REQ-0002, REQ-0009]
 - [x] `validate_skill.py` 对 `skills/shy-skill-suite` → `status: ok`、退出码 0（回归）。 — `check:skill-validate-ok`
 - [x] `validate_skill.py` 对含 `disable-model-invocation: true` 的技能（`retro`）→ `status: ok`、退出码 0。 — `check:skill-validate-ok`
 - [x] `validate_skill.py` 对含 `argument-hint` 的技能（`handoff`）→ `status: ok`、退出码 0。 — `check:skill-validate-ok`
-- [x] `validate_skill.py` 对含**未列入**字段（顶层 `name_cn`）的技能 → 仍报"多余字段"、退出码 1（未放宽过头）。 — `check:validate-rejects-bad`
+- [x] `validate_skill.py` 对含**未列入**字段（顶层 `bogus_field`）的技能 → 仍报"多余字段"、退出码 1（未放宽过头）。 — `check:validate-rejects-bad`（原示例 `name_cn` 已由 `REQ-0070` 放行，改用中性未知字段）
 - [x] 全量回归：对 `~/.agents/skills` 下 42 个已部署技能跑一遍 → **41 ok / 1 error**；改动前（`git stash` 回退本文件后实测）为 **20 ok / 22 error**。唯一残留 error 是 `setup-ts-deep-modules` 的悬空引用 `./src/packages/README.md`，与本改动无关。 — （episode）
 - [x] `validate_skill.py` 源码中 `disable-model-invocation` 与 `argument-hint` 出现在 `EXTENSION_FIELDS`；`BASE_FIELDS` 与 `agentskills.io` 基础集一致（对照 `quick_validate.py:42` 的 `ALLOWED_PROPERTIES`）。 — （语义）
 - [x] `references/writing-skills.md` §2 含 `disable-model-invocation` 与 `argument-hint` 两个字段名。 — （episode）
@@ -71,6 +71,7 @@ related: [REQ-0002, REQ-0009]
 | 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-16 | 落需求（复审 P1）；`writing-skills.md` §2 补落地字段；`validate_skill.py` 字段集拆 `BASE_FIELDS` / `EXTENSION_FIELDS` | 8/8 验收通过；已部署技能 20 ok/22 error → 41 ok/1 error（残留 error 与本改动无关） | 收敛（done） |
+| 2 | 2026-09-19 | `REQ-0070`：`EXTENSION_FIELDS` 追加 TeleAgent 扩展字段；验收的未知字段示例由 `name_cn` 改为 `bogus_field` | `check:validate-rejects-bad` 绿；`knowledge-distill` → `status: ok` | done |
 
 ## 备注 / 待办
 

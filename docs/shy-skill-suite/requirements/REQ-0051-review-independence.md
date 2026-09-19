@@ -73,3 +73,4 @@ related: [REQ-0046, REQ-0050]
 - 来源：2026-09-18 用户复盘（"评审最好独立三方" + "修复完停、不自动复审"）。
 - 与 `REQ-0046`（实现/评审两路分离）互补：那条定了"两路分离"，这条定了"评审独立、收敛机械"。
 - 门禁证据：`run_checks` 全绿并打印 `converged:`；`classify_audit` E=0/S=0；`validate` ok。
+- 2026-09-18（`iteration-6` 立即修）：Step 8 收尾判据的「更新 `converged`」与机械判据冲突；**`iteration-5` 曾列为立即修但漏实施，本轮补上**——改为「把 `converged_since` 记进 `state.json`（`converged` 只读脚本输出）」。此漏实施已在 `iteration-6` 报告中如实记录。

@@ -72,7 +72,7 @@ related: [REQ-0018, REQ-0012]
 
 ## 范围外
 
-- 不做 HTTP 服务器、不做反馈回写（`feedback.json`）。**"不做浏览器自动打开"已被 `REQ-0022` 取代**——现默认生成后自动打开（`--no-open` 可关）。
+- 不做 HTTP 服务器、不做反馈回写（`feedback.json`）。**"不做浏览器自动打开"已被 `REQ-0022` 取代**——现默认生成后自动打开（`--no-open` 可关）。**本行被 `REQ-0054` 部分取代**：报告加前端分拣控件（立即修 / 以后修 / 丢弃）与「复制 / 下载 `triage.json`」；仍无服务器、无自动回传。
 - 不改 `aggregate_benchmark.py` 的产出（报告只消费它）。
 - 不内嵌 run 原始产出文件（无 base64 图片/PDF）。
 - 不做跨平台（`REQ-0020` 的 command 另议）。
@@ -83,6 +83,8 @@ related: [REQ-0018, REQ-0012]
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-16 | 落需求（用户诉求：HTML 呈现评测 + 修改意见） | — | 待开工 |
 | 2 | 2026-09-16 | 新增 `scripts/render_report.py`（读 benchmark/evals/findings，静态渲染 + 内嵌 JSON）与 `assets/report-template.html`（内联 CSS）；`running-evals.md` 增「HTML 报告」节；`SKILL.md` 资源清单加脚本与 assets | 2-eval + findings 假数据 → exit 0、`evals=2/findings=3`；无外链；内嵌 JSON 可解析；findings-only / benchmark-only 均 exit 0；无数据→1（stderr）、缺参→2、`--help`→0；`validate_skill` ok | 收敛（done） |
+| 3 | 2026-09-18 | 部分订正：报告加前端分拣控件与 triage 导出（`REQ-0054`）；「不做反馈回写」仍指无服务器 / 无自动回传 | `REQ-0054` `check:req0054-triage-ui` | 契约见技能文件与 `REQ-0054` |
+| 4 | 2026-09-18 | `iteration-4` 立即修：报告在每个优先级内**按轴分组**（落实 Step 8「分轴报告、不合并」） | `render_report.py` 的 `render_group`；`run_checks` 31/31 | done |
 
 ## 备注 / 待办
 

@@ -283,7 +283,6 @@ def generate_eval_set(skill_dir: str, output: str | None = None, lang: str = "au
     should_trigger_count = sum(1 for e in evals if e["should_trigger"])
     result: dict[str, Any] = {
         "skill_name": name,
-        "skill_path": str(path),
         "generated_from": "description + trigger section",
         "lang": lang,
         "evals": evals,

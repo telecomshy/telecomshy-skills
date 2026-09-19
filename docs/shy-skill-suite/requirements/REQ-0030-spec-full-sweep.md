@@ -88,7 +88,7 @@ False False
 - [x] `writing-requirements.md` 含 `check:` / `（行为）` / `（语义）` 三类规则、无 `last_verified` — （episode）
 - [x] `REQ-0025` 的 frontmatter 含 `superseded_by: REQ-0030`、`status: out-of-scope` — （episode）
 - [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
-- [x] **全量 Spec 扫仍能跑通**：全部 REQ 的验收标准逐条有判定（可执行项由 `run_checks.py` 跑，`（语义）` 项逐条读）。（语义）
+- [x] **Spec 轴（不变量集）仍能跑通**：验收标准逐条有判定（可执行项由 `run_checks.py` 跑，`（语义）` 项逐条读）。（语义）
 
 ## 范围外
 
@@ -119,3 +119,5 @@ False False
 - 与 `REQ-0026` 的关系：`REQ-0026` 新增 `superseded_by` 字段约定（假 done 的系统性修法），本 REQ 第 8 步用到了它。
 - 与 `REQ-0028` 的关系：`REQ-0028` 原第 2 项「回归债定义 4 处去重」被本 REQ 吸收（机制整个删掉，无重复可去），已从 `REQ-0028` 删除。
 - 与 `REQ-0029` 交叉：都改 `reviewing-skills.md`（Step 2/3 vs Step 8），合并实施时注意。
+- 2026-09-18（`iteration-4` 立即修，`REQ-0055`）：本条验收的「全量 Spec 扫」改称「Spec 轴（不变量集）」——复审范围以 `reviewing-skills.md` Step 3 的「不变量集 + `（未定）`」为准，「无条件全量扫历史散文」已不在模型中。
+- 2026-09-18（`iteration-5` 立即修）：债门改为**无条件**——`state.json` 缺失按目标 0；不带 `--skill` 的全仓扫描聚合各技能目标。修复「缺 `state.json` / 不带 `--skill` 时 `未分类 > 0` 仍判绿」。

@@ -8,7 +8,7 @@
 需要真实 agent runner 的行为 eval **不在这里**（归 `running-evals.md`）。
 
 用法:
-    python selftest.py [--verbose]
+    python selftest.py
 
 退出码:
     0  全部用例通过
@@ -24,6 +24,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
@@ -117,9 +118,7 @@ def make_reqs(base: Path, dangling: bool = False, unknown_check: bool = False) -
 # --------------------------------------------------------------------------- #
 
 def t_skill_utils():
-    rc, out, err = run("skill_utils.py", "--help")  # 非 CLI，--help 会被忽略
     # 真正的契约：可被导入
-    rc2, out2, err2 = run("validate_skill.py", "--help")
     p = subprocess.run([PY, "-c", "import sys; sys.path.insert(0, r'%s'); import skill_utils; print('ok')" % SCRIPTS],
                        capture_output=True, text=True, encoding="utf-8", errors="replace")
     case("skill_utils 可导入", p.returncode == 0 and "ok" in p.stdout, f"rc={p.returncode}")
@@ -174,6 +173,26 @@ def t_agent_runner():
     rc, out, err = run("agent_runner.py", "--runner", "cmd", "--cmd", "no-such-exe {prompt}", "--prompt", "x")
     case("agent_runner 坏命令 → rc1 + stderr + stdout 空",
          rc == 1 and err.strip() and not out.strip(), f"rc={rc} err={bool(err.strip())} out={bool(out.strip())}")
+    rc2, out2, err2 = run("agent_runner.py", "--runner", "heuristic", "--prompt", "hello")
+    try:
+        heuristic_ok = rc2 == 0 and "triggered" in json.loads(out2)
+    except Exception:  # noqa: BLE001 - 解析失败即判失败
+        heuristic_ok = False
+    case("agent_runner heuristic → rc0 + JSON", heuristic_ok, f"rc2={rc2}")
+    rc3, out3, err3 = run("agent_runner.py", "--runner", "cmd", "--cmd", "cmd /c echo hi", "--prompt", "x")
+    case("agent_runner 缺 {prompt} → rc1 + stderr 非空",
+         rc3 == 1 and bool(err3.strip()) and not out3.strip(), f"rc3={rc3}")
+    with tempfile.TemporaryDirectory(prefix="st-ar-slow-") as td:
+        marker = Path(td) / "slow_marker.py"
+        marker.write_text(
+            "import time\nprint('SENTINEL-TRIGGER', flush=True)\ntime.sleep(60)\n", encoding="utf-8")
+        tpl = f'"{PY}" "{marker}" {{prompt}}'
+        t0 = time.monotonic()
+        rc4, out4, err4 = run("agent_runner.py", "--runner", "cmd", "--cmd", tpl,
+                              "--detect", "SENTINEL-TRIGGER", "--prompt", "x", "--timeout", "90")
+        elapsed = time.monotonic() - t0
+        case("agent_runner 命中即停（不等会话跑完）",
+             rc4 == 0 and '"triggered": true' in out4 and elapsed < 30, f"rc4={rc4} {elapsed:.1f}s")
 
 
 def t_aggregate_benchmark():
@@ -219,12 +238,66 @@ def t_run_checks():
         rc2, out2, err2 = run("run_checks.py", "--root", root)
         case("run_checks --list → rc0 + 已注册检查", rc == 0 and has, f"rc={rc}")
         case("run_checks 未注册 check → rc1", rc2 == 1, f"rc2={rc2}")
+        with tempfile.TemporaryDirectory(prefix="st-chk-empty-") as td2:
+            (Path(td2) / "docs" / "demo" / "requirements").mkdir(parents=True)
+            rc3, out3, err3 = run("run_checks.py", "--root", Path(td2), "--skill", "demo")
+            case("run_checks 零 REQ → rc≠0 + n/a",
+                 rc3 != 0 and "[n/a]" in (out3 + err3), f"rc3={rc3}")
+        with tempfile.TemporaryDirectory(prefix="st-chk-emptyacc-") as td3:
+            d3 = Path(td3) / "docs" / "demo" / "requirements"
+            d3.mkdir(parents=True)
+            (d3 / "REQ-0001.md").write_text(
+                "---\nid: REQ-0001\ntitle: x\nskill: demo\nstatus: done\niteration: 1\n"
+                "created: 2026-01-01\nupdated: 2026-01-01\nblocked_by: []\n---\n\n"
+                "# REQ-0001 x\n\n## 验收标准\n\n## 范围外\n", encoding="utf-8")
+            rc4, out4, err4 = run("run_checks.py", "--root", Path(td3), "--skill", "demo")
+            case("run_checks 空验收标准 → rc≠0 + FAIL",
+                 rc4 != 0 and "(空验收标准)" in (out4 + err4), f"rc4={rc4}")
+        with tempfile.TemporaryDirectory(prefix="st-chk-deferred-") as td4:
+            d4 = Path(td4) / "docs" / "demo" / "requirements"
+            d4.mkdir(parents=True)
+            (d4 / "REQ-0001.md").write_text(
+                "---\nid: REQ-0001\ntitle: x\nskill: demo\nstatus: deferred\niteration: 1\n"
+                "created: 2026-01-01\nupdated: 2026-01-01\nblocked_by: []\ndefer_reason: x\n---\n\n"
+                "# REQ-0001 x\n\n## 验收标准\n\n- [ ] 未来项（行为）\n", encoding="utf-8")
+            rc5, out5, err5 = run("run_checks.py", "--root", Path(td4), "--skill", "demo")
+            case("run_checks 非活动 REQ 标签不计工作集",
+                 rc5 == 0 and "（行为）0" in (out5 + err5), f"rc5={rc5}")
+
+
+def t_run_effectiveness():
+    with tempfile.TemporaryDirectory(prefix="st-eff-") as td:
+        t = Path(td)
+        stub = t / "stub.py"
+        stub.write_text(
+            "print('Skill \"other-skill\"')\nprint('ANSWER-OK')\n", encoding="utf-8")
+        cases = t / "cases.json"
+        cases.write_text(json.dumps({
+            "skill_name": "demo",
+            "cases": [{"eval_id": 0, "eval_name": "s", "prompt": "x",
+                       "assertions": [{"name": "a", "check": "c"}]}],
+        }, ensure_ascii=False), encoding="utf-8")
+        tpl = f'"{PY}" "{stub}" {{prompt}}'
+        ws = t / "ws"
+        rc, out, err = run("run_effectiveness.py", "--arm", "with_skill", "--cases", cases,
+                           "--ws", ws, "--trials", "1", "--workers", "1", "--cmd", tpl,
+                           "--detect-skill", "demo")
+        timing_p = ws / "eval-0" / "with_skill_0" / "timing.json"
+        try:
+            timing = json.loads(timing_p.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001 - 缺文件即失败
+            timing = {}
+        ok = rc == 0 and timing.get("loaded_skills") == ["other-skill"]
+        rc2, out2, err2 = run("run_effectiveness.py", "--arm", "baseline",
+                              "--cases", t / "nope.json", "--ws", ws, "--cmd", tpl)
+        case("run_effectiveness → rc0 + 布局 + 加载技能字段", ok, f"rc={rc}")
+        case("run_effectiveness 缺用例集 → 非 0", rc2 != 0, f"rc2={rc2}")
 
 
 def warn_pycache() -> None:
     """交付卫生警告（非致命）：技能目录内不应带 __pycache__。
 
-    跑脚本时生成属正常，故**不判失败**；打包 / 复制部署前应清理（仓库 .gitignore 已忽略）。
+    跑脚本时生成属正常，故**不判失败**；打包 / 复制部署前应清理。
     """
     hits = [p for p in SCRIPTS.parent.rglob("__pycache__") if p.is_dir()]
     if hits:
@@ -235,16 +308,25 @@ def warn_pycache() -> None:
 
 CASES = [
     t_skill_utils, t_validate_skill, t_scaffold_skill, t_generate_eval_set,
-    t_optimize_description, t_agent_runner, t_aggregate_benchmark,
+    t_optimize_description, t_agent_runner, t_run_effectiveness,
+    t_aggregate_benchmark,
     t_render_report, t_track_requirements, t_run_checks,
 ]
 
 
 def main() -> int:
+    from skill_utils import force_utf8_stdio
+
+    force_utf8_stdio()
     ap = argparse.ArgumentParser(
         description="脚本自测（smoke / contract）：对 scripts/ 下每个 CLI 跑成功 + 失败路径契约用例。",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="退出码:\n  0  全部通过\n  1  有失败\n  2  参数错误\n",
+        epilog=(
+            "示例:\n"
+            "  python selftest.py\n"
+            "\n"
+            "退出码:\n  0  全部通过\n  1  有失败\n  2  参数错误\n"
+        ),
     )
     ap.parse_args()
     for fn in CASES:

@@ -1,6 +1,5 @@
 {
-  "converged": false,
-  "converged_since": null,
+  "converged_since": "2026-09-18",
   "cleanup_ttl_gate_runs": 3,
   "invariant_budget_growth": 2,
   "debt_targets": {

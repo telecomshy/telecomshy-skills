@@ -65,6 +65,7 @@ related: [REQ-0046, REQ-0048, REQ-0049]
 | 1 | 2026-09-18 | 落盘（设计说明 §6 step 0） | — | 待实施 |
 | 2 | 2026-09-18 | 实施：4 条子串 check 退休为 `（episode）`；`run_checks.py` 删注册、加 `EPISODE_RE` 与计数；试点脚本落盘 | `pilot-0046.py`：基线 48/48 → 措辞打磨 **48/48（0 假警报）** → 注入回归 **FAIL（被抓）**；`run_checks` 全绿；`validate` ok | **done** |
 | 3 | 2026-09-18 | **A4 真实复审（验收契约）**：真仓库改 `references/lifecycle.md` 一处无害同义措辞（diff：`-收工判据` / `+收尾判据`）→ 跑 Gate → 复原 | `run_checks --root . --skill shy-skill-suite`：**26/26 通过 / 0 失败**、`exit 0`、**无 FAIL**、无「措辞 → 回归」类 finding；改动已复原 | **验证通过** |
+| 4 | 2026-09-18 | `iteration-4` 立即修：类别计数改为取**行内最后一个**标记（修 `REQ-0030:88` 被误计为行为）；`（行为）` 7→6、`（episode）` 184→185 | `run_checks` 31/31；Gate 计数变化 | done |
 
 ## 备注 / 待办
 
