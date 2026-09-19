@@ -1,0 +1,29 @@
+{
+  "skill_name": "knowledge-distill",
+  "note": "任务式用例，prompt 不点名技能。判读看产物是否符合知识沉淀约定（笔记 + 根索引 + 结构），以及只读分支是否如实报告。",
+  "cases": [
+    {
+      "eval_id": 0,
+      "eval_name": "save-conversation",
+      "prompt": "把下面这段对话沉淀进我的知识库，方便以后检索。我的笔记库就是当前目录下的 `AI笔记` 文件夹，用普通 Markdown 格式（不要 Obsidian 双链）；若还没有分类，就新建一个「示例」分类；直接执行，不要问我确认。\n\n对话内容：\n用户：什么是幂等？\nAI：幂等指同一个操作执行一次和执行多次对系统状态的影响相同。比如 HTTP 的 GET、PUT、DELETE 应当是幂等的，而 POST 通常不是。实现上常用唯一请求 ID 去重。\n用户：那怎么测试幂等？\nAI：可以对同一请求连续调用多次，比较第一次之后和后续每次之后的系统状态是否一致；也可以并发重复提交，检查是否只产生一次副作用。\n\n要求：完整保留细节（定义、例子、实现方式、测试方法），写完后告诉我保存到了哪个文件。",
+      "input_files": [],
+      "assertions": [
+        {"name": "note-created", "check": "`AI笔记` 目录下生成了 .md 笔记文件", "weight": 1.0},
+        {"name": "index-created", "check": "根目录生成/更新了 `总目录.md` 索引并收录该笔记", "weight": 1.0},
+        {"name": "details-kept", "check": "笔记保留了具体细节（幂等定义、GET/PUT/DELETE 例子、唯一请求 ID、连续调用/并发测试）", "weight": 1.0},
+        {"name": "structured", "check": "笔记有标题层级 / 分点等结构，便于检索", "weight": 1.0}
+      ]
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "health-check",
+      "prompt": "我的笔记库在当前目录的 `AI笔记` 文件夹。请先帮我搭一个最小笔记库：建 `AI笔记/示例/幂等.md`（随便写点关于幂等的内容），并在 `AI笔记/总目录.md` 里收录它；再额外写一篇 `AI笔记/示例/孤立.md` 但不收录，并在 `幂等.md` 里加一个指向不存在的笔记 `[[不存在的笔记]]` 的链接。搭好后检查这个笔记库，告诉我发现了哪些问题。",
+      "input_files": [],
+      "assertions": [
+        {"name": "detect-unindexed", "check": "报告指出 `孤立.md` 未被总目录收录", "weight": 1.0},
+        {"name": "detect-broken-link", "check": "报告指出指向不存在笔记的断链", "weight": 1.0},
+        {"name": "read-only", "check": "只报告、未擅自修改文件", "weight": 1.0}
+      ]
+    }
+  ]
+}

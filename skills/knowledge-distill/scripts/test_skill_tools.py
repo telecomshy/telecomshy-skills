@@ -1020,6 +1020,24 @@ class KnowledgeDistillTestCase(unittest.TestCase):
         self.assertTrue(all(b["attributable"] for b in result["backups"]))
         self.assertTrue(all(b["stamp"] for b in result["backups"]))
 
+    def test_list_backups_paginates(self):
+        """limit / offset 分页：count 为总数、returned 为本页数、truncated 标还有更多。"""
+        target = self._write_target()
+        for i in range(3):
+            target.write_text(f"v{i}\n", encoding="utf-8")
+            t.write_note(str(target), f"v{i + 1}")
+        page1 = t.list_backups(str(target), limit=1, offset=0)
+        page2 = t.list_backups(str(target), limit=1, offset=1)
+        self.assertEqual(page1["count"], 3)
+        self.assertEqual(page1["returned"], 1)
+        self.assertTrue(page1["truncated"])
+        self.assertIn("hint", page1)
+        self.assertEqual(page2["offset"], 1)
+        self.assertNotEqual(page1["backups"][0]["file"], page2["backups"][0]["file"])
+        allb = t.list_backups(str(target), limit=0)
+        self.assertEqual(allb["returned"], 3)
+        self.assertFalse(allb["truncated"])
+
     def test_restore_note_latest(self):
         """缺省恢复最近一版；恢复前先备份当前版本（可反悔）。"""
         target = self._write_target()

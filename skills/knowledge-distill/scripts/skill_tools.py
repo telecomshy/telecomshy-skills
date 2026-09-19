@@ -1162,14 +1162,17 @@ def _pick_backup_version(name, key, version):
     return max(candidates, key=lambda c: c[0].stat().st_mtime)[0], None
 
 
-def _list_backups_common(name, key):
+def _list_backups_common(name, key, limit=None, offset=0):
     """列出备份（本地与有道共用）：name 为空则列全部，否则只列该笔记。
 
     每条含 `file`、`stamp`（时间戳，取不到为 null）、`size`、`mtime`；
     给了 name 时另含 `attributable`（是否能精确对应到该笔记）。
+    分页：`limit` 为本页上限（None=不限），`offset` 为跳过条数；返回的
+    `count` 为总数、`returned` 为本页条数、`truncated` 表示还有更多（附 `hint`）。
     """
     if not BACKUP_DIR.is_dir():
-        return {"ok": True, "backup_dir": str(BACKUP_DIR), "count": 0, "backups": []}
+        return {"ok": True, "backup_dir": str(BACKUP_DIR), "count": 0,
+                "returned": 0, "offset": 0, "truncated": False, "backups": []}
     items = []
     for p in BACKUP_DIR.iterdir():
         if not p.is_file() or not p.name.endswith(".bak"):
@@ -1196,18 +1199,28 @@ def _list_backups_common(name, key):
             item["attributable"] = attributable
         items.append(item)
     items.sort(key=lambda x: x["mtime"], reverse=True)
-    return {"ok": True, "backup_dir": str(BACKUP_DIR), "count": len(items), "backups": items}
+    total = len(items)
+    start = max(0, int(offset or 0))
+    page = items[start:start + limit] if limit else items[start:]
+    result = {"ok": True, "backup_dir": str(BACKUP_DIR), "count": total,
+              "returned": len(page), "offset": start,
+              "truncated": start + len(page) < total, "backups": page}
+    if result["truncated"]:
+        result["hint"] = (f"共 {total} 条，仅显示第 {start + 1}-{start + len(page)} 条；"
+                          "用 --offset / --limit 查看更多")
+    return result
 
 
-def list_backups(note_path=None):
+def list_backups(note_path=None, limit=None, offset=0):
     """列出备份版本。给了 note_path 只列该笔记的；否则列全部。
 
     每条含 `file`、`stamp`（时间戳，取不到为 null）、`size`、`mtime`；
     给了 note_path 时另含 `attributable`（是否能精确对应到该路径的笔记）。
+    `limit` / `offset` 分页（`limit` 缺省=全部），避免大库一次输出过多被截断。
     """
     name = Path(note_path).name if note_path else None
     key = _note_key(note_path) if note_path else None
-    return _list_backups_common(name, key)
+    return _list_backups_common(name, key, limit=limit, offset=offset)
 
 
 def restore_note(note_path, version=None):
@@ -2217,11 +2230,11 @@ def youdao_search_notes(note_root, query, category=None, use_regex=False,
             "matched_notes": len(hits), "hits": hits}
 
 
-def youdao_list_backups(note_path=None):
+def youdao_list_backups(note_path=None, limit=None, offset=0):
     """有道版 list-backups：按逻辑路径的短哈希匹配本地滚动备份。"""
     name = _youdao_backup_name(note_path) if note_path else None
     key = _youdao_note_key(note_path) if note_path else None
-    return _list_backups_common(name, key)
+    return _list_backups_common(name, key, limit=limit, offset=offset)
 
 
 def youdao_restore_note(note_path, version=None):
@@ -2395,6 +2408,10 @@ def main(argv=None):
 
     p_lb = sub.add_parser("list-backups", help="列出笔记的备份版本（不带参数则列全部）")
     p_lb.add_argument("note_path", nargs="?", help="目标笔记路径；省略则列出全部备份")
+    p_lb.add_argument("--limit", type=int, default=20,
+                      help="本页最多返回几条（默认 20；0=不限，列全部）")
+    p_lb.add_argument("--offset", type=int, default=0,
+                      help="跳过前几条（默认 0，配合 --limit 翻页）")
 
     p_rn = sub.add_parser("restore-note", help="把笔记恢复到某个备份版本（缺省=最近一版）")
     p_rn.add_argument("note_path",
@@ -2510,8 +2527,9 @@ def main(argv=None):
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("ok") else 1
     if args.command == "list-backups":
-        result = (_youdao_guard(youdao_list_backups, args.note_path) if use_youdao
-                  else list_backups(args.note_path))
+        result = (_youdao_guard(youdao_list_backups, args.note_path,
+                                limit=args.limit, offset=args.offset) if use_youdao
+                  else list_backups(args.note_path, limit=args.limit, offset=args.offset))
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("ok", True) else 1
     if args.command == "restore-note":

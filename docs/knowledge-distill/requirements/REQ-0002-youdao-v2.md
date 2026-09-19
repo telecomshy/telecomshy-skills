@@ -45,9 +45,9 @@ related: [REQ-0001]
 
 ## 验收标准
 
-- [x] 有道下 `lint-notes` 返回 `index_orphans` / `unindexed_notes` / `question_orphans` / `empty_sections`，且不因"无时间戳 / 无 frontmatter / 无反链"而报错或误报（未检查项在 `not_checked` 列出）。
-- [x] MOC（`gen-moc` / `generate_moc` / MOC 文档与触发）已从技能移除。
-- [x] mock 单测覆盖（`test_youdao_lint_notes` 等，不依赖真实账号）。
+- [x] 有道下 `lint-notes` 返回 `index_orphans` / `unindexed_notes` / `question_orphans` / `empty_sections`，且不因"无时间戳 / 无 frontmatter / 无反链"而报错或误报（未检查项在 `not_checked` 列出）。 — （语义）判定：`test_youdao_lint_notes` 等 mock 单测
+- [x] MOC（`gen-moc` / `generate_moc` / MOC 文档与触发）已从技能移除。 — （episode）
+- [x] mock 单测覆盖（`test_youdao_lint_notes` 等，不依赖真实账号）。 — （语义）判定：跑 `test_skill_tools.py`
 
 ## 范围外
 

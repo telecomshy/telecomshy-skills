@@ -1,7 +1,7 @@
 # Obsidian 笔记最佳实践（智识沉淀专用）
 
 本参考文件用于指导生成符合 Obsidian 规范的笔记。仅当保存格式为 Obsidian 时查阅。
-核心资料来源见技能 `assets/` 目录（官方基础/高级语法、Callouts、Tags、Flavored Markdown）。
+本文件已覆盖写笔记所需的常用语法与格式；**仅当遇到本文件未覆盖的 Obsidian 语法细节时**，才按需查阅官方原文：`assets/obsidian-markdown-docs/` 下的 `Basic formatting syntax.md`、`Advanced formatting syntax.md`、`Callouts.md`、`Tags.md`、`Obsidian Flavored Markdown.md`。日常写笔记不必读这些原文。
 本文件只讲 Obsidian 的**语法与格式**；写作层面的规则（事实与推断、易变事实日期、信息不完整降级、冲突标注、通俗解释取舍、文风）以 SKILL.md Step 5 为准，不在此重复。
 
 ## 目录

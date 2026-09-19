@@ -31,7 +31,7 @@ youdaonote call createDir          --args '{"parentId":"0","dirName":"..."}'
 
 ## 3. 首次配置（自动装 CLI，只卡在 API Key）
 
-1. **自动安装 CLI**——本机没有 `youdaonote` 时由技能自己下载，用户无需手动装：
+1. **经用户同意后安装 CLI**——本机没有 `youdaonote` 时由技能下载，但**必须先取得用户同意**：向用户说明「将从官方域名下载一个可执行程序并放到 `~/.knowledge-distill/bin/`」，用户同意后才下载，不得静默安装（官方未提供校验和，未经确认的运行等同执行来源不明的程序）。同意后：
    - 下载对应平台的官方压缩包，解压出**单文件可执行程序**（Windows 为 `youdaonote.exe`，其余为 `youdaonote`；自带运行时，无需 Node）；
    - 放到技能自管目录 `~/.knowledge-distill/bin/`——脚本会自动优先使用它，**不必改 PATH、也不触发杀软白名单**；
    - 下载 / 解压失败时，再退回引导用户手动安装。

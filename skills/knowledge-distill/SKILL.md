@@ -1,6 +1,6 @@
 ---
 name: knowledge-distill
-description: 智识沉淀：把与 AI 的对话沉淀为可检索、可关联、可长期复用的知识库笔记。触发：把对话总结/保存成笔记；修改笔记保存位置或格式；检索之前记过的笔记；检查笔记库（断链/索引对齐）；把笔记回退到历史版本。
+description: 智识沉淀：把与 AI 的对话沉淀为可检索、可关联、可长期复用的知识库笔记。触发：把对话总结/保存成笔记；修改笔记保存位置或格式；检索之前记过的笔记；检查笔记库（断链/索引对齐）；把笔记回退到历史版本（改坏了/改乱了想恢复）。不适用于：记待办/提醒、写文章/博客、生成 spec 或纪要、录音转写等非知识库笔记任务。
 name_cn: 智识沉淀
 description_cn: 把对话沉淀为可检索、可关联、可长期复用的知识库笔记，保留细节、按分类归档、自动维护索引。
 create_source: super-agent-skill-creator
@@ -77,7 +77,7 @@ create_source: super-agent-skill-creator
 - **位置**：
   - Obsidian：运行 `python "<SKILL_DIR>/scripts/skill_tools.py" discover-vaults` 发现本机 vault——多个则列出让用户选一个，单个直接采用，未发现（未装 Obsidian / `obsidian.json` 不存在）则请用户给出 vault 绝对路径。
   - 普通 Markdown：请用户给出保存目录的绝对路径。
-  - **有道云笔记**：运行 `python "<SKILL_DIR>/scripts/skill_tools.py" youdao-check` 检测 CLI 与认证。**CLI 缺失就自动下载安装**（步骤见 `references/youdao-best-practices.md`：下载对应平台包 → 解压出可执行文件 → 放到 `~/.knowledge-distill/bin/`，脚本会自动使用，不必改 PATH）；**只有申请 API Key 需要用户本人完成**——停下来指导用户到 `mopen.163.com` 申请、把 Key 交给技能配置；就绪后用 `list-structure "AI笔记"` 查看/创建根文件夹。
+  - **有道云笔记**：运行 `python "<SKILL_DIR>/scripts/skill_tools.py" youdao-check` 检测 CLI 与认证。**CLI 缺失时先征得用户同意再下载安装**——说明将从官方域名下载一个可执行程序并放到 `~/.knowledge-distill/bin/`（步骤见 `references/youdao-best-practices.md`），用户同意后才下载，不要静默安装；**只有申请 API Key 需要用户本人完成**——停下来指导用户到 `mopen.163.com` 申请、把 Key 交给技能配置；就绪后用 `list-structure "AI笔记"` 查看/创建根文件夹。
 - 笔记根目录名默认 `AI笔记`；所选位置下已有 `AI笔记` 则复用，否则保存时创建（有道下为同名文件夹）。
 - 写入配置（推荐用 `--config-file` 传 JSON 文件路径，避免命令行引号转义问题）：
 
@@ -308,6 +308,7 @@ python "<SKILL_DIR>/scripts/skill_tools.py" append-index-question "<note_root>" 
 1. 定位目标笔记的完整路径，列出可选版本：
    `python "<SKILL_DIR>/scripts/skill_tools.py" list-backups "<笔记路径>"`
    - 每条含 `stamp`（时间戳）、`size`、`mtime`、`attributable`（能否精确对应到该路径）；不带路径参数则列出全部备份。
+   - 默认每页最多 20 条（`truncated: true` 时附 `hint`），用 `--limit`（0=不限）/ `--offset` 翻页，避免大库输出过多被截断。
 2. 恢复（缺省=最近一版，即撤销上一次改写）：
    `python "<SKILL_DIR>/scripts/skill_tools.py" restore-note "<笔记路径>" [--version "<时间戳>"]`
    - **整篇回退**；恢复前先备份当前版本（回退本身可反悔），返回 `from`（所用备份）与 `backup`（当前版本的新备份）。

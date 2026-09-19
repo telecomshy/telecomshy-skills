@@ -1,0 +1,165 @@
+{
+  "skill_name": "knowledge-distill",
+  "evals": [
+    {
+      "eval_id": 0,
+      "eval_name": "trigger-save-0",
+      "prompt": "帮我把刚才聊的这些整理进我的知识库吧",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「knowledge-distill」技能被触发", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "trigger-save-1",
+      "prompt": "这个对话挺有价值的，存成笔记",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「knowledge-distill」技能被触发", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "trigger-save-2",
+      "prompt": "把上面那段排查过程记到 AI笔记 里",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「knowledge-distill」技能被触发", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "trigger-search-0",
+      "prompt": "我之前是不是记过关于幂等的笔记？帮我找一下",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「knowledge-distill」技能被触发", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 4,
+      "eval_name": "trigger-lint-0",
+      "prompt": "检查一下我的笔记库，看看有没有断链或者索引对不上的",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「knowledge-distill」技能被触发", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 5,
+      "eval_name": "trigger-restore-0",
+      "prompt": "我昨天那篇笔记改坏了，帮我恢复一下",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「knowledge-distill」技能被触发", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 6,
+      "eval_name": "trigger-config-0",
+      "prompt": "我想把笔记保存位置换到另一个 vault",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「knowledge-distill」技能被触发", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 7,
+      "eval_name": "trigger-save-3",
+      "prompt": "把这次讨论沉淀一下，存到 Obsidian",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「knowledge-distill」技能被触发", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 8,
+      "eval_name": "trigger-search-1",
+      "prompt": "我记过哪些关于有道的笔记？",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「knowledge-distill」技能被触发", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 9,
+      "eval_name": "trigger-save-4",
+      "prompt": "帮我把这段对话总结保存下来，方便以后查",
+      "input_files": [],
+      "assertions": [{"name": "skill-activated", "check": "「knowledge-distill」技能被触发", "weight": 1.0}],
+      "should_trigger": true
+    },
+    {
+      "eval_id": 10,
+      "eval_name": "nearmiss-spec-0",
+      "prompt": "把这段对话整理成一份开发规范文档（spec）",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「knowledge-distill」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 11,
+      "eval_name": "nearmiss-write-0",
+      "prompt": "帮我写一篇关于这次调试的博客文章",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「knowledge-distill」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 12,
+      "eval_name": "nearmiss-handoff-0",
+      "prompt": "把当前对话交接给下一个 agent 继续做",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「knowledge-distill」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 13,
+      "eval_name": "nearmiss-research-0",
+      "prompt": "调研一下 Obsidian 的同步机制和插件生态",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「knowledge-distill」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 14,
+      "eval_name": "nearmiss-docstring-0",
+      "prompt": "给这个函数补上文档字符串和注释",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「knowledge-distill」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 15,
+      "eval_name": "nearmiss-transcribe-0",
+      "prompt": "把这段会议录音转成文字稿",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「knowledge-distill」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 16,
+      "eval_name": "nearmiss-summarize-0",
+      "prompt": "帮我总结一下这篇文章的核心观点",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「knowledge-distill」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 17,
+      "eval_name": "nearmiss-convert-0",
+      "prompt": "把这份 markdown 转成 PDF",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「knowledge-distill」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 18,
+      "eval_name": "nearmiss-notion-0",
+      "prompt": "帮我在 Notion 里建一个任务数据库",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「knowledge-distill」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    },
+    {
+      "eval_id": 19,
+      "eval_name": "nearmiss-todo-0",
+      "prompt": "记一下：明天下午三点给客户回电话",
+      "input_files": [],
+      "assertions": [{"name": "skill-not-activated", "check": "「knowledge-distill」技能未被触发", "weight": 1.0}],
+      "should_trigger": false
+    }
+  ]
+}
