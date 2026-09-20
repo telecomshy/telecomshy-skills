@@ -146,6 +146,33 @@ def t_scaffold_skill():
         rc4, out4, err4 = run("scaffold_skill.py")
         case("scaffold 缺参 → 非 0", rc4 != 0, f"rc4={rc4}")
 
+        # --project：技能包 + 开发层（docs/<name>/requirements/ + .gitignore），不预建子目录
+        proj = Path(td) / "proj"
+        skills = proj / "skills"
+        skills.mkdir(parents=True)
+        rc5, out5, err5 = run("scaffold_skill.py", "proj-skill", "--path", skills,
+                              "--project", "--description", "x")
+        proj_skill = (skills / "proj-skill" / "SKILL.md").is_file()
+        proj_docs = (proj / "docs" / "proj-skill" / "requirements").is_dir()
+        gi = proj / ".gitignore"
+        gi_lines = gi.read_text(encoding="utf-8").splitlines() if gi.is_file() else []
+        gi_ok = all(e in gi_lines for e in ("*-workspace/", "reports/", "__pycache__/"))
+        no_subdirs = not any((skills / "proj-skill" / d).exists()
+                             for d in ("scripts", "references", "assets", "evals", "commands"))
+        case("scaffold --project → 技能包 + docs + .gitignore",
+             rc5 == 0 and proj_skill and proj_docs and gi_ok and no_subdirs,
+             f"rc5={rc5} skill={proj_skill} docs={proj_docs} gitignore={gi_ok} 无子目录={no_subdirs}")
+
+        rc6, out6, err6 = run("scaffold_skill.py", "proj-skill", "--path", skills, "--project")
+        gi_after = gi.read_text(encoding="utf-8").splitlines()
+        no_dup = all(gi_after.count(e) == 1 for e in ("*-workspace/", "reports/", "__pycache__/"))
+        case("scaffold --project 幂等 → skipped + .gitignore 不重复",
+             rc6 == 0 and '"skipped"' in out6 and no_dup, f"rc6={rc6} no_dup={no_dup}")
+
+        rc7, out7, err7 = run("scaffold_skill.py", "Bad_Name", "--path", skills, "--project")
+        no_leak = not (proj / "docs" / "Bad_Name").exists()
+        case("scaffold --project 非法名 → 非 0 + 不落盘", rc7 != 0 and no_leak, f"rc7={rc7}")
+
 
 def t_generate_eval_set():
     with tempfile.TemporaryDirectory(prefix="st-gen-") as td:

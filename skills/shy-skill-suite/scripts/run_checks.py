@@ -1354,6 +1354,91 @@ def req0075_lifecycle(root: Path, skill: str) -> tuple[bool, str]:
     return (has_settle and has_gate), f"台账机械项当轮结清={has_settle} 不自动再审={has_gate}"
 
 
+@check("req0076-start-command")
+def req0076_start_command(root: Path, skill: str) -> tuple[bool, str]:
+    """commands/shy-start.md 存在：加载技能 + `$ARGUMENTS` + 技能名可选 + 同一流程。"""
+    p = skill_dir(root, skill) / "commands" / "shy-start.md"
+    if not p.is_file():
+        return False, "commands/shy-start.md 不存在"
+    text = read_text(p)
+    need = ["$ARGUMENTS", "skill", "可选", "逼问", "落需求", "起骨架", "references/lifecycle.md"]
+    missing = [n for n in need if n not in text]
+    return (not missing), f"缺={missing}"
+
+
+@check("req0076-scaffold-project")
+def req0076_scaffold_project(root: Path, skill: str) -> tuple[bool, str]:
+    """`--project` 一次建齐：SKILL.md + docs/<name>/requirements/ + .gitignore 条目；不预建子目录、不写 REQ。"""
+    s = skill_dir(root, skill) / "scripts" / "scaffold_skill.py"
+    with tempfile.TemporaryDirectory(prefix="shy-r76p-") as tmp:
+        t = Path(tmp)
+        skills = t / "skills"
+        rc, _out, err = run_script(root, s, "demo", "--path", str(skills),
+                                   "--project", "--description", "x")
+        skill_md = (skills / "demo" / "SKILL.md").is_file()
+        docs_dir = (t / "docs" / "demo" / "requirements").is_dir()
+        gi = t / ".gitignore"
+        gi_lines = {ln.strip() for ln in read_text(gi).splitlines()} if gi.is_file() else set()
+        gi_ok = all(e in gi_lines for e in ("*-workspace/", "reports/", "__pycache__/"))
+        prebuilt = [d for d in ("scripts", "references", "assets", "evals", "commands")
+                    if (skills / "demo" / d).exists()]
+        reqs = list((t / "docs" / "demo" / "requirements").glob("REQ-*.md"))
+    ok = rc == 0 and skill_md and docs_dir and gi_ok and not prebuilt and not reqs
+    return ok, (f"rc={rc} SKILL.md={skill_md} docs={docs_dir} gitignore={gi_ok} "
+                f"预建子目录={prebuilt} REQ正文={len(reqs)} err={err[:80]}")
+
+
+@check("req0076-help")
+def req0076_help(root: Path, skill: str) -> tuple[bool, str]:
+    """`--help` 含简述 / 新参数 / 示例 / 退出码。"""
+    rc, out, err = run_script(root, skill_dir(root, skill) / "scripts" / "scaffold_skill.py", "--help")
+    text = out + err
+    need = ["--project", "开发层", "示例", "退出码"]
+    missing = [n for n in need if n not in text]
+    return (rc == 0 and not missing), f"rc={rc} 缺={missing}"
+
+
+@check("req0076-idempotent")
+def req0076_idempotent(root: Path, skill: str) -> tuple[bool, str]:
+    """`--project` 幂等：二次 skipped；.gitignore 不重复；`--force` 覆盖前留 `.bak`。"""
+    s = skill_dir(root, skill) / "scripts" / "scaffold_skill.py"
+    with tempfile.TemporaryDirectory(prefix="shy-r76i-") as tmp:
+        t = Path(tmp)
+        skills = t / "skills"
+        rc1, _o1, _e1 = run_script(root, s, "demo", "--path", str(skills), "--project")
+        before = read_text(skills / "demo" / "SKILL.md")
+        rc2, o2, _e2 = run_script(root, s, "demo", "--path", str(skills), "--project")
+        skipped = rc2 == 0 and '"skipped"' in o2
+        gi_lines = read_text(t / ".gitignore").splitlines()
+        dup = [e for e in ("*-workspace/", "reports/", "__pycache__/") if gi_lines.count(e) > 1]
+        rc3, _o3, _e3 = run_script(root, s, "demo", "--path", str(skills),
+                                   "--project", "--force", "--description", "y")
+        bak = (skills / "demo" / "SKILL.md.bak").is_file()
+        after = read_text(skills / "demo" / "SKILL.md")
+    ok = rc1 == 0 and skipped and not dup and rc3 == 0 and bak and before != after
+    return ok, (f"rc1={rc1} 二次skipped={skipped} gitignore重复={dup} "
+                f"bak={bak} 覆盖生效={before != after}")
+
+
+@check("req0076-lifecycle")
+def req0076_lifecycle(root: Path, skill: str) -> tuple[bool, str]:
+    """lifecycle 斜杠快捷表含 `/shy-start`；阶段 2 说明开发层骨架。"""
+    p = skill_dir(root, skill) / "references" / "lifecycle.md"
+    if not p.is_file():
+        return False, "references/lifecycle.md 不存在"
+    text = read_text(p)
+    has_cmd = "/shy-start" in text
+    has_layer = "开发层" in text and "docs/<name>/requirements/" in text
+    return (has_cmd and has_layer), f"含/shy-start={has_cmd} 含开发层={has_layer}"
+
+
+@check("req0076-skill-resources")
+def req0076_skill_resources(root: Path, skill: str) -> tuple[bool, str]:
+    """SKILL.md 资源区 commands 列表含 `shy-start`。"""
+    text = read_text(skill_dir(root, skill) / "SKILL.md")
+    return ("shy-start" in text), f"SKILL.md 含 shy-start={'shy-start' in text}"
+
+
 # --------------------------------------------------------------------------- #
 # 发现与执行
 # --------------------------------------------------------------------------- #

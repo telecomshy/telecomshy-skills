@@ -40,7 +40,7 @@ metadata:
 - `references/subagents.md` — 复审外派子 agent 的角色与窄 brief（executor / grader / spec-reviewer / analyzer / comparator）、派发 vs 内联。
 - `scripts/` — 纯标准库 CLI；接口见各脚本 `--help`，评测脚本清单与指纹见 `references/running-evals.md`；Gate 用 `validate_skill.py` + `run_checks.py` + `selftest.py`。
 - `assets/report-template.html` — HTML 报告模板（内联样式、无外部资源）。**默认静态只读**；分拣控件只在 `--serve`（本机临时服务）下出现，末尾「提交给 agent」写 `triage.json`。
-- `commands/` — opencode 斜杠命令模板（`shy-grill` / `shy-review` / `shy-eval` / `shy-reqs`）；复制到 `~/.config/opencode/commands/` 生效，说明见 `references/lifecycle.md` 的「斜杠快捷」。其中 `/shy-reqs <skill>` 为**单技能** REQ 报告（按 kind → status 分组、可折叠）。
+- `commands/` — opencode 斜杠命令模板（`shy-start` / `shy-grill` / `shy-review` / `shy-eval` / `shy-reqs`）；复制到 `~/.config/opencode/commands/` 生效，说明见 `references/lifecycle.md` 的「斜杠快捷」。其中 `/shy-start [<skill>]` 为**开始开发新技能**入口（逼问 → 落需求 → 起骨架，同一流程，技能名可选）；`/shy-reqs <skill>` 为**单技能** REQ 报告（按 kind → status 分组、可折叠）。
 - `evals/evals.json` — 随技能入库的起手触发评测集（复现触发结论用，见 `references/running-evals.md`）。
 - `evals/effectiveness.json` — 随技能入库的行为轴对照用例集（with_skill vs baseline，任务式 prompt + 断言，见 `references/running-evals.md`）。
 

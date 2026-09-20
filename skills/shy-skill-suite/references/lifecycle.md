@@ -17,6 +17,7 @@
 
 | 命令 | 进入 |
 | --- | --- |
+| `/shy-start [<skill>]` | **开始开发新技能**：逼问 → 落需求 → 起骨架（**同一流程**；技能名可选，缺则先问用户）。入口见 `commands/shy-start.md` |
 | `/shy-grill` | 逼问一个技能该做什么（`grilling.md`） |
 | `/shy-review` | 触发**评审路**：三轴复审、**按需引用**指纹匹配的评测，出报告供分拣（`reviewing-skills.md`） |
 | `/shy-eval` | 独立**评测取证**：触发率 / with_skill vs baseline 对照，写指纹证据、渲染报告（`running-evals.md`） |
@@ -66,7 +67,7 @@
 
 动笔时按 [`writing-skills.md`](writing-skills.md) 的 lever 写（description 作指针、信息层级与按需披露、leading word、剪枝、完成判据……）。
 
-新建技能时用 `python "<SKILL_DIR>/scripts/scaffold_skill.py" <name> --description "<触发描述>"` 起骨架——**轻量，只生成 `SKILL.md`**（不建子目录、不生成 REQ），内容靠后续迭代补。
+新建技能时用 `python "<SKILL_DIR>/scripts/scaffold_skill.py" <name> --description "<触发描述>"` 起骨架——**轻量，只生成 `SKILL.md`**（不建子目录、不生成 REQ），内容靠后续迭代补。加 `--project` 则一次建齐**开发层**：技能包 + `docs/<name>/requirements/`（目录）+ 追加 `.gitignore` 条目（`*-workspace/` / `reports/` / `__pycache__/`，**仅缺失时**追加）——**仍不预建** `scripts/` / `references/` / `assets/` / `evals/` / `commands/` 空目录、**不写 REQ 正文**（REQ 由阶段 1 产生）。入口 `/shy-start`。
 
 实现收尾跑一次 **Gate（静默秒级门）**：`validate_skill.py <skill_dir>` + `run_checks.py --root . --skill <skill>` + `selftest.py`（末尾给出 `（episode）` / 迁移债 / 台账 open 计数）。**静默 = 绿了就报"完成"、红了才说**；不产 findings、不出报告、**不自动进评审**。
 
