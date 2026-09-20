@@ -20,10 +20,16 @@
 frontier 由状态**推导**，不落盘索引文件（避免派生索引过期）。
 
 用法:
-    python track_requirements.py [--root .] [--skill <name>] [--full] [--output <path>]
+    python track_requirements.py [--root .] [--skill <name>] [--view summary|overview] [--full] [--output <path>]
 
 默认打**有界摘要**（frontier / blocked / deferred 只给 id + title）；`--full` 打完整 JSON，
-`--output <path>` 把完整 JSON 写到文件（大仓库避免被输出上限截断）。
+`--output <path>` 把完整 JSON 写到文件（大仓库避免被输出上限截断）；
+`--view overview` 打**终端人读摘要**（`kind × status` 计数 + frontier + 按技能分组列 title）。
+
+**stdout 一律输出纯 ASCII 转义 JSON**（`ensure_ascii=True`）：Windows PowerShell 5.1
+管道会按控制台代码页解码再以 US-ASCII 重编码，非 ASCII 字节会被破坏、甚至吞掉紧随的
+JSON 定界符，令下游 `json.loads` 报 `Invalid control character`。`--output` 写文件仍是
+UTF-8（不过管道），人读走 `--view overview`。
 """
 
 from __future__ import annotations
@@ -34,7 +40,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from skill_utils import force_utf8_stdio, parse_frontmatter, read_text, write_text
+from skill_utils import (
+    KIND_LABELS,
+    KIND_ORDER,
+    force_utf8_stdio,
+    parse_frontmatter,
+    read_text,
+    write_text,
+)
 
 RESOLVED = {"done"}
 ACTIONABLE = {"ready", "in-progress"}
@@ -102,6 +115,7 @@ def analyze(reqs: list[dict[str, Any]]) -> dict[str, Any]:
     frontier: list[dict[str, Any]] = []
     blocked: list[dict[str, Any]] = []
     deferred: list[dict[str, Any]] = []
+    all_entries: list[dict[str, Any]] = []
     summary: dict[str, int] = {}
     by_kind: dict[str, dict[str, int]] = {}
 
@@ -153,6 +167,7 @@ def analyze(reqs: list[dict[str, Any]]) -> dict[str, Any]:
         }
         if superseded_by:
             entry["superseded_by"] = superseded_by
+        all_entries.append(entry)
         if status == "deferred":
             defer_reason = str(req.get("defer_reason", "")).strip()
             if not defer_reason:
@@ -169,6 +184,7 @@ def analyze(reqs: list[dict[str, Any]]) -> dict[str, Any]:
         "total": len(by_key),
         "summary": summary,
         "by_kind": by_kind,
+        "all": all_entries,
         "frontier": frontier,
         "blocked": blocked,
         "deferred": deferred,
@@ -185,6 +201,7 @@ def filter_by_kind(result: dict[str, Any], kind: str) -> dict[str, Any]:
     """
     out = dict(result)
     keep = lambda items: [e for e in items if e.get("kind") == kind]  # noqa: E731
+    out["all"] = keep(result.get("all", []))
     out["frontier"] = keep(result["frontier"])
     out["blocked"] = keep(result["blocked"])
     out["deferred"] = keep(result["deferred"])
@@ -223,6 +240,62 @@ def summarize(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def render_overview(result: dict[str, Any], focus_skill: str | None = None) -> str:
+    """终端人读摘要：`kind × status` 计数 + frontier + 按技能分组列 title。
+
+    纯文本（不是 JSON）：给人扫一眼"做到哪了"。脚本仍只做排期，不出白话——
+    唯一例外是 `--skill` 聚焦时给一行**白话 kind 计数摘要**（如
+    `shy-skill-suite：新增功能 3 / 修复缺陷 1`），供 `/shy-reqs` 直接引用。
+    """
+    lines: list[str] = []
+    by_kind = result.get("by_kind") or {}
+    if focus_skill:
+        parts = []
+        for kind in KIND_ORDER:
+            counts = by_kind.get(kind)
+            n = sum(counts.values()) if counts else 0
+            if n:
+                parts.append(f"{KIND_LABELS.get(kind, kind)} {n}")
+        lines.append(f"{focus_skill}：{' / '.join(parts) if parts else '（无 REQ）'}")
+        lines.append("")
+    lines.append(f"REQ 总览：共 {result['total']} 条")
+    lines.append("")
+    lines.append("kind × status 计数：")
+    if by_kind:
+        for kind in sorted(by_kind):
+            counts = by_kind[kind]
+            parts = " ".join(f"{st}={counts[st]}" for st in sorted(counts))
+            lines.append(f"  {kind}: {parts}")
+    else:
+        lines.append("  （无）")
+    lines.append("")
+    frontier = result.get("frontier") or []
+    lines.append(f"frontier（{len(frontier)} 条，现在能开始）：")
+    if frontier:
+        for entry in frontier:
+            lines.append(f"  {entry.get('skill', '')}  {entry['id']}  {entry.get('title', '')}")
+    else:
+        lines.append("  （无）")
+    lines.append("")
+    lines.append("按技能分组（全部 REQ）：")
+    by_skill: dict[str, list[dict[str, Any]]] = {}
+    for entry in result.get("all") or []:
+        by_skill.setdefault(str(entry.get("skill", "")), []).append(entry)
+    if by_skill:
+        for skill_name in sorted(by_skill):
+            lines.append(f"  [{skill_name}]")
+            for entry in by_skill[skill_name]:
+                lines.append(
+                    f"    {entry['id']}  [{entry.get('status', '')}/{entry.get('kind', '')}]  "
+                    f"{entry.get('title', '')}"
+                )
+    else:
+        lines.append("  （无）")
+    lines.append("")
+    lines.append(f"errors：{len(result.get('errors') or [])} 条；warnings：{len(result.get('warnings') or [])} 条")
+    return "\n".join(lines)
+
+
 def main() -> int:
     force_utf8_stdio()
     parser = argparse.ArgumentParser(
@@ -234,6 +307,7 @@ def main() -> int:
             "示例:\n"
             "  python track_requirements.py --root .\n"
             "  python track_requirements.py --root . --skill my-skill\n"
+            "  python track_requirements.py --root . --view overview\n"
             "  python track_requirements.py --root . --full\n"
             "  python track_requirements.py --root . --output reqs.json\n"
             "\n"
@@ -247,6 +321,10 @@ def main() -> int:
     parser.add_argument("--root", default=".", help="Repo root to scan (default: .)")
     parser.add_argument("--skill", help="Limit to docs/<skill>/requirements/")
     parser.add_argument("--kind", help="Only include REQs with this kind（feature/fix/refactor/docs/hygiene）")
+    parser.add_argument(
+        "--view", choices=("summary", "overview"), default="summary",
+        help="summary=默认有界 JSON；overview=终端人读摘要（kind × status 计数 + frontier + 按技能分组列 title；--skill 聚焦时附一行白话计数摘要）",
+    )
     parser.add_argument("--full", action="store_true", help="Print the full JSON instead of the bounded summary")
     parser.add_argument("--output", "-o", help="Write the full JSON to this path")
     args = parser.parse_args()
@@ -260,9 +338,14 @@ def main() -> int:
         result = filter_by_kind(result, args.kind)
 
     if args.output:
+        # 文件不过 shell 管道，保留 UTF-8（可读）。
         write_text(args.output, json.dumps(result, indent=2, ensure_ascii=False))
+    if args.view == "overview":
+        print(render_overview(result, focus_skill=args.skill))
+        return 1 if result["errors"] else 0
     payload = result if args.full else summarize(result)
-    print(json.dumps(payload, indent=2, ensure_ascii=False))
+    # stdout 走管道：ASCII 转义，避免 Windows PowerShell 5.1 的代码页重编码破坏 JSON。
+    print(json.dumps(payload, indent=2, ensure_ascii=True))
     return 1 if result["errors"] else 0
 
 

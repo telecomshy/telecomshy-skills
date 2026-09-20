@@ -1,6 +1,6 @@
 ---
 id: REQ-0062
-title: 复审脆弱性治理（材料性门槛 + 涟漪付清 + 语义集做减法 + 自指检查行为化）
+title: 治理复审的脆弱点（材料门槛、涟漪付清、语义集做减法等）
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0055, REQ-0060, REQ-0061]
 ---
 
-# REQ-0062 复审脆弱性治理
+# REQ-0062 治理复审的脆弱点（材料门槛、涟漪付清、语义集做减法等）
 
 ## 问题与目标
 

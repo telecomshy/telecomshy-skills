@@ -1,6 +1,6 @@
 ---
 id: REQ-0014
-title: SKILL.md 声明运行前提（compatibility）
+title: 在 SKILL.md 里声明运行前提（compatibility）
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: []
 ---
 
-# REQ-0014 SKILL.md 声明运行前提（compatibility）
+# REQ-0014 在 SKILL.md 里声明运行前提（compatibility）
 
 ## 问题与目标
 

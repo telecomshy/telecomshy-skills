@@ -23,6 +23,36 @@ _CJK_RE = re.compile(r"[\u3400-\u9fff]")
 EFFECTIVENESS_PARTS = ("references", "scripts", "assets")
 EFFECTIVENESS_EVAL = ("evals", "effectiveness.json")
 
+# REQ 报告的白话标签与固定顺序：render_reqs.py 与 track_requirements.py 共用，避免两处漂移。
+KIND_ORDER = ("feature", "fix", "refactor", "docs", "hygiene", "unspecified")
+KIND_LABELS = {
+    "feature": "新增功能",
+    "fix": "修复缺陷",
+    "refactor": "重构",
+    "docs": "文档",
+    "hygiene": "清理",
+    "unspecified": "未分类",
+}
+STATUS_ORDER = ("draft", "ready", "in-progress", "done", "deferred", "out-of-scope")
+STATUS_LABELS = {
+    "draft": "草稿",
+    "ready": "待开工",
+    "in-progress": "进行中",
+    "done": "已完成",
+    "deferred": "已延后",
+    "out-of-scope": "不做",
+}
+
+
+def kind_label(kind: str) -> str:
+    """kind 的白话标签；未知 kind 原样返回。"""
+    return KIND_LABELS.get(kind, kind or "未分类")
+
+
+def status_label(status: str) -> str:
+    """status 的白话标签；未知 status 原样返回。"""
+    return STATUS_LABELS.get(status, status or "草稿")
+
 
 def force_utf8_stdio() -> None:
     """让 stdout/stderr 以 UTF-8 输出，避免非 ASCII 内容在 GBK 控制台崩溃。"""

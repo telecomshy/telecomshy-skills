@@ -1,6 +1,6 @@
 ---
 id: REQ-0053
-title: 白话输出 + 术语表 + 报告面向人（砍过程字段）
+title: 让输出说人话：加术语表、报告面向人、砍掉过程字段
 skill: shy-skill-suite
 status: done
 kind: docs
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0038, REQ-0019, REQ-0052]
 ---
 
-# REQ-0053 白话输出 + 术语表 + 报告面向人（砍过程字段）
+# REQ-0053 让输出说人话：加术语表、报告面向人、砍掉过程字段
 
 ## 问题与目标
 

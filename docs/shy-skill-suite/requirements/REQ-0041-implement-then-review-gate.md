@@ -1,6 +1,6 @@
 ---
 id: REQ-0041
-title: 实现 → 必审门 + 分层取证（门设在呈现，不设在修复）
+title: 实现后必经评审门，并按层级取证（门设在呈现，不设在修复）
 skill: shy-skill-suite
 status: out-of-scope
 kind: docs
@@ -12,7 +12,7 @@ related: [REQ-0018, REQ-0024, REQ-0030, REQ-0040]
 superseded_by: REQ-0046
 ---
 
-# REQ-0041 实现 → 必审门 + 分层取证
+# REQ-0041 实现后必经评审门，并按层级取证（门设在呈现，不设在修复）
 
 ## 问题与目标
 

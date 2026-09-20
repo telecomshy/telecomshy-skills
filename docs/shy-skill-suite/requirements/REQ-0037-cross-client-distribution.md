@@ -1,6 +1,6 @@
 ---
 id: REQ-0037
-title: 跨客户端分发（.agents/skills 约定）与平台差异矩阵
+title: 跨客户端分发技能（.agents/skills 约定与平台差异）
 skill: shy-skill-suite
 status: deferred
 kind: feature
@@ -12,7 +12,7 @@ related: [REQ-0011, REQ-0020, REQ-0036]
 defer_reason: 技能当前只面向 opencode / TeleAgent；是否扩到 Claude Code / Codex 是路线选择，未决。等确定要跨客户端发布再开。
 ---
 
-# REQ-0037 跨客户端分发（.agents/skills 约定）与平台差异矩阵
+# REQ-0037 跨客户端分发技能（.agents/skills 约定与平台差异）
 
 > **状态：deferred（暂不做）。** 本条只是把调研结论落盘，避免遗忘；不在 frontier、不算 done。
 

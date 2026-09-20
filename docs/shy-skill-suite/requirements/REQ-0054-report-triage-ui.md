@@ -1,6 +1,6 @@
 ---
 id: REQ-0054
-title: 报告内交互式分拣（前端勾选 + 复制/下载 triage.json）
+title: 在报告里直接勾选分拣（前端勾选并导出 triage.json）
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0019, REQ-0053]
 ---
 
-# REQ-0054 报告内交互式分拣（前端勾选 + 复制/下载 triage.json）
+# REQ-0054 在报告里直接勾选分拣（前端勾选并导出 triage.json）
 
 ## 问题与目标
 

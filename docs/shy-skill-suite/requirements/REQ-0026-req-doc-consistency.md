@@ -1,6 +1,6 @@
 ---
 id: REQ-0026
-title: 复审发现的 REQ 文档一致性修正（假 done / 数字漂移 / 漏记）
+title: 修正需求文档里的一致性问题（假完成、数字漂移、漏记）
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0001, REQ-0008, REQ-0010, REQ-0014, REQ-0020, REQ-0022, REQ-0025, REQ-0030]
 ---
 
-# REQ-0026 复审发现的 REQ 文档一致性修正
+# REQ-0026 修正需求文档里的一致性问题（假完成、数字漂移、漏记）
 
 ## 问题与目标
 

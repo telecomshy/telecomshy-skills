@@ -228,6 +228,36 @@ def t_track_requirements():
         rc2, out2, err2 = run("track_requirements.py", "--root", root2)
         case("track_requirements → rc0 ok", ok, f"rc={rc}")
         case("track_requirements 悬空 superseded_by → rc1", rc2 == 1, f"rc2={rc2}")
+        rc3, out3, err3 = run("track_requirements.py", "--root", root, "--view", "overview")
+        overview_ok = (rc3 == 0 and "frontier" in out3 and "kind" in out3
+                       and not out3.lstrip().startswith("{"))
+        case("track_requirements --view overview → 人读摘要", overview_ok, f"rc3={rc3}")
+
+
+def t_render_reqs():
+    with tempfile.TemporaryDirectory(prefix="st-rq-") as td:
+        t = Path(td)
+        d = t / "docs" / "demo" / "requirements"
+        d.mkdir(parents=True)
+        (d / "REQ-0001.md").write_text(
+            "---\nid: REQ-0001\ntitle: 演示一句话\nskill: demo\nstatus: ready\nkind: feature\n"
+            "iteration: 1\ncreated: 2026-01-01\nupdated: 2026-01-01\nblocked_by: []\n---\n\n"
+            "# REQ-0001 演示一句话\n\n## 问题与目标\n\n这是背景首段。\n", encoding="utf-8")
+        rc, out, err = run("render_reqs.py", "--root", t, "--skill", "demo", "--no-open")
+        html = t / "reports" / "demo-reqs.html"
+        html_text = html.read_text(encoding="utf-8") if html.is_file() else ""
+        ok = (rc == 0 and html.is_file() and '"opened": false' in out
+              and "<details" in html_text and "新增功能" in html_text
+              and "REQ-0001" in html_text and "演示一句话" in html_text
+              and "http://" not in html_text)
+        case("render_reqs --skill --no-open → rc0 + 自包含 HTML", ok, f"rc={rc} html={html.is_file()}")
+        rc2, out2, err2 = run("render_reqs.py", "--root", t, "--no-open")
+        case("render_reqs 缺 --skill → 非 0", rc2 != 0, f"rc2={rc2}")
+        rc3, out3, err3 = run("render_reqs.py", "--root", t, "--skill", "nope", "--no-open")
+        case("render_reqs 技能不存在 → 非 0 + stderr",
+             rc3 != 0 and bool((err3 or "").strip()), f"rc3={rc3}")
+        rc4, out4, err4 = run("render_reqs.py", "--root", t / "nope", "--skill", "demo", "--no-open")
+        case("render_reqs 非法 root → 非 0", rc4 != 0, f"rc4={rc4}")
 
 
 def t_run_checks():
@@ -336,7 +366,7 @@ CASES = [
     t_skill_utils, t_validate_skill, t_scaffold_skill, t_generate_eval_set,
     t_optimize_description, t_agent_runner, t_run_effectiveness,
     t_aggregate_benchmark, t_skill_fingerprint,
-    t_render_report, t_track_requirements, t_run_checks,
+    t_render_report, t_render_reqs, t_track_requirements, t_run_checks,
 ]
 
 

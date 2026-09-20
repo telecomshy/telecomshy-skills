@@ -1,6 +1,6 @@
 ---
 id: REQ-0011
-title: 调用方式 lever 可执行 + 校验器扩展字段集
+title: 把「调用方式」写成可执行的抓手，并给校验器加扩展字段
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0002, REQ-0009]
 ---
 
-# REQ-0011 调用方式 lever 可执行 + 校验器扩展字段集
+# REQ-0011 把「调用方式」写成可执行的抓手，并给校验器加扩展字段
 
 ## 问题与目标
 

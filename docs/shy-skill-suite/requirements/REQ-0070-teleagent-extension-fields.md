@@ -1,6 +1,6 @@
 ---
 id: REQ-0070
-title: 校验器放行 TeleAgent 扩展字段 + 修代码示例误报
+title: 让校验器放行 TeleAgent 扩展字段，并修掉代码示例的误报
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0002, REQ-0011]
 ---
 
-# REQ-0070 校验器放行 TeleAgent 扩展字段 + 修代码示例误报
+# REQ-0070 让校验器放行 TeleAgent 扩展字段，并修掉代码示例的误报
 
 ## 问题与目标
 

@@ -1,6 +1,6 @@
 ---
 id: REQ-0043
-title: 呈现门禁改为「有事才停」：机械记账自动回写，判断项才停
+title: 呈现门禁改成「有事才停」：机械记账自动回写，只有判断题才停下
 skill: shy-skill-suite
 status: out-of-scope
 kind: docs
@@ -12,7 +12,7 @@ related: [REQ-0018, REQ-0041, REQ-0042]
 superseded_by: REQ-0046
 ---
 
-# REQ-0043 呈现门禁改为「有事才停」
+# REQ-0043 呈现门禁改成「有事才停」：机械记账自动回写，只有判断题才停下
 
 ## 问题与目标
 

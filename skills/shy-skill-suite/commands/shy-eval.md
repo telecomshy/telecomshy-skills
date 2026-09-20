@@ -2,7 +2,7 @@
 description: 技能开发套件 · 独立评测取证（触发率 / 有效性对照，不改技能、不提修复建议）
 ---
 
-调用 `skill` 工具加载 `shy-skill-suite` 技能，然后按 `references/running-evals.md` 的「独立评测路径」执行。**只取证、不改技能、不提修复建议**——修复走 `/shy-review` → 分拣 → `/shy-apply`。
+调用 `skill` 工具加载 `shy-skill-suite` 技能，然后按 `references/running-evals.md` 的「独立评测路径」执行。**只取证、不改技能、不提修复建议**——修复走 `/shy-review` → 分拣 → 用户确认后实施。
 
 参数：`$ARGUMENTS` 形如 `<skill> [触发|有效性|两者]`，轴默认**两者**。
 

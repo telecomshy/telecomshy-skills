@@ -1,6 +1,6 @@
 ---
 id: REQ-0025
-title: 需求轴（Spec）回归扫 + 回归债跟踪
+title: 逐条回归检查需求是否还成立，并跟踪没查完的欠账
 skill: shy-skill-suite
 status: out-of-scope
 kind: feature
@@ -12,7 +12,7 @@ related: [REQ-0018, REQ-0022, REQ-0023, REQ-0030]
 superseded_by: REQ-0030
 ---
 
-# REQ-0025 需求轴（Spec）回归扫 + 回归债跟踪
+# REQ-0025 逐条回归检查需求是否还成立，并跟踪没查完的欠账
 
 ## 问题与目标
 

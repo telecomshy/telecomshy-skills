@@ -40,7 +40,7 @@ Only the ones not covered by the routing table are listed here (the rest are abo
 - `references/subagents.md` — roles and narrow briefs for sub-agents dispatched during review (executor / grader / spec-reviewer / analyzer / comparator), and dispatch vs. inline.
 - `scripts/` — pure-standard-library CLIs; for interfaces see each script's `--help`, for the eval script list see `references/running-evals.md`; the Gate uses `validate_skill.py` + `run_checks.py` + `selftest.py`.
 - `assets/report-template.html` — HTML report template (inline styles, no external resources). **Static read-only by default**; triage controls appear only under `--serve` (a temporary local server), and "submit to agent" at the end writes `triage.json`.
-- `commands/` — opencode slash-command templates (`shy-grill` / `shy-review` / `shy-apply` / `shy-next`); copy them to `~/.config/opencode/commands/` to take effect, see "Slash shortcuts" in `references/lifecycle.md` for details.
+- `commands/` — opencode slash-command templates (`shy-grill` / `shy-review` / `shy-eval` / `shy-reqs`); copy them to `~/.config/opencode/commands/` to take effect, see "Slash shortcuts" in `references/lifecycle.md` for details.
 - `evals/evals.json` — the starter trigger-eval set shipped with the skill (for reproducing trigger conclusions; see `references/running-evals.md`).
 - `evals/effectiveness.json` — the behavior-axis comparison case set shipped with the skill (with_skill vs baseline, task-style prompts + assertions; see `references/running-evals.md`).
 

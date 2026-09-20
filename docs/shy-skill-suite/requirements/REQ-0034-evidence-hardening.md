@@ -1,6 +1,6 @@
 ---
 id: REQ-0034
-title: 证据硬化：grader 兼评评测集与抽取隐式主张、analyzer notes 落地、description 负向触发
+title: 加固评测证据（打分兼评用例集、分析笔记落盘、description 负向触发）
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -12,7 +12,7 @@ related: [REQ-0005, REQ-0007, REQ-0019, REQ-0030]
 retroactive: true
 ---
 
-# REQ-0034 证据硬化：grader 兼评评测集与抽取隐式主张、analyzer notes 落地、description 负向触发
+# REQ-0034 加固评测证据（打分兼评用例集、分析笔记落盘、description 负向触发）
 
 ## 问题与目标
 

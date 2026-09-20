@@ -1,6 +1,6 @@
 ---
 id: REQ-0019
-title: 评估结果 HTML 报告（单文件自包含，评测 + 复审意见合一）
+title: 把评测和复审意见合成一份单文件 HTML 报告
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: [REQ-0018]
 related: [REQ-0018, REQ-0012]
 ---
 
-# REQ-0019 评估结果 HTML 报告（单文件自包含，评测 + 复审意见合一）
+# REQ-0019 把评测和复审意见合成一份单文件 HTML 报告
 
 ## 问题与目标
 

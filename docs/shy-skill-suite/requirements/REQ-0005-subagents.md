@@ -1,6 +1,6 @@
 ---
 id: REQ-0005
-title: 复审外派子 agent（executor / grader / spec-reviewer / analyzer / comparator）
+title: 复审时把部分活外派给子 agent（执行 / 打分 / 需求核对 / 分析 / 对比）
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: []
 ---
 
-# REQ-0005 复审外派子 agent（executor / grader / spec-reviewer / analyzer / comparator）
+# REQ-0005 复审时把部分活外派给子 agent（执行 / 打分 / 需求核对 / 分析 / 对比）
 
 ## 问题与目标
 

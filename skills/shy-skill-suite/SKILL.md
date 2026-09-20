@@ -10,7 +10,7 @@ metadata:
 
 # 技能开发套件
 
-覆盖一个技能的**开发生命周期**：逼问 → 落需求 → **实现**（静默门 → 回写 → 停）；**评审**由用户主动触发（报告 → 逐条分拣 → 单次实施 → 停）。各分支按用户意图进入对应规范文件。
+覆盖一个技能的**开发生命周期**：逼问 → 落需求 → **实现**（静默门 → 回写 → 停）；**评审**由用户主动触发（报告 → 分拣 → 单次实施 → 停）。各分支按用户意图进入对应规范文件。
 
 ## 分支路由
 
@@ -30,7 +30,7 @@ metadata:
 - **先删后加**：见 `references/reviewing-skills.md` §1。
 - **证据优先**：没有真实执行轨迹或对照证据的判断，只能标"待验证"，不能当结论。
 - **输出面向人**：报告三字段（存在问题 / 白话解释 / 修改建议）与白话写作规则见 `references/reviewing-skills.md` Step 8；用词以 `references/glossary.md` 为准。
-- **实现 / 评审 / 评测三路分离**：实现完只跑**静默秒级门**（绿了报完成、红了才说），**不自动评审**；**评审由用户触发**，出报告后**逐条分拣**（立即修 / 以后修 / 丢弃），按所选实施一次即停，**不自动再审**；**评测独立**（`/shy-eval`，仅用户按需触发），复审默认静态、有指纹匹配的 eval 才引用。详见 `references/lifecycle.md`。
+- **实现 / 评审 / 评测三路分离**：实现完只跑 **Gate**（绿了报完成、红了才说），**不自动评审**；**评审由用户触发**，出报告后**分拣**（立即修 / 以后修 / 丢弃），按所选实施一次即停；**评测独立**（`/shy-eval`，仅用户按需触发），复审默认静态、有指纹匹配的 eval 才引用。详见 `references/lifecycle.md`。
 
 ## 资源
 
@@ -40,7 +40,7 @@ metadata:
 - `references/subagents.md` — 复审外派子 agent 的角色与窄 brief（executor / grader / spec-reviewer / analyzer / comparator）、派发 vs 内联。
 - `scripts/` — 纯标准库 CLI；接口见各脚本 `--help`，评测脚本清单与指纹见 `references/running-evals.md`；Gate 用 `validate_skill.py` + `run_checks.py` + `selftest.py`。
 - `assets/report-template.html` — HTML 报告模板（内联样式、无外部资源）。**默认静态只读**；分拣控件只在 `--serve`（本机临时服务）下出现，末尾「提交给 agent」写 `triage.json`。
-- `commands/` — opencode 斜杠命令模板（`shy-grill` / `shy-review` / `shy-eval` / `shy-apply` / `shy-next`）；复制到 `~/.config/opencode/commands/` 生效，说明见 `references/lifecycle.md` 的「斜杠快捷」。
+- `commands/` — opencode 斜杠命令模板（`shy-grill` / `shy-review` / `shy-eval` / `shy-reqs`）；复制到 `~/.config/opencode/commands/` 生效，说明见 `references/lifecycle.md` 的「斜杠快捷」。其中 `/shy-reqs <skill>` 为**单技能** REQ 报告（按 kind → status 分组、可折叠）。
 - `evals/evals.json` — 随技能入库的起手触发评测集（复现触发结论用，见 `references/running-evals.md`）。
 - `evals/effectiveness.json` — 随技能入库的行为轴对照用例集（with_skill vs baseline，任务式 prompt + 断言，见 `references/running-evals.md`）。
 

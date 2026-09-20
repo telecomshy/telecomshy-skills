@@ -1,6 +1,6 @@
 ---
 id: REQ-0036
-title: .skill 打包（打包前跑校验门控）
+title: 把技能打包成 .skill 文件（打包前先过校验）
 skill: shy-skill-suite
 status: deferred
 kind: feature
@@ -12,7 +12,7 @@ related: [REQ-0002, REQ-0034]
 defer_reason: 当前技能部署走 junction 本地连接（不导出包）；"对外分发"的真实场景尚未出现。等真有分发需求（要把技能发给别人 / 发布）再开。
 ---
 
-# REQ-0036 .skill 打包（打包前跑校验门控）
+# REQ-0036 把技能打包成 .skill 文件（打包前先过校验）
 
 > **状态：deferred（暂不做）。** 本条只是把调研结论落盘，避免遗忘；不在 frontier、不算 done。
 

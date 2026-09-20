@@ -1,6 +1,6 @@
 ---
 id: REQ-0067
-title: 触发评测执行对齐 skill-creator（并发 / 快超时 / 检测锚点 / 进度与指标）
+title: 让触发评测的执行对齐 skill-creator（并发、超时、检测锚点、进度）
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0047, REQ-0063, REQ-0065, REQ-0066]
 ---
 
-# REQ-0067 触发评测执行对齐 skill-creator
+# REQ-0067 让触发评测的执行对齐 skill-creator（并发、超时、检测锚点、进度）
 
 ## 问题与目标
 

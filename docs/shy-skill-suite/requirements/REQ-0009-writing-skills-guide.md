@@ -1,6 +1,6 @@
 ---
 id: REQ-0009
-title: 前向写作指导（writing-skills.md）与 lever 单一事实源
+title: 写技能的指导文档，并把写作要点收敛到单一事实源
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: []
 ---
 
-# REQ-0009 前向写作指导（writing-skills.md）与 lever 单一事实源
+# REQ-0009 写技能的指导文档，并把写作要点收敛到单一事实源
 
 ## 问题与目标
 

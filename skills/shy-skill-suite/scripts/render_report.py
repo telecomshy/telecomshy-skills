@@ -224,6 +224,29 @@ def render_finding(f: dict[str, Any], fid: str, triage: bool = False) -> str:
             + (f"<dl>{dl}</dl>" if dl else "") + block + "</div>")
 
 
+def render_evidence_banner(evidence: Any) -> str:
+    """行为轴证据来源 / 降级条（Step 8「证据来源与降级条」）。
+
+    `matched`（指纹匹配）→ 绿条；`static` / `stale` / 缺失 → 降级条（黄）。
+    不把静态判断伪装成实测。
+    """
+    ev = evidence if isinstance(evidence, dict) else {}
+    status = str(ev.get("status") or "").strip().lower()
+    detail = ev.get("detail")
+    tail = f"——{detail}" if detail else ""
+    if status == "matched":
+        iteration = ev.get("iteration") or "（未标轮次）"
+        text = f"行为轴证据：{iteration}（指纹匹配）{tail}"
+        cls = "ok"
+    elif status == "stale":
+        text = f"行为轴证据：已过期（技能已变更）——建议重跑 /shy-eval{tail}"
+        cls = "warn"
+    else:
+        text = f"行为轴：无匹配的 eval 证据，结论为（静态）待验证{tail}"
+        cls = "warn"
+    return f'<p class="evidence {cls}">{esc(text)}</p>'
+
+
 def render_findings(findings: dict[str, Any] | None, triage: bool = False) -> str:
     if not findings:
         return '<section><h2>复审意见</h2><p class="muted">无复审数据</p></section>'
@@ -234,6 +257,7 @@ def render_findings(findings: dict[str, Any] | None, triage: bool = False) -> st
     if s:
         out.append(f'<p class="muted">候选 {esc(s.get("candidates", "-"))} · '
                    f'通过 {esc(s.get("passed", "-"))} · 被证伪 {esc(s.get("falsified", "-"))}</p>')
+    out.append(render_evidence_banner(findings.get("evidence")))
     items = findings.get("findings") or []
     seq = [0]
 
@@ -498,8 +522,8 @@ def main() -> int:
             "--serve 只绑 127.0.0.1 + 一次性 token，等用户点「提交给 agent」或超时；\n"
             "默认（无 --serve）是静态单文件、无服务器。\n"
             "\n"
-            "报告是复审的终局产物：**只在复审 Step 8 生成一次**；复审中途（含子 agent\n"
-            "测试渲染）必须关闭自动打开，否则会中途弹浏览器打断用户。\n"
+            "报告只在复审 Step 8 生成一次（见 reviewing-skills.md Step 8）；复审中途\n"
+            "（含子 agent 测试渲染）必须关闭自动打开，否则会中途弹浏览器打断用户。\n"
             "\n"
             "退出码:\n"
             "  0  成功（已写出 HTML）\n"

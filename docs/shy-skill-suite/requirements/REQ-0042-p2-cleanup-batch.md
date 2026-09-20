@@ -1,6 +1,6 @@
 ---
 id: REQ-0042
-title: P2 清理批（复审 iteration-1 的 4 条 P2）
+title: 清理一批 P2 小问题（复审第一轮的 4 条）
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0024, REQ-0026, REQ-0040, REQ-0041]
 ---
 
-# REQ-0042 P2 清理批（复审 iteration-1 的 4 条 P2）
+# REQ-0042 清理一批 P2 小问题（复审第一轮的 4 条）
 
 ## 问题与目标
 

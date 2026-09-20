@@ -1,6 +1,6 @@
 ---
 id: REQ-0063
-title: 触发评测改流式检测（命中即停，避免超时误判与分钟级空等）
+title: 触发评测改成流式检测（命中就停，不再空等到超时）
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0047, REQ-0056]
 ---
 
-# REQ-0063 触发评测改流式检测（命中即停）
+# REQ-0063 触发评测改成流式检测（命中就停，不再空等到超时）
 
 ## 问题与目标
 

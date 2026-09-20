@@ -1,6 +1,6 @@
 ---
 id: REQ-0032
-title: 技能文档去重与判据补齐（第二批）
+title: 给技能文档去重并补判据（第二批）
 skill: shy-skill-suite
 status: out-of-scope
 kind: hygiene
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0028, REQ-0029, REQ-0030, REQ-0031]
 ---
 
-# REQ-0032 技能文档去重与判据补齐（第二批）
+# REQ-0032 给技能文档去重并补判据（第二批）
 
 ## 问题与目标
 

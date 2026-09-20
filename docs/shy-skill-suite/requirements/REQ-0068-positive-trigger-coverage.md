@@ -1,6 +1,6 @@
 ---
 id: REQ-0068
-title: 正例漏触发修正（#6 搭骨架 / #7 触发描述 / #8 是否该拆分）
+title: 修掉正例漏触发（搭骨架、触发描述、是否该拆分这几类）
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0067, REQ-0047, REQ-0035]
 ---
 
-# REQ-0068 正例漏触发修正
+# REQ-0068 修掉正例漏触发（搭骨架、触发描述、是否该拆分这几类）
 
 ## 问题与目标
 

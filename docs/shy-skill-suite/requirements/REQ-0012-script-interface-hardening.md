@@ -1,6 +1,6 @@
 ---
 id: REQ-0012
-title: 脚本接口硬化（agent_runner 注入面 + 7 脚本 --help 完整化）
+title: 加固脚本接口（agent_runner 注入面 + 7 个脚本的 --help 补全）
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: []
 ---
 
-# REQ-0012 脚本接口硬化（agent_runner 注入面 + 7 脚本 --help 完整化）
+# REQ-0012 加固脚本接口（agent_runner 注入面 + 7 个脚本的 --help 补全）
 
 ## 问题与目标
 

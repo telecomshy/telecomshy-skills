@@ -1,6 +1,6 @@
 ---
 id: REQ-0029
-title: 报告呈现守卫（auto-open 只在终局，复审中途不得弹窗）
+title: 只在最后才自动打开报告，复审中途不弹窗
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0018, REQ-0019, REQ-0022, REQ-0028]
 ---
 
-# REQ-0029 报告呈现守卫
+# REQ-0029 只在最后才自动打开报告，复审中途不弹窗
 
 ## 问题与目标
 

@@ -1,6 +1,6 @@
 ---
 id: REQ-0048
-title: run_checks.py 自包含（去掉写死的 REQ 文件名）
+title: 让 run_checks.py 自包含（不再写死 REQ 文件名）
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0030, REQ-0040, REQ-0042]
 ---
 
-# REQ-0048 run_checks.py 自包含（去掉写死的 REQ 文件名）
+# REQ-0048 让 run_checks.py 自包含（不再写死 REQ 文件名）
 
 ## 问题与目标
 

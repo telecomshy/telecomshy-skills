@@ -1,6 +1,6 @@
 ---
 id: REQ-0007
-title: 盲测 A/B（comparator 落地）
+title: 复审里的盲测 A/B 对比
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0005]
 ---
 
-# REQ-0007 盲测 A/B（comparator 落地）
+# REQ-0007 复审里的盲测 A/B 对比
 
 ## 问题与目标
 

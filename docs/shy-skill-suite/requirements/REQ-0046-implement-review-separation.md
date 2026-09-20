@@ -1,6 +1,6 @@
 ---
 id: REQ-0046
-title: 实现 / 评审两路分离 + 评审收敛到分拣 + 单次实施
+title: 把实现和评审分成两条路：评审收敛到逐条分拣、只实施一次
 skill: shy-skill-suite
 status: done
 kind: docs
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0018, REQ-0041, REQ-0043]
 ---
 
-# REQ-0046 实现 / 评审两路分离 + 评审收敛到分拣 + 单次实施
+# REQ-0046 把实现和评审分成两条路：评审收敛到逐条分拣、只实施一次
 
 ## 问题与目标
 

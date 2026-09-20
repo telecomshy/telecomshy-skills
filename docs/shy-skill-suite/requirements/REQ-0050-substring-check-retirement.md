@@ -1,6 +1,6 @@
 ---
 id: REQ-0050
-title: 文档措辞子串 check 退休为 episode（迁移试点）
+title: 把「文档措辞子串」类检查退休成一次性事实（迁移试点）
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -12,7 +12,7 @@ blocked_by: []
 related: [REQ-0046, REQ-0048, REQ-0049]
 ---
 
-# REQ-0050 文档措辞子串 check 退休为 episode（迁移试点）
+# REQ-0050 把「文档措辞子串」类检查退休成一次性事实（迁移试点）
 
 ## 问题与目标
 

@@ -1,6 +1,6 @@
 ---
 id: REQ-0035
-title: description 优化停止规则（5 轮上限 + 卡住换结构性写法）
+title: 给 description 优化定停止规则（最多 5 轮，卡住就换写法）
 skill: shy-skill-suite
 status: done
 kind: docs
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0010, REQ-0021, REQ-0034]
 ---
 
-# REQ-0035 description 优化停止规则（5 轮上限 + 卡住换结构性写法）
+# REQ-0035 给 description 优化定停止规则（最多 5 轮，卡住就换写法）
 
 ## 问题与目标
 

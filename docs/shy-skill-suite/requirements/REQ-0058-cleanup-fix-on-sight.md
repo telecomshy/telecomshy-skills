@@ -1,6 +1,6 @@
 ---
 id: REQ-0058
-title: 台账策略：能确认的直接修（并结清现存 7 条）
+title: 台账策略：能确认的问题直接修（并结清现存 7 条）
 skill: shy-skill-suite
 status: done
 kind: hygiene
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0052, REQ-0055]
 ---
 
-# REQ-0058 台账策略：能确认的直接修（并结清现存 7 条）
+# REQ-0058 台账策略：能确认的问题直接修（并结清现存 7 条）
 
 ## 问题与目标
 

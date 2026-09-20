@@ -20,3 +20,6 @@ Thumbs.db
 
 # 评测工作区（复审 / 评测的生成物，不入库）
 *-workspace/
+
+# REQ 总览报告（/shy-reqs 的生成物，不入库）
+reports/

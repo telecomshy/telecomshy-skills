@@ -122,7 +122,7 @@ python "<SKILL_DIR>/scripts/run_effectiveness.py" --arm baseline \
 
 ## HTML 报告（评审路 / 评测路的呈现）
 
-**评测路**（`/shy-eval`）收尾时渲染评测报告（`benchmark.json` + `eval-*/`）；**评审路**（`/shy-review`，用户主动触发）收尾时渲染**含 findings 的**报告供**逐条分拣**（立即修 / 以后修 / 丢弃）；实现路不出报告（见 `reviewing-skills.md` Step 8）：
+**评测路**（`/shy-eval`）收尾时渲染评测报告（`benchmark.json` + `eval-*/`）；**评审路**（`/shy-review`，用户主动触发）收尾时渲染**含 findings 的**报告供**分拣**（立即修 / 以后修 / 丢弃）；实现路不出报告（见 `reviewing-skills.md` Step 8）：
 
 ```bash
 python "<SKILL_DIR>/scripts/render_report.py" <workspace>/iteration-1 --skill-name <name>
@@ -133,7 +133,7 @@ python "<SKILL_DIR>/scripts/render_report.py" <workspace>/iteration-1 --skill-na
 
 - 读 `benchmark.json` + `eval-*/` + `findings.json`（schema 见 `reviewing-skills.md`），输出 `<iteration>/report.html`（`--out` 可改）。
 - **生成后默认自动用浏览器打开**；关闭方式（任一即可）：`--no-open`，或环境变量 `SHY_NO_OPEN` / `CI` / `NO_BROWSER` 为真值。无显示环境不报错，仍写出文件。
-- **报告是复审的终局产物**：只在 `reviewing-skills.md` Step 8 生成一次。复审中途、以及**子 agent 测试渲染**时，一律关闭自动打开（否则会中途弹浏览器打断用户）。
+- **报告只在 Step 8 生成一次**（见 `reviewing-skills.md` Step 8）：复审中途、以及**子 agent 测试渲染**时，一律关闭自动打开（否则会中途弹浏览器打断用户）。
 - 单文件、无服务器、无外部资源：opencode / TeleAgent 直接打开即可。
 - **分拣只在 `--serve` 模式出现**：每条 finding 带三选一（立即修 / 以后修 / 丢弃，默认立即修），报告末尾只有一个「提交给 agent」按钮 → `POST /triage` 写**与报告同目录**的 `triage.json`（每项 `{id, choice, note, location}`；`id` 为报告渲染顺序，回写按 `location` 对应 `findings.json`），服务随即退出。无复制 / 下载 / 清空。
 - **静态报告（无 `--serve`）是只读归档**：无分拣控件、无按钮，**不会自动回传任何数据**；提交只在 `--serve` 下由用户点击触发。`--serve-timeout`（默认 1800 秒）控制等待；超时未提交 → 服务退出、静态 `report.html` 仍可用。

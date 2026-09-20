@@ -1,6 +1,6 @@
 ---
 id: REQ-0002
-title: 有道后端 v2（lint-notes；MOC 移除）
+title: 有道后端第二版（加 lint-notes，移除 MOC）
 skill: knowledge-distill
 status: done
 created: 2026-09-16
@@ -8,7 +8,7 @@ updated: 2026-09-16
 related: [REQ-0001]
 ---
 
-# REQ-0002 有道后端 v2（lint-notes；MOC 移除）
+# REQ-0002 有道后端第二版（加 lint-notes，移除 MOC）
 
 ## 问题与目标
 

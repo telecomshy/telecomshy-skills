@@ -1,6 +1,6 @@
 ---
 id: REQ-0031
-title: 复审发现的 REQ 文档漂移修正（第二批）
+title: 修正需求文档与实现之间的漂移（第二批）
 skill: shy-skill-suite
 status: out-of-scope
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0006, REQ-0009, REQ-0012, REQ-0014, REQ-0015, REQ-0018, REQ-0020, REQ-0023, REQ-0026, REQ-0027, REQ-0028, REQ-0030]
 ---
 
-# REQ-0031 复审发现的 REQ 文档漂移修正（第二批）
+# REQ-0031 修正需求文档与实现之间的漂移（第二批）
 
 ## 问题与目标
 

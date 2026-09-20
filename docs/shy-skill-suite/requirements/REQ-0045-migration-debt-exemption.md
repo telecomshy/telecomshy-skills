@@ -1,6 +1,6 @@
 ---
 id: REQ-0045
-title: Step 3 完成判据给存量 done REQ 的未标条目一个迁移债出口
+title: 给已完成 REQ 里没分类的验收项一个迁移债出口
 skill: shy-skill-suite
 status: done
 kind: docs
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0030, REQ-0042, REQ-0044]
 ---
 
-# REQ-0045 Step 3 完成判据给存量 done REQ 的未标条目一个迁移债出口
+# REQ-0045 给已完成 REQ 里没分类的验收项一个迁移债出口
 
 ## 问题与目标
 

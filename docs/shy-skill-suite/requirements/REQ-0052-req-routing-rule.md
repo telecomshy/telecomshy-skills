@@ -1,6 +1,6 @@
 ---
 id: REQ-0052
-title: REQ 路由规则（只收行为改动，卫生项进 cleanup）
+title: 定 REQ 路由规则：只收会改行为的改动，卫生项进 cleanup 台账
 skill: shy-skill-suite
 status: done
 kind: docs
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0050, REQ-0051]
 ---
 
-# REQ-0052 REQ 路由规则（只收行为改动，卫生项进 cleanup）
+# REQ-0052 定 REQ 路由规则：只收会改行为的改动，卫生项进 cleanup 台账
 
 ## 问题与目标
 

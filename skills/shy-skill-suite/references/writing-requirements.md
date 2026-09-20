@@ -25,7 +25,8 @@
 - 文件名：`REQ-NNNN-<slug>.md`
   - `NNNN`：四位序号，**每个技能各自从 `0001` 起**递增，**永不复用**（唯一性按 `(skill, id)` 判定）。
   - `<slug>`：短横线连接的英文小写 slug（ASCII，便于检索与跨平台）。
-- 文档标题（H1）：`# REQ-NNNN <中文标题>`
+- 文档标题（H1）：`# REQ-NNNN <title>`，与 frontmatter 的 `title` 保持一致。
+- `title` 规范：**面向人的白话一句话**，说清这个 REQ 做什么；必要的技术词可保留，但以人话为主。它同时是 `/shy-reqs` 报告里直接可见的说明（报告不另设 `plain`/`summary` 字段）。
 
 ## 3. 文档结构（每个需求文档必须包含）
 
@@ -34,7 +35,7 @@
 ```yaml
 ---
 id: REQ-0001
-title: <中文标题>
+title: <面向人的白话一句话>
 skill: <所属技能目录名，如 knowledge-distill>
 status: draft | ready | in-progress | done | deferred | out-of-scope
 kind: feature | fix | refactor | docs | hygiene   # 工单性质（展示/筛选用，不影响复审范围）
@@ -107,7 +108,7 @@ superseded_by: REQ-NNNN    # 可选，整份被哪份 REQ 取代（见下）
 ```markdown
 ---
 id: REQ-NNNN
-title: <中文标题>
+title: <面向人的白话一句话>
 skill: <skill-name>
 status: draft
 kind: feature
@@ -118,7 +119,7 @@ blocked_by: []
 related: []
 ---
 
-# REQ-NNNN <中文标题>
+# REQ-NNNN <面向人的白话一句话>
 
 ## 问题与目标
 …

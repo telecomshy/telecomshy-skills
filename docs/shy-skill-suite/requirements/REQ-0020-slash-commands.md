@@ -1,6 +1,6 @@
 ---
 id: REQ-0020
-title: opencode 斜杠命令集 + 调用方式落地（model-invoked 技能 + user 侧 command）
+title: 给套件加斜杠命令，并落地「模型触发 + 用户命令」两种调用方式
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: [REQ-0018, REQ-0019]
 related: [REQ-0011, REQ-0010]
 ---
 
-# REQ-0020 opencode 斜杠命令集 + 调用方式落地
+# REQ-0020 给套件加斜杠命令，并落地「模型触发 + 用户命令」两种调用方式
 
 ## 问题与目标
 

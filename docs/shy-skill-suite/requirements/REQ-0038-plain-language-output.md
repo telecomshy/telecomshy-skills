@@ -1,6 +1,6 @@
 ---
 id: REQ-0038
-title: 复审输出面向人：白话解释 + 说明 why
+title: 让复审输出面向人：用白话解释并说明为什么
 skill: shy-skill-suite
 status: done
 kind: docs
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0018, REQ-0019, REQ-0024]
 ---
 
-# REQ-0038 复审输出面向人：白话解释 + 说明 why
+# REQ-0038 让复审输出面向人：用白话解释并说明为什么
 
 ## 问题与目标
 

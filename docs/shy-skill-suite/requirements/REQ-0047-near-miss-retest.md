@@ -1,6 +1,6 @@
 ---
 id: REQ-0047
-title: near-miss 触发复测（每条 ≥5 次，区分稳定误触发与噪声）
+title: 复测「差不多」的误触发（每条至少 5 次，分清真误触发和噪声）
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0010, REQ-0024, REQ-0039, REQ-0044]
 ---
 
-# REQ-0047 near-miss 触发复测（每条 ≥5 次，区分稳定误触发与噪声）
+# REQ-0047 复测「差不多」的误触发（每条至少 5 次，分清真误触发和噪声）
 
 ## 问题与目标
 

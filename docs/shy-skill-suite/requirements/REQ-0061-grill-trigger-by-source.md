@@ -1,6 +1,6 @@
 ---
 id: REQ-0061
-title: 逼问触发按来源：用户提的才逼问，agent 提的不逼问
+title: 按来源决定要不要逼问：用户提的才逼问，agent 提的不逼问
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0052, REQ-0055]
 ---
 
-# REQ-0061 逼问触发按来源：用户提的才逼问，agent 提的不逼问
+# REQ-0061 按来源决定要不要逼问：用户提的才逼问，agent 提的不逼问
 
 ## 问题与目标
 

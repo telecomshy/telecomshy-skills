@@ -1,6 +1,6 @@
 ---
 id: REQ-0051
-title: 评审独立化 + converged 机械化（去自证）
+title: 让评审独立，并让 converged 由脚本机械算出（不靠自证）
 skill: shy-skill-suite
 status: done
 kind: docs
@@ -12,7 +12,7 @@ blocked_by: []
 related: [REQ-0046, REQ-0050]
 ---
 
-# REQ-0051 评审独立化 + converged 机械化（去自证）
+# REQ-0051 让评审独立，并让 converged 由脚本机械算出（不靠自证）
 
 ## 问题与目标
 

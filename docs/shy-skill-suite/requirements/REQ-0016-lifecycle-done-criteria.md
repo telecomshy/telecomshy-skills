@@ -1,6 +1,6 @@
 ---
 id: REQ-0016
-title: lifecycle 阶段 1 / 阶段 2 补可判定的完成判据
+title: 给开发生命周期的落需求和实现阶段补上可判定的完成判据
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: []
 ---
 
-# REQ-0016 lifecycle 阶段 1 / 阶段 2 补可判定的完成判据
+# REQ-0016 给开发生命周期的落需求和实现阶段补上可判定的完成判据
 
 ## 问题与目标
 

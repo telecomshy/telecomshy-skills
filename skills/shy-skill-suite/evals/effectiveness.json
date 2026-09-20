@@ -10,7 +10,7 @@
       "assertions": [
         {"name": "file-exists", "check": "产出 docs/demo/requirements/REQ-0001-demo.md", "weight": 1.0},
         {"name": "frontmatter-fields", "check": "frontmatter 含 id / title / skill / status / kind 字段", "weight": 1.0},
-        {"name": "frontmatter-values", "check": "status 取值为 draft（未经用户确认不得 ready）；kind 取值为 fix 或 feat 之一", "weight": 1.0},
+        {"name": "frontmatter-values", "check": "status 取值为 draft（未经用户确认不得 ready）；kind 取值为 fix 或 feature 之一", "weight": 1.0},
         {"name": "h1-format", "check": "H1 标题形如 `# REQ-0001 <标题>`，编号与文件名一致", "weight": 1.0},
         {"name": "criteria-all-tagged", "check": "验收标准**每一条**都带四类标记之一（`check:` / （行为） / （语义） / （episode））——按覆盖率判，不是只查至少一条", "weight": 1.0},
         {"name": "sections", "check": "含 问题与目标 / 触发与分支 / 行为与步骤 / 验收标准 / 范围外 / 迭代记录 等结构节", "weight": 1.0}

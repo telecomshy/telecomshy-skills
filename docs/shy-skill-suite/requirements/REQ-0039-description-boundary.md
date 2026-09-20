@@ -1,6 +1,6 @@
 ---
 id: REQ-0039
-title: 收紧 description 边界（修 near-miss 误触发）
+title: 收紧 description 边界，修掉「差不多但不该触发」的误触发
 skill: shy-skill-suite
 status: out-of-scope
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0009, REQ-0010, REQ-0024, REQ-0038]
 ---
 
-# REQ-0039 收紧 description 边界（修 near-miss 误触发）
+# REQ-0039 收紧 description 边界，修掉「差不多但不该触发」的误触发
 
 ## 问题与目标
 

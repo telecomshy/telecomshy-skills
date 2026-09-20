@@ -1,6 +1,6 @@
 ---
 id: REQ-0022
-title: 复审与评测合并为单一入口 + 报告生成后自动打开
+title: 把复审和评测合成一个入口，并在报告生成后自动打开
 skill: shy-skill-suite
 status: done
 kind: refactor
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0019, REQ-0020, REQ-0023]
 ---
 
-# REQ-0022 复审与评测合并为单一入口 + 报告生成后自动打开
+# REQ-0022 把复审和评测合成一个入口，并在报告生成后自动打开
 
 ## 问题与目标
 

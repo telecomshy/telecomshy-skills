@@ -1,6 +1,6 @@
 ---
 id: REQ-0013
-title: benchmark 比率字段命名修正（token/time savings 语义反向）
+title: 修正评测基准里比率字段的命名（省 token/时间的语义写反了）
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: []
 ---
 
-# REQ-0013 benchmark 比率字段命名修正（token/time savings 语义反向）
+# REQ-0013 修正评测基准里比率字段的命名（省 token/时间的语义写反了）
 
 ## 问题与目标
 

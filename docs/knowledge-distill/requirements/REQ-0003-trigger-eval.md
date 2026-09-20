@@ -1,6 +1,6 @@
 ---
 id: REQ-0003
-title: 触发评测入库与负向边界
+title: 把触发评测入库并补上负向边界
 skill: knowledge-distill
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0001, REQ-0002]
 ---
 
-# REQ-0003 触发评测入库与负向边界
+# REQ-0003 把触发评测入库并补上负向边界
 
 ## 问题与目标
 

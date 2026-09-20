@@ -1,6 +1,6 @@
 ---
 id: REQ-0018
-title: 复审门禁后移 + 结构化 findings（评估后只呈现、不自动落盘）
+title: 复审后先呈现结果，不自动落盘（结构化 findings）
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0019, REQ-0020]
 ---
 
-# REQ-0018 复审门禁后移 + 结构化 findings（评估后只呈现、不自动落盘）
+# REQ-0018 复审后先呈现结果，不自动落盘（结构化 findings）
 
 ## 问题与目标
 

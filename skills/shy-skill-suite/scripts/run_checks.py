@@ -43,7 +43,7 @@ CRITERION_RE = re.compile(r"^\s*-\s*\[[ xX]\]\s*(?P<desc>.+)$")
 CHECK_TAG_RE = re.compile(r"`check:\s*(?P<name>[a-z0-9-]+)\s*`")
 BEHAVIOR_RE = re.compile(r"（行为）|\(behavior\)")
 SEMANTIC_RE = re.compile(r"（语义）|\(semantic\)")
-EPISODE_RE = re.compile(r"（episode）|\(episode\)")
+EPISODE_RE = re.compile(r"[（(\[【]\s*episode\s*[）)\]】]", re.IGNORECASE)
 
 CheckFn = Callable[[Path, str], "tuple[bool, str]"]
 CHECKS: dict[str, CheckFn] = {}
@@ -411,6 +411,41 @@ def req0053_report_human(root: Path, skill: str) -> tuple[bool, str]:
             embedded_ok = False
     return (rc == 0 and human and not leaked and embedded_ok), \
         f"rc={rc} 人字段={human} 泄漏={leaked} 内嵌JSON可解析={embedded_ok}"
+
+
+@check("report-evidence-banner")
+def report_evidence_banner(root: Path, skill: str) -> tuple[bool, str]:
+    """报告顶部按 `evidence.status` 渲染行为轴证据来源 / 降级条。
+
+    `matched` → 绿条（带轮次）；`static` / `stale` / 缺失 → 黄条（降级）。
+    """
+    import render_report as rr
+
+    template = read_text(skill_dir(root, skill) / "assets" / "report-template.html")
+
+    def banner(evidence: object) -> str:
+        return rr.build_html({
+            "skill_name": "x", "iteration": 1, "generated_at": "t",
+            "benchmark": None, "evals": [],
+            "findings": {
+                "skill": "x", "verdict": "可合入",
+                "summary": {"candidates": 0, "passed": 0, "falsified": 0},
+                "evidence": evidence, "findings": [],
+            },
+        }, template)
+
+    matched = banner({"status": "matched", "iteration": "iteration-3"})
+    static = banner({"status": "static"})
+    stale = banner({"status": "stale"})
+    absent = banner(None)
+    ok = (
+        'class="evidence ok"' in matched and "iteration-3" in matched
+        and 'class="evidence warn"' in static and "（静态）待验证" in static
+        and 'class="evidence warn"' in stale and "过期" in stale
+        and 'class="evidence warn"' in absent and "（静态）待验证" in absent
+    )
+    return ok, (f"matched={('evidence ok' in matched)} static={('evidence warn' in static)} "
+                f"stale={('evidence warn' in stale)} absent={('evidence warn' in absent)}")
 
 
 @check("req0053-glossary")
@@ -1024,6 +1059,299 @@ def req0071_review_completion(root: Path, skill: str) -> tuple[bool, str]:
     ]
     still = [s for s in old if s in text]
     return (has_degrade and not still), f"降级词={has_degrade} 旧硬要求残留={still}"
+
+
+def _write_req(
+    req_dir: Path, rid: str, title: str, kind: str, status: str,
+    background: str = "这是背景首段。", blocked_by: str = "[]",
+) -> None:
+    """在 req_dir 写一个最小 REQ 文件（render_reqs 契约用例用）。"""
+    req_dir.mkdir(parents=True, exist_ok=True)
+    skill = req_dir.parent.name
+    (req_dir / f"{rid}.md").write_text(
+        f"---\nid: {rid}\ntitle: {title}\nskill: {skill}\nstatus: {status}\nkind: {kind}\n"
+        f"iteration: 1\ncreated: 2026-01-01\nupdated: 2026-02-02\nblocked_by: {blocked_by}\n---\n\n"
+        f"# {rid} {title}\n\n## 问题与目标\n\n{background}\n",
+        encoding="utf-8",
+    )
+
+
+def _render_reqs_sample(root: Path, skill: str) -> tuple[int, bool, str, str]:
+    """造一个技能的 REQ，跑 render_reqs.py（--skill，--no-open），返回 (rc, html_ok, html, err)。"""
+    sd = skill_dir(root, skill)
+    with tempfile.TemporaryDirectory(prefix="shy-r74rr-") as tmp:
+        t = Path(tmp)
+        _write_req(t / "docs" / "demo" / "requirements", "REQ-0001",
+                   "演示需求白话一句", "feature", "ready", "这是背景首段。")
+        rc, _out, err = run_script(root, sd / "scripts" / "render_reqs.py",
+                                   "--root", str(t), "--skill", "demo", "--no-open")
+        html_path = t / "reports" / "demo-reqs.html"
+        html_ok = html_path.is_file()
+        html = html_path.read_text(encoding="utf-8") if html_ok else ""
+    return rc, html_ok, html, err
+
+
+@check("req0072-reqs-command")
+def req0072_reqs_command(root: Path, skill: str) -> tuple[bool, str]:
+    """commands/shy-reqs.md 存在、shy-next.md 删除；含加载技能 + --skill / --kind。"""
+    sd = skill_dir(root, skill)
+    new = sd / "commands" / "shy-reqs.md"
+    old = sd / "commands" / "shy-next.md"
+    if not new.is_file():
+        return False, "commands/shy-reqs.md 不存在"
+    if old.exists():
+        return False, "commands/shy-next.md 仍存在"
+    text = read_text(new)
+    need = ["skill", "shy-skill-suite", "$ARGUMENTS", "--skill", "--kind"]
+    missing = [n for n in need if n not in text]
+    return (not missing), f"缺={missing}"
+
+
+@check("req0072-overview-view")
+def req0072_overview_view(root: Path, skill: str) -> tuple[bool, str]:
+    """--view overview 出人读摘要（计数 + frontier + 按技能分组），--help 含该参数。"""
+    sd = skill_dir(root, skill)
+    rc, out, err = run_script(root, sd / "scripts" / "track_requirements.py",
+                              "--root", ".", "--view", "overview")
+    if rc != 0:
+        return False, f"rc={rc} err={err[:160]}"
+    need = ["frontier", "kind", "status"]
+    missing = [n for n in need if n not in out]
+    not_json = not out.lstrip().startswith("{")
+    has_skill = skill in out
+    rc2, out2, _e2 = run_script(root, sd / "scripts" / "track_requirements.py", "--help")
+    help_ok = rc2 == 0 and "--view" in out2
+    ok = not missing and not_json and has_skill and help_ok
+    return ok, f"缺={missing} 非JSON={not_json} 含技能={has_skill} help含--view={help_ok}"
+
+
+@check("req0072-render-reqs")
+def req0072_render_reqs(root: Path, skill: str) -> tuple[bool, str]:
+    """render_reqs.py 存在、--help 完整；产出自包含 HTML（无外部资源）。"""
+    sd = skill_dir(root, skill)
+    script = sd / "scripts" / "render_reqs.py"
+    if not script.is_file():
+        return False, "render_reqs.py 不存在"
+    rc, out, _err = run_script(root, script, "--help")
+    help_ok = rc == 0 and all(
+        k in out for k in ("示例", "退出码", "--root", "--out", "--skill", "--kind", "--no-open"))
+    rc2, html_ok, html, err = _render_reqs_sample(root, skill)
+    external = [t for t in ("http://", "https://", "<link", "<script", "src=") if t in html]
+    ok = help_ok and rc2 == 0 and html_ok and not external
+    return ok, f"help={help_ok} rc={rc2} html={html_ok} 外部资源={external} err={err[:80]}"
+
+
+@check("req0072-html-structure")
+def req0072_html_structure(root: Path, skill: str) -> tuple[bool, str]:
+    """HTML 含 kind / status 分组与 <details> 折叠（REQ-0074 起为新的三级结构）。"""
+    rc, html_ok, html, err = _render_reqs_sample(root, skill)
+    need = ["REQ 报告", "<details", "新增功能", "待开工", "REQ-0001"]
+    missing = [n for n in need if n not in html]
+    ok = rc == 0 and html_ok and not missing
+    return ok, f"rc={rc} html={html_ok} 缺={missing} err={err[:80]}"
+
+
+@check("req0072-gitignore")
+def req0072_gitignore(root: Path, skill: str) -> tuple[bool, str]:
+    """仓库 .gitignore 忽略 reports/。"""
+    gi = root / ".gitignore"
+    if not gi.is_file():
+        return False, ".gitignore 不存在"
+    hit = any(ln.strip().rstrip("/") == "reports" for ln in read_text(gi).splitlines())
+    return hit, f"忽略 reports/={hit}"
+
+
+@check("req0072-skill-routing")
+def req0072_skill_routing(root: Path, skill: str) -> tuple[bool, str]:
+    """lifecycle.md 斜杠快捷表与 SKILL.md 资源区含 /shy-reqs、不再有 shy-next。"""
+    sd = skill_dir(root, skill)
+    life = read_text(sd / "references" / "lifecycle.md")
+    skillmd = read_text(sd / "SKILL.md")
+    checks = {
+        "lifecycle含/shy-reqs": "/shy-reqs" in life,
+        "lifecycle无shy-next": "shy-next" not in life,
+        "SKILL含shy-reqs": "shy-reqs" in skillmd,
+        "SKILL无shy-next": "shy-next" not in skillmd,
+    }
+    failed = [k for k, v in checks.items() if not v]
+    return (not failed), f"未过={failed}"
+
+
+@check("req0074-single-skill")
+def req0074_single_skill(root: Path, skill: str) -> tuple[bool, str]:
+    """`--skill` 必填（缺 → 非 0）；报告只含该技能的 REQ，不含别的技能。"""
+    sd = skill_dir(root, skill)
+    with tempfile.TemporaryDirectory(prefix="shy-r74s-") as tmp:
+        t = Path(tmp)
+        _write_req(t / "docs" / "demo" / "requirements", "REQ-0001", "演示白话", "feature", "ready")
+        _write_req(t / "docs" / "other" / "requirements", "REQ-0002", "别家白话", "fix", "done")
+        rc_missing, _o, _e = run_script(root, sd / "scripts" / "render_reqs.py",
+                                        "--root", str(t), "--no-open")
+        rc, _o2, err = run_script(root, sd / "scripts" / "render_reqs.py",
+                                  "--root", str(t), "--skill", "demo", "--no-open")
+        out = t / "reports" / "demo-reqs.html"
+        html = out.read_text(encoding="utf-8") if out.is_file() else ""
+    only = "REQ-0001" in html and "REQ-0002" not in html and "别家白话" not in html
+    ok = rc_missing != 0 and rc == 0 and only
+    return ok, f"缺--skill rc={rc_missing}；单技能 rc={rc}；只含本技能={only} err={err[:80]}"
+
+
+@check("req0074-structure")
+def req0074_structure(root: Path, skill: str) -> tuple[bool, str]:
+    """三级结构 kind（白话+计数，默认展开）→ status（白话+计数）→ REQ 行；详情含元数据与背景首段。"""
+    sd = skill_dir(root, skill)
+    with tempfile.TemporaryDirectory(prefix="shy-r74st-") as tmp:
+        t = Path(tmp)
+        d = t / "docs" / "demo" / "requirements"
+        _write_req(d, "REQ-0001", "第一句白话", "feature", "done", "这是背景第一段。")
+        _write_req(d, "REQ-0002", "第二句白话", "fix", "ready", "另一段背景。")
+        _write_req(d, "REQ-0003", "第三句白话", "docs", "ready", "文档背景。")
+        rc, _o, err = run_script(root, sd / "scripts" / "render_reqs.py",
+                                 "--root", str(t), "--skill", "demo", "--no-open")
+        out = t / "reports" / "demo-reqs.html"
+        html = out.read_text(encoding="utf-8") if out.is_file() else ""
+    need = ["新增功能", "修复缺陷", "文档", "已完成", "待开工",
+            "REQ-0001", "第一句白话", "这是背景第一段",
+            "类型", "状态", "生成日期", "更新日期", "轮次", "依赖", "<details"]
+    missing = [n for n in need if n not in html]
+    order_ok = html.find("新增功能") < html.find("修复缺陷") < html.find("文档")
+    expanded = "<details open" in html
+    ok = rc == 0 and not missing and order_ok and expanded
+    return ok, f"rc={rc} 缺={missing} kind顺序={order_ok} kind默认展开={expanded} err={err[:80]}"
+
+
+@check("req0074-no-capability-view")
+def req0074_no_capability_view(root: Path, skill: str) -> tuple[bool, str]:
+    """不再有能力视图：源码不读预生成视图、不含「现在能做什么 / 计划做什么」；输出亦无。"""
+    sd = skill_dir(root, skill)
+    src = read_text(sd / "scripts" / "render_reqs.py")
+    src_hits = [t for t in ("reqs-view", "现在能做什么", "计划做什么", "capability") if t in src]
+    rc, html_ok, html, _err = _render_reqs_sample(root, skill)
+    html_hits = [t for t in ("现在能做什么", "计划做什么") if t in html]
+    ok = not src_hits and rc == 0 and html_ok and not html_hits
+    return ok, f"源码命中={src_hits} 输出命中={html_hits}"
+
+
+@check("req0074-report-file")
+def req0074_report_file(root: Path, skill: str) -> tuple[bool, str]:
+    """固定输出 reports/<skill>-reqs.html：单文件自包含、无外部资源、再次统计原地覆盖。"""
+    sd = skill_dir(root, skill)
+    with tempfile.TemporaryDirectory(prefix="shy-r74f-") as tmp:
+        t = Path(tmp)
+        d = t / "docs" / "demo" / "requirements"
+        _write_req(d, "REQ-0001", "旧标题白话", "feature", "ready")
+        rc, _o, err = run_script(root, sd / "scripts" / "render_reqs.py",
+                                 "--root", str(t), "--skill", "demo", "--no-open")
+        out = t / "reports" / "demo-reqs.html"
+        _write_req(d, "REQ-0001", "改过的标题白话", "feature", "ready")
+        rc2, _o2, _e2 = run_script(root, sd / "scripts" / "render_reqs.py",
+                                   "--root", str(t), "--skill", "demo", "--no-open")
+        second = out.read_text(encoding="utf-8") if out.is_file() else ""
+        html_files = sorted(p.name for p in (t / "reports").glob("*.html"))
+    external = [x for x in ("http://", "https://", "<link", "<script", "src=") if x in second]
+    overwritten = "改过的标题白话" in second and "旧标题白话" not in second
+    ok = (rc == 0 and rc2 == 0 and overwritten and not external
+          and html_files == ["demo-reqs.html"])
+    return ok, f"rc={rc}/{rc2} 原地覆盖={overwritten} 外部资源={external} 产物={html_files} err={err[:60]}"
+
+
+@check("req0074-title-convention")
+def req0074_title_convention(root: Path, skill: str) -> tuple[bool, str]:
+    """writing-requirements.md 的 title 规范为「面向人的白话一句话」。"""
+    p = skill_dir(root, skill) / "references" / "writing-requirements.md"
+    if not p.is_file():
+        return False, "references/writing-requirements.md 不存在"
+    text = read_text(p)
+    has = "面向人的白话一句话" in text
+    uses = text.count("白话一句话") >= 2
+    return (has and uses), f"含规范={has} 多处引用={uses}"
+
+
+@check("req0073-apply-removed")
+def req0073_apply_removed(root: Path, skill: str) -> tuple[bool, str]:
+    """commands/shy-apply.md 不存在；lifecycle.md 不再引用 /shy-apply。"""
+    sd = skill_dir(root, skill)
+    gone = not (sd / "commands" / "shy-apply.md").exists()
+    life = read_text(sd / "references" / "lifecycle.md")
+    no_ref = "shy-apply" not in life
+    return (gone and no_ref), f"命令删除={gone} lifecycle无引用={no_ref}"
+
+
+@check("req0073-gate-preserved")
+def req0073_gate_preserved(root: Path, skill: str) -> tuple[bool, str]:
+    """lifecycle.md 保留「用户确认后按分拣单次实施、不自动再审」的闸门语义。"""
+    life = read_text(skill_dir(root, skill) / "references" / "lifecycle.md")
+    need = ["用户确认", "实施一次", "不自动再审"]
+    missing = [n for n in need if n not in life]
+    return (not missing), f"缺={missing}"
+
+
+@check("req0073-review-closing")
+def req0073_review_closing(root: Path, skill: str) -> tuple[bool, str]:
+    """commands/shy-review.md 收尾为「等用户确认分拣后实施」，不指向 /shy-apply。"""
+    p = skill_dir(root, skill) / "commands" / "shy-review.md"
+    if not p.is_file():
+        return False, "commands/shy-review.md 不存在"
+    text = read_text(p)
+    no_apply = "shy-apply" not in text
+    has_confirm = ("确认" in text) and ("实施" in text)
+    return (no_apply and has_confirm), f"无shy-apply={no_apply} 含确认/实施={has_confirm}"
+
+
+@check("req0073-skill-commands")
+def req0073_skill_commands(root: Path, skill: str) -> tuple[bool, str]:
+    """SKILL.md 资源区命令清单不含 shy-apply。"""
+    text = read_text(skill_dir(root, skill) / "SKILL.md")
+    hit = "shy-apply" in text
+    return (not hit), f"SKILL.md 含 shy-apply={hit}"
+
+
+@check("req0075-triage-scope")
+def req0075_triage_scope(root: Path, skill: str) -> tuple[bool, str]:
+    """shy-review 不再无条件「不自动修改」；限定为技能行为 / findings，台账机械项当轮结清。"""
+    p = skill_dir(root, skill) / "commands" / "shy-review.md"
+    if not p.is_file():
+        return False, "commands/shy-review.md 不存在"
+    text = read_text(p)
+    need = ["不自动修改", "技能行为", "findings", "台账", "当轮结清"]
+    missing = [n for n in need if n not in text]
+    return (not missing), f"缺={missing}"
+
+
+@check("req0075-ledger-owner")
+def req0075_ledger_owner(root: Path, skill: str) -> tuple[bool, str]:
+    """reviewing-skills Step 8：主 agent 当轮结清，且含机械可修 / 需决策边界。"""
+    p = skill_dir(root, skill) / "references" / "reviewing-skills.md"
+    if not p.is_file():
+        return False, "references/reviewing-skills.md 不存在"
+    text = read_text(p)
+    need = ["主 agent", "当轮", "机械可修", "需决策"]
+    missing = [n for n in need if n not in text]
+    return (not missing), f"缺={missing}"
+
+
+@check("req0075-subagents-boundary")
+def req0075_subagents_boundary(root: Path, skill: str) -> tuple[bool, str]:
+    """subagents 副作用禁令：台账由主 agent 结清、子代理只发现（禁写不变）。"""
+    p = skill_dir(root, skill) / "references" / "subagents.md"
+    if not p.is_file():
+        return False, "references/subagents.md 不存在"
+    text = read_text(p)
+    need = ["台账由主 agent 结清", "子代理只发现", "禁写不变"]
+    missing = [n for n in need if n not in text]
+    return (not missing), f"缺={missing}"
+
+
+@check("req0075-lifecycle")
+def req0075_lifecycle(root: Path, skill: str) -> tuple[bool, str]:
+    """lifecycle 阶段 3 含「台账机械项当轮结清」，且「不自动再审」不变。"""
+    p = skill_dir(root, skill) / "references" / "lifecycle.md"
+    if not p.is_file():
+        return False, "references/lifecycle.md 不存在"
+    text = read_text(p)
+    has_settle = "台账机械项当轮结清" in text
+    has_gate = "不自动再审" in text
+    return (has_settle and has_gate), f"台账机械项当轮结清={has_settle} 不自动再审={has_gate}"
 
 
 # --------------------------------------------------------------------------- #

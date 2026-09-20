@@ -115,7 +115,7 @@
 
 逐条按 `writing-skills.md` 检查：**§3** 信息层级与按需披露、**§4** co-location、**§5** leading word、**§6** 否定句、**§7** 剪枝（单一事实源 / cache / relevance·sediment）。
 
-**与行为轴的分工（同一 no-op 只报一次）**：本步是三条轴里**唯一的"内容该删"出口**——no-op / cache / sediment / 重复的**删除项都在本步处置**（按 Step 8 材料性门槛分流：影响使用的进 findings，其余登记 `cleanup.md`、发现即修）；行为轴（Step 2）只从效果侧记"该内容不买行为改变、有效性缺证据"，**不重复列删除项**（两轴都会看到同一批内容，但 finding 只落一处）。
+**与行为轴的分工（同一 no-op 只报一次）**：本步是三条轴里**唯一的"内容该删"出口**——no-op / cache / sediment / 重复的**删除项都在本步处置**（按 Step 8 材料性门槛分流：影响使用的进 findings，其余登记 `cleanup.md`、由主 agent 当轮结清）；行为轴（Step 2）只从效果侧记"该内容不买行为改变、有效性缺证据"，**不重复列删除项**（两轴都会看到同一批内容，但 finding 只落一处）。
 
 **完成判据**：`SKILL.md` 在预算内；每条下放内容都有触发它的指针；无重复（单一事实源被破坏）/ cache / sediment。若行为轴已就同一处内容报过"有效性缺证据"，本步给出**唯一的删除处置**（findings 或台账），不另开一条。
 
@@ -169,8 +169,11 @@
 - **淘汰数与过程字段的关系**：`summary` 的**淘汰数（候选 / 通过 / 被证伪）是汇总行、保留可见**；不进报告的只有逐条的 `falsification` / `evidence`。两条规则不冲突。
 - **轴**：`行为`（触发 / 有效性）/ `需求`（Spec）/ `标准`（结构 / 脚本 / 安全）——**分轴报告、不合并**：一条轴过、另一条败是常事，合并会互相掩盖。
 - **优先级**：`P0` 阻断（触发错误 / 行为错误 / 偏离需求 / 安全）→ `P1` 行为提升 → `P2` 精简与可读性。
-- **P2 不阻断，自洽项进台账**：`P2`（精简 / 措辞 / 数字漂移 / 重复）**不阻断 `done`、不新开 REQ**；其中"文档 / 措辞自洽"类（Step 3 第 3 条）**不进每轮 finding**——**写进 `docs/<skill>/cleanup.md` 台账**（id / dedup_key / 关闭路径）。**能当场确认并机械修的，当场修掉并标 `fixed` + `evidence`，不留 `open`**；只有**需要用户决策**或**跨较大改动**的才留 `open`。只有 `P0` / `P1` 才要求"改后可合入"。
-- **findings 门槛（材料性）**：候选只有**不修会让用户 / agent 做错事或做不成事**（行为 / 触发 / 接口 / 安全 / 可用性）才算 finding；以下属**台账类**——写进 `cleanup.md`、**发现即修**、不进 findings：过期验收文字（其检查仍绿、仅措辞落后）、提示文案偏差、重复、措辞、死代码、自洽计数。
+- **P2 不阻断，自洽项进台账，机械项由主 agent 当轮结清**：`P2`（精简 / 措辞 / 数字漂移 / 重复）**不阻断 `done`、不新开 REQ**；其中"文档 / 措辞自洽"类（Step 3 第 3 条）**不进每轮 finding**——**写进 `docs/<skill>/cleanup.md` 台账**（id / dedup_key / 关闭路径）。复审的"发现"由**子代理**做（独立性），但子代理**禁写**（见 `subagents.md`）；**结清由主 agent 在 Step 8（出报告前）当轮完成**：
+  - **机械可修**（当轮结清、标 `fixed` + `evidence`）：去重 / 改指针 / 行号订正 / 死字段删除 / 计数漂移等**不改行为**的文本与卫生项；**改前查引用、改后过 Gate**。
+  - **需决策**（留 `open`）：设计取舍 / 跨较大改动 / **会改 Gate 行为**（如接线新字段）/ 需用户拍板；在报告里**一句话提示**，不占 findings、不阻断。
+  只有 `P0` / `P1` 才要求"改后可合入"。
+- **findings 门槛（材料性）**：候选只有**不修会让用户 / agent 做错事或做不成事**（行为 / 触发 / 接口 / 安全 / 可用性）才算 finding；以下属**台账类**——写进 `cleanup.md`、**由主 agent 当轮结清（机械项）**、不进 findings：过期验收文字（其检查仍绿、仅措辞落后）、提示文案偏差、重复、措辞、死代码、自洽计数。
 - **语义集做减法**：稳定 ≥2 轮、且内容已被技能文件或检查覆盖的语义验收 → 标 `（episode）` 冻结，缩小下轮复审面。
 - **脆弱性收敛判据**：一次复审 **0 P0/P1** 且 **0 条"上轮改动涟漪"类 finding**（新 finding 均不落在上轮改过的文件 / 契约上）→ **脆弱性已解**；只记结论、不排下一轮，直到真实失败 / 用户显式要求再开。
 - **`converged`（机械判据，非 agent 自证）**：定义见 `glossary.md`；由 `run_checks.py` **算出并打印**，agent **不得手写**（同一 agent 既判 P0/P1 又写 verdict = 自证）。达标的唯一动作是把 `converged_since` 记进 `state.json`，**不排下一轮**；只有**真实失败 / 用户显式要求**才重开。
@@ -178,7 +181,7 @@
 
 可选：把 `benchmark.json` / `grading.json` 交给 `subagents.md` 的 **analyzer** 做失败聚类、flaky 与回归分析。可选（主观型技能、比两版时）：用 `subagents.md` 的 **comparator** 做盲测 A/B，**与断言结果并列报告**。
 
-**完成判据**：给出三档结论之一；改进清单已按 §3「先证伪」筛过，并在 `summary` 附**淘汰数**（`candidates` / `passed` / `falsified`）；产出 `findings.json` + **HTML 报告并打开**（默认自动打开，见 `running-evals.md`）；**若 0 P0/P1 且迁移债达标 → 把 `converged_since` 记进 `docs/<skill>/state.json`（`converged` 只读 `run_checks.py` 输出，agent 不得手写）**；然后**逐条请用户分拣**（立即修 / 以后修 / 丢弃，**不做批量**；`--serve` 模式下报告末尾点「提交给 agent」（静态报告只读、不自动回传），见 `lifecycle.md` 阶段 3；**回写按 `triage.json` 每条的 `location` 对应 `findings.json`**——`id` 只是报告渲染顺序，与数组顺序不保证一致），按所选实施一次后**结束**——**不自动再审**（见 `lifecycle.md` 阶段 3）。
+**完成判据**：给出三档结论之一；改进清单已按 §3「先证伪」筛过，并在 `summary` 附**淘汰数**（`candidates` / `passed` / `falsified`）；产出 `findings.json` + **HTML 报告并打开**（默认自动打开，见 `running-evals.md`）；**若 0 P0/P1 且迁移债达标 → 把 `converged_since` 记进 `docs/<skill>/state.json`（`converged` 只读 `run_checks.py` 输出，agent 不得手写）**；然后**逐条请用户分拣**（立即修 / 以后修 / 丢弃，**不做批量**；`--serve` 模式下报告末尾点「提交给 agent」（静态报告只读、不自动回传），见 `lifecycle.md` 阶段 3；**回写按 `triage.json` 每条的 `location` 对应 `findings.json`**——`id` 只是报告渲染顺序，与数组顺序不保证一致），按所选实施一次后**结束**（见 `lifecycle.md` 阶段 3）。
 
 **报告是终局产物**：**只在 Step 8 生成一次**，且由**主 agent**打开。复审中途（Step 1–7）不得生成报告——包括为验证渲染而跑 `render_report.py`（那会让浏览器在复审中途弹出来打断用户）。确需中途验证渲染，用临时工作区 + `--no-open`（或 `SHY_NO_OPEN=1`）。
 
@@ -191,6 +194,7 @@
   "generated_at": "<ISO-8601>",
   "verdict": "可合入 | 改后可合入 | 需重做",
   "summary": {"candidates": 0, "passed": 0, "falsified": 0},
+  "evidence": {"status": "matched | static | stale", "iteration": "iteration-N | null", "detail": "（可选）一行说明"},
   "findings": [
     {
       "axis": "行为 | 需求 | 标准",
@@ -209,6 +213,7 @@
 
 - 位置：`<skill>-workspace/iteration-N/findings.json`；纯复审无 eval 时 `<skill>-workspace/findings.json`。
 - `verified: false` 的条目仍进报告，但标注「待验证」（对应 §3「跑不了检查的只标待验证」）。
+- `evidence` 驱动报告顶部的**行为轴证据来源 / 降级条**（Step 8 同名条）：`matched`（指纹匹配）绿条；`static` / `stale` / 缺失 → 黄条「（静态）待验证 / 过期证据」。**不复用逐条 finding 的 `evidence`（已跑结果）字段**。
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 id: REQ-0066
-title: 真跑评测必须钉模型（CLI 默认模型不可控）
+title: 真跑评测必须指定模型（CLI 默认模型不可控）
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0047, REQ-0063, REQ-0065]
 ---
 
-# REQ-0066 真跑评测必须钉模型
+# REQ-0066 真跑评测必须指定模型（CLI 默认模型不可控）
 
 ## 问题与目标
 

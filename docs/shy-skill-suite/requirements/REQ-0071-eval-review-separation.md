@@ -1,6 +1,6 @@
 ---
 id: REQ-0071
-title: 评测与复审分离（独立 /shy-eval + 证据指纹时效 + 复审降级）
+title: 把评测和复审分开（独立 /shy-eval、证据带指纹时效、复审降级）
 skill: shy-skill-suite
 status: done
 kind: refactor
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0046, REQ-0067, REQ-0069]
 ---
 
-# REQ-0071 评测与复审分离
+# REQ-0071 把评测和复审分开（独立 /shy-eval、证据带指纹时效、复审降级）
 
 ## 问题与目标
 
@@ -75,7 +75,7 @@ related: [REQ-0046, REQ-0067, REQ-0069]
 - [x] 指纹函数分轴存在：触发 = `hash(description)`、有效性 = `hash(SKILL.md + references + scripts + assets + evals/effectiveness.json)` — `check:req0071-fingerprint`
 - [x] eval 跑完在 `iteration-N/` 写证据元数据（含指纹 + 模型 ID） — `check:req0071-evidence-meta`（自测造最小目录断言）
 - [x] `validate_skill.py skills/shy-skill-suite` → `status: ok`；`selftest.py` 退出码 0 — `check:skill-validate-ok` / `check:skill-selftest`
-- [x] （语义）review 报告在「无指纹匹配 eval」时显示降级条、在匹配时标注证据来源；由复审时人工判读 — 已落 `reviewing-skills.md` Step 8「证据来源与降级条」+ Step 1/2/3 完成判据；复审时按此判读
+- [x] 报告按 `evidence.status` 渲染行为轴证据来源 / 降级条（`matched` 绿 / `static`·`stale`·缺失 黄） — `check:report-evidence-banner`（2026-09-20 复审 F2 落地：此前仅有 `reviewing-skills.md` Step 8 规范、渲染层未实现）
 - [x] （语义）`/shy-review` 命令描述不再声称「复审 + 评测」 — 已改为「复审（按需引用评测）」
 - [x] （语义）用户触发 `/shy-eval` 能真跑出带指纹的触发率 / with-baseline delta 证据；由一次真跑 + 人工判读判定 — 机制已端到端（桩命令）验证：`optimize_description`/`run_effectiveness` → `evidence.json`（指纹 + 模型）→ `aggregate_benchmark` → `render_report`；**真跑**待用户在配好 `opencode` 模型的环境执行（本机无 `opencode` CLI）
 
@@ -92,6 +92,7 @@ related: [REQ-0046, REQ-0067, REQ-0069]
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-20 | 落需求（未实现）：逼问 3 轮定下 eval 独立化、指纹时效、review 降级、仅用户触发 | — | 待实现 |
 | 2 | 2026-09-20 | 实现：新增 `commands/shy-eval.md`（独立取证、钉模型、与 `/shy-review` 互不调用）；`skill_utils.py` 加分轴确定性指纹 + `merge_evidence`；新增 `skill_fingerprint.py` CLI；4 个 eval 脚本写 `evidence.json`（指纹 + 模型 + 时间）；`running-evals.md`/`lifecycle.md`/`reviewing-skills.md`/`glossary.md`/`SKILL.md`/`shy-review.md` 落「独立路径 + 指纹 + 静态降级」；`run_checks.py` 注册 6 条 `req0071-*` | `validate_skill.py` → ok；`run_checks.py` 44/44 通过（含 6 条 req0071）；`selftest.py` 31/31 通过 | 全绿、无 P0/P1 → done；真跑模型待用户环境（无 `opencode` CLI） |
+| 3 | 2026-09-20 | 复审涟漪（iteration-4 的 F2「立即修」）：实现报告「证据来源 / 降级条」——`render_report.render_evidence_banner` + 模板 `.evidence` 样式 + `findings.json` 新增 `evidence` 字段（schema 落 `reviewing-skills.md`）；原（语义）验收落成 `check:report-evidence-banner` | `run_checks` 全绿（含 `report-evidence-banner`）；`selftest` 36/36 | done（保持） |
 
 ## 备注 / 待办
 

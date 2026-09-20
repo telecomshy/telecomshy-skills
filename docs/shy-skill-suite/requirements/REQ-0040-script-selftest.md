@@ -1,6 +1,6 @@
 ---
 id: REQ-0040
-title: 脚本自测套件（smoke/contract，纯标准库）
+title: 给脚本加自测套件（冒烟/契约级，纯标准库）
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0002, REQ-0012, REQ-0027, REQ-0033, REQ-0040]
 ---
 
-# REQ-0040 脚本自测套件（smoke/contract，纯标准库）
+# REQ-0040 给脚本加自测套件（冒烟/契约级，纯标准库）
 
 ## 问题与目标
 

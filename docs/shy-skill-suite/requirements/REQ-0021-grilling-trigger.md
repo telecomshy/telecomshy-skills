@@ -1,6 +1,6 @@
 ---
 id: REQ-0021
-title: description 补逼问域限定触发词（修复逼问分支不可达）
+title: 补 description 的逼问触发词（原来逼问分支进不去）
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0006, REQ-0010, REQ-0020]
 ---
 
-# REQ-0021 description 补逼问域限定触发词（修复逼问分支不可达）
+# REQ-0021 补 description 的逼问触发词（原来逼问分支进不去）
 
 ## 问题与目标
 

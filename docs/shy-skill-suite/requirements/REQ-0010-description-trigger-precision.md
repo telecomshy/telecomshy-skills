@@ -1,6 +1,6 @@
 ---
 id: REQ-0010
-title: description 触发精度（收窄过宽 + 补齐漏触发）
+title: 调整 description 让触发更准（去掉误触发、补上漏触发）
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0002, REQ-0006]
 ---
 
-# REQ-0010 description 触发精度（收窄过宽 + 补齐漏触发）
+# REQ-0010 调整 description 让触发更准（去掉误触发、补上漏触发）
 
 ## 问题与目标
 

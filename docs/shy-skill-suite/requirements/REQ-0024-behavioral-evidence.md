@@ -1,6 +1,6 @@
 ---
 id: REQ-0024
-title: 为 shy-skill-suite 取真实行为证据（触发率 + with/baseline delta）
+title: 为套件取真实行为证据（触发率 + 有/无技能对照）
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: [REQ-0022]
 related: [REQ-0010, REQ-0019, REQ-0021]
 ---
 
-# REQ-0024 为 shy-skill-suite 取真实行为证据
+# REQ-0024 为套件取真实行为证据（触发率 + 有/无技能对照）
 
 ## 问题与目标
 

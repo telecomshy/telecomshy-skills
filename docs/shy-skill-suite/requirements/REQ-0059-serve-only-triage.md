@@ -1,6 +1,6 @@
 ---
 id: REQ-0059
-title: 分拣只在 serve 模式（静态只读；删复制/下载/清空）
+title: 分拣只在 serve 模式可用（静态报告只读，删掉复制/下载/清空）
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0054, REQ-0056, REQ-0057]
 ---
 
-# REQ-0059 分拣只在 serve 模式（静态只读；删复制/下载/清空）
+# REQ-0059 分拣只在 serve 模式可用（静态报告只读，删掉复制/下载/清空）
 
 ## 问题与目标
 

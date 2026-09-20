@@ -1,6 +1,6 @@
 ---
 id: REQ-0001
-title: 轻量脚手架（scaffold_skill.py）
+title: 新建技能时生成只含 SKILL.md 的轻量脚手架
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0003]
 ---
 
-# REQ-0001 轻量脚手架（scaffold_skill.py）
+# REQ-0001 新建技能时生成只含 SKILL.md 的轻量脚手架
 
 ## 问题与目标
 

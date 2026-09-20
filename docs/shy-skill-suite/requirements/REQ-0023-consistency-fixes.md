@@ -1,6 +1,6 @@
 ---
 id: REQ-0023
-title: 复审发现的一致性修正（闭环串 / 阶段计数 / 报告兜底名 / REQ-0012 矛盾）
+title: 修正复审发现的一致性小问题（流程串、阶段计数、报告默认名等）
 skill: shy-skill-suite
 status: done
 kind: hygiene
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0012, REQ-0018, REQ-0022]
 ---
 
-# REQ-0023 复审发现的一致性修正
+# REQ-0023 修正复审发现的一致性小问题（流程串、阶段计数、报告默认名等）
 
 ## 问题与目标
 

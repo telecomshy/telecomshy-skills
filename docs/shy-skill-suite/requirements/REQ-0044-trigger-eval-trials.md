@@ -1,6 +1,6 @@
 ---
 id: REQ-0044
-title: 触发评测每条多跑（3 次）对齐规范，消除单跑抖动
+title: 触发评测每条多跑 3 次，减少单跑抖动
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0010, REQ-0024, REQ-0039]
 ---
 
-# REQ-0044 触发评测每条多跑（3 次）对齐规范，消除单跑抖动
+# REQ-0044 触发评测每条多跑 3 次，减少单跑抖动
 
 ## 问题与目标
 

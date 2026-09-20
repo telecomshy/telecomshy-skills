@@ -1,6 +1,6 @@
 ---
 id: REQ-0056
-title: 报告本地服务模式（--serve：页面提交 → agent 继续）
+title: 加报告本地服务模式（--serve：页面上提交，agent 继续）
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0019, REQ-0054]
 ---
 
-# REQ-0056 报告本地服务模式（--serve：页面提交 → agent 继续）
+# REQ-0056 加报告本地服务模式（--serve：页面上提交，agent 继续）
 
 ## 问题与目标
 

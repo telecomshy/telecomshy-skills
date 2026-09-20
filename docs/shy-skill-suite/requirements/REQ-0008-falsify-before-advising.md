@@ -1,6 +1,6 @@
 ---
 id: REQ-0008
-title: 先证伪再提建议（升级复审 §3）
+title: 提改进建议前先证伪
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0007]
 ---
 
-# REQ-0008 先证伪再提建议（升级复审 §3）
+# REQ-0008 提改进建议前先证伪
 
 ## 问题与目标
 

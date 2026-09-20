@@ -1,6 +1,6 @@
 ---
 id: REQ-0004
-title: 架构分层完整版（architecture.md + 路由表 + 命名约定）
+title: 判断技能该分几层的完整方案（架构文档 + 路由表 + 命名约定）
 skill: shy-skill-suite
 status: deferred
 kind: feature
@@ -12,7 +12,7 @@ defer_reason: 决策频率低、纯文档，易成无人读的文档；先用轻
 related: [REQ-0003]
 ---
 
-# REQ-0004 架构分层完整版（architecture.md + 路由表 + 命名约定）
+# REQ-0004 判断技能该分几层的完整方案（架构文档 + 路由表 + 命名约定）
 
 ## 问题与目标
 

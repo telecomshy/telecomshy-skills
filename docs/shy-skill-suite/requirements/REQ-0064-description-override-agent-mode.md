@@ -1,6 +1,6 @@
 ---
 id: REQ-0064
-title: agent 模式下 --description 静默失效 → 显式拒绝
+title: agent 模式下 --description 会静默失效，改成直接报错拒绝
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0047, REQ-0063]
 ---
 
-# REQ-0064 agent 模式下 --description 静默失效 → 显式拒绝
+# REQ-0064 agent 模式下 --description 会静默失效，改成直接报错拒绝
 
 ## 问题与目标
 

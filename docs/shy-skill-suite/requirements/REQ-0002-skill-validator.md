@@ -1,6 +1,6 @@
 ---
 id: REQ-0002
-title: 自带技能校验器（validate_skill.py）
+title: 用一个脚本校验技能的结构和规范（validate_skill.py）
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: []
 ---
 
-# REQ-0002 自带技能校验器（validate_skill.py）
+# REQ-0002 用一个脚本校验技能的结构和规范（validate_skill.py）
 
 ## 问题与目标
 

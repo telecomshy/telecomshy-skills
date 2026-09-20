@@ -1,6 +1,6 @@
 ---
 id: REQ-0055
-title: 复审范围收口（不把历史 REQ 散文当基准）
+title: 收口复审范围：不把历史 REQ 的散文当基准
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0030, REQ-0053]
 ---
 
-# REQ-0055 复审范围收口（不把历史 REQ 散文当基准）
+# REQ-0055 收口复审范围：不把历史 REQ 的散文当基准
 
 ## 问题与目标
 

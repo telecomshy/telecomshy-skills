@@ -1,6 +1,6 @@
 ---
 id: REQ-0003
-title: 架构分层判据（轻量版）
+title: 判断技能该分几层的轻量判据
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0004]
 ---
 
-# REQ-0003 架构分层判据（轻量版）
+# REQ-0003 判断技能该分几层的轻量判据
 
 ## 问题与目标
 

@@ -1,6 +1,6 @@
 ---
 id: REQ-0030
-title: Spec 轴改无条件全量扫 + 删除回归债跟踪
+title: 需求轴改成每次全量扫描，并删掉回归债跟踪
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0018, REQ-0025, REQ-0026, REQ-0028, REQ-0029]
 ---
 
-# REQ-0030 Spec 轴改无条件全量扫 + 删除回归债跟踪
+# REQ-0030 需求轴改成每次全量扫描，并删掉回归债跟踪
 
 ## 问题与目标
 

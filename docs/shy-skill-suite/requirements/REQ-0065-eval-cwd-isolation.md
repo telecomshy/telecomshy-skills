@@ -1,6 +1,6 @@
 ---
 id: REQ-0065
-title: 评测隔离：每次运行独立空 cwd（防跨轮污染）
+title: 评测隔离：每次运行都用独立的空目录，防止跨轮污染
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0047, REQ-0063]
 ---
 
-# REQ-0065 评测隔离：每次运行独立空 cwd
+# REQ-0065 评测隔离：每次运行都用独立的空目录，防止跨轮污染
 
 ## 问题与目标
 

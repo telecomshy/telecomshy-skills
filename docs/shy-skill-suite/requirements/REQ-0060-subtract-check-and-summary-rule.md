@@ -1,6 +1,6 @@
 ---
 id: REQ-0060
-title: 防自伤：做减法前查引用 + 淘汰数与过程字段的关系澄清
+title: 做减法前先查引用，别误删还在用的东西
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0053, REQ-0057, REQ-0059]
 ---
 
-# REQ-0060 防自伤：做减法前查引用 + 淘汰数与过程字段的关系澄清
+# REQ-0060 做减法前先查引用，别误删还在用的东西
 
 ## 问题与目标
 

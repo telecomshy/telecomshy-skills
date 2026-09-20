@@ -1,6 +1,6 @@
 ---
 id: REQ-0006
-title: 无 REQ 时的回溯补写与 grill 抽取
+title: 给已有技能补需求时，从意图问出来而不是读实现反推
 skill: shy-skill-suite
 status: done
 kind: feature
@@ -11,7 +11,7 @@ blocked_by: []
 related: []
 ---
 
-# REQ-0006 无 REQ 时的回溯补写与 grill 抽取
+# REQ-0006 给已有技能补需求时，从意图问出来而不是读实现反推
 
 ## 问题与目标
 

@@ -1,6 +1,6 @@
 ---
 id: REQ-0049
-title: 触发评测集入库（evals/evals.json）与 REQ 引用修正
+title: 把触发评测集入库（evals/evals.json），并修正 REQ 里的引用
 skill: shy-skill-suite
 status: done
 kind: fix
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0024, REQ-0039, REQ-0044, REQ-0047]
 ---
 
-# REQ-0049 触发评测集入库（evals/evals.json）与 REQ 引用修正
+# REQ-0049 把触发评测集入库（evals/evals.json），并修正 REQ 里的引用
 
 ## 问题与目标
 

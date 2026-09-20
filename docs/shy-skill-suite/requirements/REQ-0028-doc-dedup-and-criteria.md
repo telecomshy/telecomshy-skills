@@ -1,6 +1,6 @@
 ---
 id: REQ-0028
-title: 文档去重与判据补齐（单一事实源 / 悬空指针 / 阶段 4 完成判据 / 引用约定）
+title: 给文档去重并补判据（单一事实源、悬空引用、回写阶段的完成判据）
 skill: shy-skill-suite
 status: done
 kind: hygiene
@@ -11,7 +11,7 @@ blocked_by: []
 related: [REQ-0008, REQ-0009, REQ-0015, REQ-0016, REQ-0018, REQ-0025, REQ-0026, REQ-0027, REQ-0030]
 ---
 
-# REQ-0028 文档去重与判据补齐
+# REQ-0028 给文档去重并补判据（单一事实源、悬空引用、回写阶段的完成判据）
 
 ## 问题与目标
 

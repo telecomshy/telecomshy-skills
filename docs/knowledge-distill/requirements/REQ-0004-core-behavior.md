@@ -1,6 +1,6 @@
 ---
 id: REQ-0004
-title: 核心行为（回溯补写：沉淀对话为知识库笔记）
+title: 核心行为：把对话回溯补写成知识库笔记
 skill: knowledge-distill
 status: in-progress
 kind: feature
@@ -12,7 +12,7 @@ retroactive: true
 related: [REQ-0001, REQ-0002, REQ-0003]
 ---
 
-# REQ-0004 核心行为（回溯补写：沉淀对话为知识库笔记）
+# REQ-0004 核心行为：把对话回溯补写成知识库笔记
 
 ## 问题与目标
 
