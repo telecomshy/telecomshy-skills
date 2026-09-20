@@ -35,7 +35,7 @@ import threading
 import time
 from typing import Any
 
-from skill_utils import force_utf8_stdio
+from skill_utils import force_utf8_stdio, merge_evidence
 
 DEFAULT_COMMANDS: dict[str, str] = {
     "opencode": 'opencode run "{prompt}"',
@@ -268,6 +268,9 @@ def main() -> int:
                         help='检测方式：auto（opencode→skill-line）/ substring / skill-line（锚定 Skill "名" 行）')
     parser.add_argument("--cwd", help="Working directory for the command")
     parser.add_argument("--timeout", type=int, default=120, help="Timeout in seconds (default: 120)")
+    parser.add_argument("--skill-dir", help="技能目录；与 --evidence-ws 同给时写触发轴证据")
+    parser.add_argument("--evidence-ws", help="iteration 目录；写触发轴证据到 <dir>/evidence.json")
+    parser.add_argument("--model", help="所用模型 ID（写触发轴证据时记录）")
     args = parser.parse_args()
 
     result = run_prompt(
@@ -279,6 +282,9 @@ def main() -> int:
         timeout=args.timeout,
         detect_mode=args.detect_mode,
     )
+    if args.skill_dir and args.evidence_ws and not result.get("error"):
+        result["evidence"] = str(merge_evidence(
+            args.evidence_ws, args.skill_dir, ("trigger",), model=args.model))
     if result.get("error"):
         print(json.dumps(result, indent=2, ensure_ascii=False), file=sys.stderr)
         return 1

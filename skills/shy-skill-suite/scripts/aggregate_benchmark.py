@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from skill_utils import force_utf8_stdio, read_text, write_text
+from skill_utils import force_utf8_stdio, merge_evidence, read_text, write_text
 
 RUN_TYPE_ALIASES: dict[str, list[str]] = {
     "with_skill": ["with_skill", "with-skill", "with"],
@@ -284,9 +284,14 @@ def main() -> int:
     parser.add_argument("--skill-name", required=True, help="Name of the skill being benchmarked")
     parser.add_argument("--previous", "-p", help="Path to previous iteration directory for comparison")
     parser.add_argument("--notes", help="analyzer_notes.json 路径（缺省 <iteration>/analyzer_notes.json）")
+    parser.add_argument("--skill-dir", help="被评测技能目录；给定则把两轴指纹 + 模型 + 时间写进 <iteration>/evidence.json")
+    parser.add_argument("--model", help="所用模型 ID（写证据时记录）")
     args = parser.parse_args()
 
     result = aggregate_benchmark(args.path, args.skill_name, args.previous, args.notes)
+    if args.skill_dir and "error" not in result:
+        merge_evidence(args.path, args.skill_dir, ("trigger", "effectiveness"),
+                       model=args.model, skill_name=args.skill_name)
     stream = sys.stderr if "error" in result else sys.stdout
     print(json.dumps(result, indent=2, ensure_ascii=False), file=stream)
     return 1 if "error" in result else 0

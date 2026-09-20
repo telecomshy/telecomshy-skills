@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from agent_runner import resolve_command, run_prompt
-from skill_utils import force_utf8_stdio, load_skill, read_text, write_text
+from skill_utils import force_utf8_stdio, load_skill, merge_evidence, read_text, write_text
 
 _ASCII_WORD = re.compile(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*")
 _CJK_CHAR = re.compile(r"[\u3400-\u9fff]")
@@ -361,6 +361,8 @@ def main() -> int:
                         help='检测方式：auto（opencode→skill-line）/ substring / skill-line（锚定 Skill "名" 行）')
     parser.add_argument("--isolate-cwd", action="store_true",
                         help="每次运行在 --cwd 下新建空目录、跑完即删（防跨轮污染；需 --cwd 指向临时目录）")
+    parser.add_argument("--evidence-ws", help="iteration 目录；给定则跑完写触发轴证据到 <dir>/evidence.json")
+    parser.add_argument("--model", help="所用模型 ID（写触发轴证据时记录）")
     parser.add_argument("--out", "-o", help="Write the full report JSON to this path")
     args = parser.parse_args()
 
@@ -386,6 +388,9 @@ def main() -> int:
     )
     if args.out and "error" not in result:
         write_text(args.out, json.dumps(result, indent=2, ensure_ascii=False))
+    if args.evidence_ws and "error" not in result:
+        merge_evidence(args.evidence_ws, args.path, ("trigger",),
+                       model=args.model, skill_name=result.get("skill_name"))
     stream = sys.stderr if "error" in result else sys.stdout
     print(json.dumps(result, indent=2, ensure_ascii=False), file=stream)
     return 1 if "error" in result else 0

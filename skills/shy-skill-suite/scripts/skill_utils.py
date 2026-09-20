@@ -9,12 +9,19 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 _CJK_RE = re.compile(r"[\u3400-\u9fff]")
+
+# 有效性轴覆盖的技能文件（相对技能根）；触发轴只看 description。
+EFFECTIVENESS_PARTS = ("references", "scripts", "assets")
+EFFECTIVENESS_EVAL = ("evals", "effectiveness.json")
 
 
 def force_utf8_stdio() -> None:
@@ -139,3 +146,115 @@ def load_skill(skill_dir: str | Path) -> tuple[dict[str, Any] | None, str, list[
     if not skill_md.is_file():
         return None, "", [f"SKILL.md not found: {skill_md}"]
     return parse_frontmatter(read_text(skill_md))
+
+
+# --------------------------------------------------------------------------- #
+# 证据指纹（分轴、确定性）
+#
+# eval 是独立取证路径；复审要判断手上的证据是不是**当前技能版本**产的，就得有指纹。
+# 粒度刻意分轴：改 SKILL.md 正文不作废触发证据，改 description 才作废。
+# 确定性要求（否则证据永远"不匹配"）：文件按相对路径排序、路径统一为 `/`、
+# 只 hash 内容（不掺 mtime / 绝对路径 / 文件大小）。
+# --------------------------------------------------------------------------- #
+
+def _fingerprint_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def _fingerprint_files(base: Path, files: list[Path]) -> str:
+    digest = hashlib.sha256()
+    for p in sorted(files, key=lambda x: x.relative_to(base).as_posix()):
+        digest.update(p.relative_to(base).as_posix().encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(p.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()[:16]
+
+
+def _skill_text_files(base: Path, part: str) -> list[Path]:
+    d = base / part
+    if not d.is_dir():
+        return []
+    return [
+        p for p in d.rglob("*")
+        if p.is_file() and p.suffix != ".pyc" and "__pycache__" not in p.parts
+    ]
+
+
+def trigger_fingerprint(skill_dir: str | Path) -> str:
+    """触发轴指纹 = hash(description)。只随 description 变化。"""
+    frontmatter, _body, _errors = load_skill(skill_dir)
+    description = str((frontmatter or {}).get("description", ""))
+    return _fingerprint_text(description)
+
+
+def effectiveness_fingerprint(skill_dir: str | Path) -> str:
+    """有效性轴指纹 = hash(SKILL.md + references/ + scripts/ + assets/ + evals/effectiveness.json)。"""
+    base = Path(skill_dir)
+    files: list[Path] = []
+    skill_md = base / "SKILL.md"
+    if skill_md.is_file():
+        files.append(skill_md)
+    for part in EFFECTIVENESS_PARTS:
+        files.extend(_skill_text_files(base, part))
+    eval_file = base.joinpath(*EFFECTIVENESS_EVAL)
+    if eval_file.is_file():
+        files.append(eval_file)
+    return _fingerprint_files(base, files)
+
+
+def skill_fingerprints(skill_dir: str | Path) -> dict[str, str]:
+    """一次算出两轴指纹。"""
+    return {
+        "trigger": trigger_fingerprint(skill_dir),
+        "effectiveness": effectiveness_fingerprint(skill_dir),
+    }
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def merge_evidence(
+    iteration_dir: str | Path,
+    skill_dir: str | Path,
+    axes: tuple[str, ...] = ("trigger", "effectiveness"),
+    model: str | None = None,
+    skill_name: str | None = None,
+) -> Path:
+    """把指定轴的指纹 + 模型 ID + 时间写进 ``<iteration>/evidence.json``（合并已存在的轴）。
+
+    过期证据不删：只更新本轮跑过的轴，其余轴原样保留，供复审按指纹挑最近一次匹配项。
+    """
+    path = Path(iteration_dir) / "evidence.json"
+    existing: dict[str, Any] = {}
+    if path.is_file():
+        try:
+            loaded = json.loads(read_text(path))
+            if isinstance(loaded, dict):
+                existing = loaded
+        except (json.JSONDecodeError, OSError):
+            existing = {}
+
+    if skill_name is None:
+        frontmatter, _b, _e = load_skill(skill_dir)
+        skill_name = str((frontmatter or {}).get("name") or Path(skill_dir).name)
+
+    fingerprints = skill_fingerprints(skill_dir)
+    now = _now_iso()
+    record: dict[str, Any] = {
+        "skill": skill_name,
+        "generated_at": now,
+        "model": model,
+        "axes": dict(existing.get("axes") or {}),
+    }
+    for axis in axes:
+        if axis not in fingerprints:
+            continue
+        record["axes"][axis] = {
+            "fingerprint": fingerprints[axis],
+            "model": model,
+            "updated_at": now,
+        }
+    write_text(path, json.dumps(record, indent=2, ensure_ascii=False))
+    return path

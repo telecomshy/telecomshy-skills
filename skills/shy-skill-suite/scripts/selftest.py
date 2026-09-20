@@ -265,6 +265,32 @@ def t_run_checks():
                  rc5 == 0 and "（行为）0" in (out5 + err5), f"rc5={rc5}")
 
 
+def t_skill_fingerprint():
+    with tempfile.TemporaryDirectory(prefix="st-fp-") as td:
+        skill = make_skill(Path(td))
+        (skill / "references").mkdir()
+        (skill / "references" / "r.md").write_text("x", encoding="utf-8")
+        (skill / "evals").mkdir()
+        (skill / "evals" / "effectiveness.json").write_text('{"cases":[]}', encoding="utf-8")
+        rc, out, err = run("skill_fingerprint.py", "--skill-dir", skill)
+        try:
+            data = json.loads(out)
+            fps = data.get("fingerprints") or {}
+        except Exception:  # noqa: BLE001 - 解析失败即失败
+            fps = {}
+        ok = rc == 0 and bool(fps.get("trigger")) and bool(fps.get("effectiveness")) \
+            and fps["trigger"] != fps["effectiveness"]
+        ws = Path(td) / "iteration-1"
+        rc2, out2, err2 = run("skill_fingerprint.py", "--skill-dir", skill,
+                              "--write-evidence", ws, "--model", "test/model")
+        ev = ws / "evidence.json"
+        wrote = rc2 == 0 and ev.is_file() and "test/model" in ev.read_text(encoding="utf-8")
+        rc3, out3, err3 = run("skill_fingerprint.py", "--skill-dir", Path(td) / "nope")
+        case("skill_fingerprint 分轴 → rc0 + 两轴指纹", ok, f"rc={rc} fps={list(fps)}")
+        case("skill_fingerprint 写证据 → evidence.json + 模型", wrote, f"rc2={rc2} wrote={wrote}")
+        case("skill_fingerprint 缺 SKILL.md → 非 0", rc3 != 0, f"rc3={rc3}")
+
+
 def t_run_effectiveness():
     with tempfile.TemporaryDirectory(prefix="st-eff-") as td:
         t = Path(td)
@@ -309,7 +335,7 @@ def warn_pycache() -> None:
 CASES = [
     t_skill_utils, t_validate_skill, t_scaffold_skill, t_generate_eval_set,
     t_optimize_description, t_agent_runner, t_run_effectiveness,
-    t_aggregate_benchmark,
+    t_aggregate_benchmark, t_skill_fingerprint,
     t_render_report, t_track_requirements, t_run_checks,
 ]
 

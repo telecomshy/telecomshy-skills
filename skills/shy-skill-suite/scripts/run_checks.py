@@ -880,6 +880,152 @@ def req0069_effectiveness_harness(root: Path, skill: str) -> tuple[bool, str]:
                 f"隔离根清理={cleaned}")
 
 
+def _make_fingerprint_skill(base: Path, description: str, body: str) -> Path:
+    """造一个最小技能目录，覆盖有效性轴的四类来源。"""
+    d = base / "demo-skill"
+    for sub in ("references", "scripts", "assets", "evals"):
+        (d / sub).mkdir(parents=True, exist_ok=True)
+    (d / "SKILL.md").write_text(
+        f"---\nname: demo-skill\ndescription: {description}\n---\n\n{body}\n", encoding="utf-8")
+    (d / "references" / "r.md").write_text("ref-a", encoding="utf-8")
+    (d / "scripts" / "s.py").write_text("print('a')\n", encoding="utf-8")
+    (d / "assets" / "a.html").write_text("<p>a</p>", encoding="utf-8")
+    (d / "evals" / "effectiveness.json").write_text('{"cases":[]}', encoding="utf-8")
+    return d
+
+
+@check("req0071-fingerprint")
+def req0071_fingerprint(root: Path, skill: str) -> tuple[bool, str]:
+    """指纹分轴 + 确定性：触发只看 description；有效性看技能文件与 effectiveness.json。"""
+    from skill_utils import effectiveness_fingerprint, trigger_fingerprint
+
+    with tempfile.TemporaryDirectory(prefix="shy-r71fp-") as tmp:
+        base = Path(tmp)
+        d = _make_fingerprint_skill(base, "描述A", "正文A")
+        t1, e1 = trigger_fingerprint(d), effectiveness_fingerprint(d)
+        t1b, e1b = trigger_fingerprint(d), effectiveness_fingerprint(d)  # 确定性
+        _make_fingerprint_skill(base, "描述A", "正文B")                    # 只改正文
+        t2, e2 = trigger_fingerprint(d), effectiveness_fingerprint(d)
+        _make_fingerprint_skill(base, "描述B", "正文B")                    # 只改 description
+        t3 = trigger_fingerprint(d)
+        (d / "references" / "r.md").write_text("ref-b", encoding="utf-8")  # 只改 references
+        e3 = effectiveness_fingerprint(d)
+        (d / "evals" / "effectiveness.json").write_text('{"cases":[1]}', encoding="utf-8")  # 只改评测集
+        e4 = effectiveness_fingerprint(d)
+
+    deterministic = t1 == t1b and e1 == e1b
+    axis_split = t1 == t2 and e1 != e2          # 正文不动触发、动有效性
+    desc_axis = t3 != t1                        # description 动触发
+    ref_axis = e3 != e2                         # references 动有效性
+    eval_axis = e4 != e3                        # effectiveness.json 动有效性
+    independent = t1 != e1                      # 两轴取值不同
+    ok = deterministic and axis_split and desc_axis and ref_axis and eval_axis and independent
+    return ok, (f"确定性={deterministic} 正文分轴={axis_split} description→触发={desc_axis} "
+                f"ref→有效性={ref_axis} eval→有效性={eval_axis} 两轴独立={independent}")
+
+
+@check("req0071-evidence-meta")
+def req0071_evidence_meta(root: Path, skill: str) -> tuple[bool, str]:
+    """eval 跑完在 iteration-N 写 evidence.json（指纹 + 模型 ID + 时间），指纹匹配当前技能。"""
+    from skill_utils import effectiveness_fingerprint
+
+    sd = skill_dir(root, skill)
+    with tempfile.TemporaryDirectory(prefix="shy-r71ev-") as tmp:
+        t = Path(tmp)
+        skill_d = t / "demo-skill"
+        (skill_d / "evals").mkdir(parents=True)
+        (skill_d / "SKILL.md").write_text(
+            "---\nname: demo-skill\ndescription: 演示；当需要演示时使用。\n---\n\n# Demo\n",
+            encoding="utf-8")
+        (skill_d / "evals" / "effectiveness.json").write_text(
+            '{"skill_name":"demo-skill","cases":[]}', encoding="utf-8")
+        stub = t / "stub.py"
+        stub.write_text("print('ANSWER-OK')\n", encoding="utf-8")
+        cases = t / "cases.json"
+        cases.write_text(json.dumps({
+            "skill_name": "demo-skill",
+            "cases": [{"eval_id": 0, "eval_name": "s", "prompt": "x",
+                       "assertions": [{"name": "a", "check": "c"}]}],
+        }, ensure_ascii=False), encoding="utf-8")
+        tpl = f'"{sys.executable}" "{stub}" {{prompt}}'
+        ws = t / "ws"
+        rc, _out, err = run_script(root, sd / "scripts" / "run_effectiveness.py",
+                                   "--arm", "with_skill", "--cases", str(cases), "--ws", str(ws),
+                                   "--trials", "1", "--workers", "1", "--cmd", tpl,
+                                   "--detect-skill", "demo-skill", "--skill-dir", str(skill_d),
+                                   "--model", "test/model")
+        ev = ws / "evidence.json"
+        exists = ev.is_file()
+        try:
+            data = json.loads(ev.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            data = {}
+        eff = (data.get("axes") or {}).get("effectiveness") or {}
+        fp = eff.get("fingerprint")
+        model_ok = eff.get("model") == "test/model" and data.get("model") == "test/model"
+        ts = eff.get("updated_at") or data.get("generated_at")
+        matches = bool(fp) and fp == effectiveness_fingerprint(skill_d)
+
+    ok = rc == 0 and exists and model_ok and bool(ts) and matches
+    return ok, (f"rc={rc} evidence.json={exists} 指纹={bool(fp)} 模型={model_ok} "
+                f"时间={bool(ts)} 指纹匹配={matches} err={err[:80]}")
+
+
+@check("req0071-eval-command")
+def req0071_eval_command(root: Path, skill: str) -> tuple[bool, str]:
+    """commands/shy-eval.md 存在：加载技能 + $ARGUMENTS + 触发/有效性/两者参数。"""
+    p = skill_dir(root, skill) / "commands" / "shy-eval.md"
+    if not p.is_file():
+        return False, "commands/shy-eval.md 不存在"
+    text = read_text(p)
+    need = ["$ARGUMENTS", "触发", "有效性", "两者", "references/running-evals.md", "skill"]
+    missing = [n for n in need if n not in text]
+    return (not missing), f"缺={missing}"
+
+
+@check("req0071-glossary-boundary")
+def req0071_glossary_boundary(root: Path, skill: str) -> tuple[bool, str]:
+    """glossary 含「评测（eval）」「复审（review）」两条定义 + _避免_ + 降级词。"""
+    p = skill_dir(root, skill) / "references" / "glossary.md"
+    if not p.is_file():
+        return False, "references/glossary.md 不存在"
+    text = read_text(p)
+    need = ["评测（eval）", "复审（review）", "_避免_", "（静态）", "过期证据"]
+    missing = [n for n in need if n not in text]
+    ev = bool(re.search(r"\*\*评测（eval）\*\*.*?_避免_", text, re.S))
+    rv = bool(re.search(r"\*\*复审（review）\*\*.*?_避免_", text, re.S))
+    return (not missing and ev and rv), f"缺={missing} 评测含避免={ev} 复审含避免={rv}"
+
+
+@check("req0071-no-auto-eval")
+def req0071_no_auto_eval(root: Path, skill: str) -> tuple[bool, str]:
+    """lifecycle 斜杠快捷表含 /shy-eval，且无「里程碑 / 收敛点」作为 eval 自动触发。"""
+    p = skill_dir(root, skill) / "references" / "lifecycle.md"
+    if not p.is_file():
+        return False, "references/lifecycle.md 不存在"
+    text = read_text(p)
+    has_cmd = "/shy-eval" in text
+    auto = [w for w in ("里程碑", "收敛点") if w in text]
+    return (has_cmd and not auto), f"含/shy-eval={has_cmd} 自动触发词残留={auto}"
+
+
+@check("req0071-review-completion")
+def req0071_review_completion(root: Path, skill: str) -> tuple[bool, str]:
+    """reviewing-skills 的 Step 1/2/3 完成判据不再硬要触发率 / delta 证据，改为静态降级。"""
+    p = skill_dir(root, skill) / "references" / "reviewing-skills.md"
+    if not p.is_file():
+        return False, "references/reviewing-skills.md 不存在"
+    text = read_text(p)
+    has_degrade = "（静态）" in text and "过期证据" in text
+    old = [
+        "正例与负例的触发率都过阈值（默认 0.5）",
+        "整技能对照有 delta 证据；每条指令都过了",
+        "全部 `（行为）` 项有 with/baseline delta 证据",
+    ]
+    still = [s for s in old if s in text]
+    return (has_degrade and not still), f"降级词={has_degrade} 旧硬要求残留={still}"
+
+
 # --------------------------------------------------------------------------- #
 # 发现与执行
 # --------------------------------------------------------------------------- #

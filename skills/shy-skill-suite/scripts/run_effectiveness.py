@@ -51,7 +51,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from agent_runner import build_argv
-from skill_utils import force_utf8_stdio
+from skill_utils import force_utf8_stdio, merge_evidence
 
 ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 SKILL_LOAD_RE = re.compile(r'Skill\s+"([^"]+)"')
@@ -193,6 +193,7 @@ def main() -> int:
     ap.add_argument("--detect-skill", help="目标技能名（缺省取用例集 skill_name）")
     ap.add_argument("--skills-dir", help="技能目录（配合 --disable-skills）")
     ap.add_argument("--disable-skills", help="整批期间临时移出的技能名（逗号分隔）")
+    ap.add_argument("--skill-dir", help="被评测技能的目录；给定则跑完写有效性轴证据到 <ws>/evidence.json")
     args = ap.parse_args()
 
     if not args.cmd and not args.model:
@@ -283,6 +284,11 @@ def main() -> int:
         if fresh_root and not args.keep:
             shutil.rmtree(cwd_root, ignore_errors=True)
 
+    evidence_path = None
+    if args.skill_dir:
+        evidence_path = merge_evidence(ws, args.skill_dir, ("effectiveness",),
+                                       model=args.model, skill_name=detect_skill or None)
+
     kept = bool(args.keep or not fresh_root)
     print(json.dumps({
         "status": "success" if errors == 0 else "partial",
@@ -290,6 +296,7 @@ def main() -> int:
         "cwd_root": str(cwd_root), "cwd_root_kept": kept,
         "disabled_skills": [str(s) for s, _ in moved],
         "ws": str(ws),
+        "evidence": str(evidence_path) if evidence_path else None,
     }, ensure_ascii=False, indent=2))
     return 0 if errors == 0 else 1
 
