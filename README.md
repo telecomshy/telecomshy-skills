@@ -17,19 +17,21 @@ TeleAgent 技能集合仓库（Agent Skills for TeleAgent）。
 
 ## 技能列表
 
-> **前置依赖（重要）**：下表中 `shy-*` 系列（除 `shy-setup-models`）**仅仅是对 mattpocock 工程技能包相应技能的增强**——原技能一字不动，在其上叠加「三跑对拍 / 盲评挑漏 / 独立裁决」等环节，上游升级自动生效。**使用前须先安装 mattpocock 技能包**（提供 `code-review` / `to-spec` / `to-tickets` / `improve-codebase-architecture` / `implement` / `implement-spec`），缺前置则这些技能无法工作。例外：`shy-implement` / `shy-implement-spec` 是**流程副本**而非封装（唯一差异：收尾审查改走 `shy-code-review`）；`shy-setup-models` **无前置**，独立可用。
+> **前置依赖（重要）**：下表中 `shy-*` 系列（除 `shy-setup-models`）**仅仅是对 mattpocock 工程技能包相应技能的增强**——原技能一字不动，在其上叠加「三跑对拍 / 盲评挑漏 / 独立裁决」等环节，上游升级自动生效。**使用前须先安装 mattpocock 技能包**（提供 `code-review` / `to-spec` / `to-tickets` / `improve-codebase-architecture` / `implement` / `implement-spec`），缺前置则这些技能无法工作。例外：`shy-implement` / `shy-implement-spec` 是**流程副本**而非封装（收尾审查带成本闸门）；`shy-setup-models` **无前置**，独立可用。
+>
+> **成本闸门**：增强环节按子代理数量消耗 token，各 shy-*（含副本的收尾审查）在**委派子代理前**报规模并确认——**默认原生轻跑**（不加对拍/盲评），仅当用户明确要求多跑才升级；用户本轮已明确要过则不再拦。
 
-| 技能 | 文件夹 | 前置依赖 | 说明 |
-| ---- | ------ | -------- | ---- |
-| 智识沉淀 (knowledge-distill) | [`skills/knowledge-distill`](skills/knowledge-distill) | — | 把对话沉淀为可检索、可关联、可长期复用的知识库笔记（Obsidian / 普通 Markdown / 有道云笔记） |
-| 技能开发套件 (shy-skill-suite) | [`skills/shy-skill-suite`](skills/shy-skill-suite) | — | 技能全流程操作规范：写技能需求文档（REQ-NNNN），以及生成/改写后复审技能、提出改进并迭代 |
-| 三跑代码审查 (shy-code-review) | [`skills/shy-code-review`](skills/shy-code-review) | mattpocock `code-review`（增强封装） | 两轴各 3 跑对拍 + 轴内裁决（共识免检、孤证必检），可选独立裁决与修复复核 |
-| 作者-盲评出规格 (shy-to-spec) | [`skills/shy-to-spec`](skills/shy-to-spec) | mattpocock `to-spec`（增强封装） | 主代理起草，3 个盲评者对照 brief 挑漏，分歧点抛回用户澄清 |
-| 作者-盲评拆工单 (shy-to-tickets) | [`skills/shy-to-tickets`](skills/shy-to-tickets) | mattpocock `to-tickets`（增强封装） | 覆盖矩阵 + 依赖边盲评，工单清单附需求覆盖矩阵 |
-| 三探索架构扫描 (shy-improve-codebase-architecture) | [`skills/shy-improve-codebase-architecture`](skills/shy-improve-codebase-architecture) | mattpocock `improve-codebase-architecture`（增强封装） | 三探索代理对拍，孤证候选过 deletion test 复核 |
-| 实施链入口 (shy-implement) | [`skills/shy-implement`](skills/shy-implement) | mattpocock `implement`（流程副本） | 上游流程副本，收尾审查改走 `shy-code-review` |
-| 规格实施链入口 (shy-implement-spec) | [`skills/shy-implement-spec`](skills/shy-implement-spec) | mattpocock `implement-spec`（流程副本） | 上游流程副本，收尾审查改走 `shy-code-review` |
-| 模型配置 (shy-setup-models) | [`skills/shy-setup-models`](skills/shy-setup-models) | —（无前置） | 一次性环节：插槽推荐制挑 A/B/C 对拍矩阵（≤6 行确认）、连通性探测、写用户级矩阵 |
+| 技能                                          | 文件夹                                                                                    | 前置依赖                                             | 说明                                                        |
+| ------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------- |
+| 智识沉淀 (knowledge-distill)                    | [`skills/knowledge-distill`](skills/knowledge-distill)                                 | —                                                | 把对话沉淀为可检索、可关联、可长期复用的知识库笔记（Obsidian / 普通 Markdown / 有道云笔记） |
+| 技能开发套件 (shy-skill-suite)                    | [`skills/shy-skill-suite`](skills/shy-skill-suite)                                     | —                                                | 技能全流程操作规范：写技能需求文档（REQ-NNNN），以及生成/改写后复审技能、提出改进并迭代          |
+| 三跑代码审查 (shy-code-review)                    | [`skills/shy-code-review`](skills/shy-code-review)                                     | mattpocock `code-review`（增强封装）                   | 两轴各 3 跑对拍 + 轴内裁决（共识免检、孤证必检），可选独立裁决与修复复核                   |
+| 作者-盲评出规格 (shy-to-spec)                      | [`skills/shy-to-spec`](skills/shy-to-spec)                                             | mattpocock `to-spec`（增强封装）                       | 主代理起草，3 个盲评者对照 brief 挑漏，分歧点抛回用户澄清                         |
+| 作者-盲评拆工单 (shy-to-tickets)                   | [`skills/shy-to-tickets`](skills/shy-to-tickets)                                       | mattpocock `to-tickets`（增强封装）                    | 覆盖矩阵 + 依赖边盲评，工单清单附需求覆盖矩阵                                  |
+| 三探索架构扫描 (shy-improve-codebase-architecture) | [`skills/shy-improve-codebase-architecture`](skills/shy-improve-codebase-architecture) | mattpocock `improve-codebase-architecture`（增强封装） | 三探索代理对拍，孤证候选过 deletion test 复核                            |
+| 实施链入口 (shy-implement)                       | [`skills/shy-implement`](skills/shy-implement)                                         | mattpocock `implement`（流程副本）                     | 上游流程副本，收尾审查改走 `shy-code-review`                           |
+| 规格实施链入口 (shy-implement-spec)                | [`skills/shy-implement-spec`](skills/shy-implement-spec)                               | mattpocock `implement-spec`（流程副本）                | 上游流程副本，收尾审查改走 `shy-code-review`                           |
+| 模型配置 (shy-setup-models)                     | [`skills/shy-setup-models`](skills/shy-setup-models)                                   | —（无前置）                                           | 一次性环节：插槽推荐制挑 A/B/C 对拍矩阵（≤6 行确认）、连通性探测、写用户级矩阵              |
 
 ## 目录结构
 
@@ -53,6 +55,7 @@ telecomshy-skills/
 ## 安装方法
 
 1. 克隆本仓库：
+   
    ```bash
    git clone https://github.com/telecomshy/telecomshy-skills.git
    ```
@@ -101,7 +104,7 @@ telecomshy-skills/
 
 > 完整流程见 [`skills/shy-code-review/SKILL.md`](skills/shy-code-review/SKILL.md)。
 
-### 作者-盲评出规格（shy-to-spec）
+### 盲评出规格（shy-to-spec）
 
 > 前置：mattpocock 的 `to-spec`。
 
@@ -109,7 +112,7 @@ telecomshy-skills/
 
 > 完整流程见 [`skills/shy-to-spec/SKILL.md`](skills/shy-to-spec/SKILL.md)。
 
-### 作者-盲评拆工单（shy-to-tickets）
+### 盲评拆工单（shy-to-tickets）
 
 > 前置：mattpocock 的 `to-tickets`。
 
@@ -142,5 +145,3 @@ shy 系列的一次性模型配置环节：按**插槽 + 推荐 + 确认**挑 A/
 ## 许可证
 
 [MIT](LICENSE)
-
-> AI生成
