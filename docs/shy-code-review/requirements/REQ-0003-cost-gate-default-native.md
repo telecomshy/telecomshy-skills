@@ -42,7 +42,7 @@ shy-code-review / shy-to-spec / shy-to-tickets / shy-improve-codebase-architectu
 
 - [x] 四个封装技能含「成本闸门（第 0 步）」节：报规模、默认原生轻跑、明确要求视为已确认 —— 本次交付事实（episode）
 - [x] 两个副本收尾审查为条件升级（默认原生 /code-review），血统注记同步 —— 判定：读文件（语义）
-- [x] 仓库路由反转为「默认原版」—— 判定：读 AGENTS.md 该节（语义）
+- [x] 仓库路由处置完毕：整节已删（发现性由各 shy-* 的 `description` 承担，成本闸门管住花钱）；**可证伪赌注**：若实测「链路内点名要对拍却不升级」断桥，回填一行映射即可 —— 判定：读 AGENTS.md 已无「Shy 技能路由」节（语义）
 - [x] README 前置依赖块含成本闸门说明 —— 判定：读 README（语义）
 - [ ] 真实触发一次闸门：未明确要求多跑时拦下并默认原生；明确要求时放行 —— 判定：看一次真实运行记录（行为）
 
@@ -57,6 +57,7 @@ shy-code-review / shy-to-spec / shy-to-tickets / shy-improve-codebase-architectu
 | 轮次 | 日期 | 本轮改动 | 证据 | 结论 / 下一步 |
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-23 | 四技能 + 两副本 + 路由反转 + README 落地成本闸门 | validate_skill ok；run_checks 绿 | （行为）项待首次真实触发，status 留 in-progress |
+| 2 | 2026-09-23 | 仓库「Shy 技能路由」整节删除——默认原生后路由近 no-op，发现性归 skill description，省常驻 token | AGENTS.md 已无该节；REQ 验收项 3 订正 | 断桥赌注若输（链内点名升级不生效）回填一行 |
 
 ## 备注 / 待办
 
