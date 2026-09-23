@@ -55,7 +55,7 @@ REQ-0044：同一批 near-miss 用 --trials 3 跑出 #101/#103 触发率 0.667�
 
 - [x] 每条 near-miss 至少跑 5 次、给出触发率（0–1），报告与命令写入迭代记录 — （行为）已落（见迭代记录 2–8 行；`--trials 5` 报告在 `desc-opt-nearmiss.json`）
 - [x] 稳定误触发项处置 — （语义）**结论更新**：`#107` 的"稳定误触发"经 `REQ-0067` 的 `skill-line` 检测证实为**测量假象**（agent 只在回答里提到技能名，并未加载）；20/20 负例全 0.0，无需补边界；`REQ-0044` 的 0.667 已更正为噪声
-- [ ] `python skills/shy-skill-suite/scripts/validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`
+- [x] `python skills/shy-skill-suite/scripts/validate_skill.py skills/shy-skill-suite` → `status: ok`、退出码 0 — `check:skill-validate-ok`（2026-09-21 台账 CL-0037 结清：`check:skill-validate-ok` 已绿，原 `[ ]` 未勾为勾选漂移）
 
 ## 范围外
 

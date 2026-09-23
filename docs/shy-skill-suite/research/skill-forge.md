@@ -2,6 +2,17 @@
 
 > **后续进展（2026-09-17 补记）**：本报告写后技能已变更——新增**可执行验收标准**（`scripts/run_checks.py` + REQ 里 `check:` / `（行为）` / `（语义）` 三类标记）、「P2 不阻断」停止规则，以及 grader 兼评评测集 / 抽取隐式主张、analyzer notes 落地（本报告 §4.1/§4.2 的部分候选已落地）。现状见 `REQ-0030` 迭代记录与 `skills/shy-skill-suite/references/reviewing-skills.md`。
 
+> **源码复核（2026-09-20 补记）**：重克隆 `AgriciDaniel/skill-forge`（commit `2872ee9`，与 §0 锁定版本一致，未变），对**重叠功能的源码**逐行复核，结论全部成立并补充细节：
+>
+> - **`aggregate_benchmark.py` 的 `token_savings_ratio` 反义命名已实测确认**：`skill-forge/scripts/aggregate_benchmark.py:203-204` 用 `with_token_mean / baseline_token_mean` 却命名 `token_savings_ratio`——`>1` 表示带技能**多花** token。shy 侧已改名 `token_ratio` 并注明 `>1 = 多花`（`scripts/aggregate_benchmark.py:7,203`）。
+> - **`thresholds_met` 只在文档、脚本确实不产出**：复核 `aggregate_benchmark.py:206-229` 的 `summary`，无此字段；「阈值门控」无程序化落地，靠 agent 手算。
+> - **`validate_skill.py` 两套评分口径并存已实测**：脚本 flat 扣分（CRITICAL−20/HIGH−10/MEDIUM−5/LOW−2，`:291-305`）与 SKILL.md 加权 rubric（`:101-108`）不是一回事，同一技能会得到两个"健康分"。
+> - **`optimize_description.py` 实为单轮已实测**：`for i in range(max_iterations)` 在 `:244-245` 无条件 `break`（注释自认"Claude iterates calling this script per round"）。
+> - **`skill_utils.py` 复制而非复用已实测**：`validate_skill.py:18-91` / `convert_skill.py` 各自内联前端解析器，未调用共享模块。
+> - **shy 侧新增 `run_checks.py`（可执行验收标准）**：REQ 的 `## 验收标准` 里 `check:<name>` 条目一次机械跑完、秒级出结果；Spec 轴"靠跑不靠读"。forge 无任何等价物——这是 §3 对照表与 §4 候选均未涵盖的**新增差异**，已并入 §3 表。
+>
+> 复核指令与结果见 §7「证伪检查命令与结果」追加段。
+
 > 范围：为 `shy-skill-suite`（技能开发套件）找可借鉴的功能。逐项拆解对标物 `AgriciDaniel/skill-forge` 的功能、产物与门禁，再与 `shy-skill-suite` 对照，给出「可直接吸收 / 需改造 / 明确不吸收」三类候选。
 > 对标物锁定依据：`docs/shy-skill-suite/requirements/REQ-0001`（「skill-forge 是 plan → build 直接生成整套文件」）、`REQ-0005`（「skill-forge 的 8 个 agent」）、`REQ-0007`（「skill-forge 的 comparator」）、`lifecycle.md`（「skill-forge 有 eval 驱动的迭代」）——四条指纹全部只命中本仓库：8 个 agent（architect/writer/validator/converter/executor/grader/analyzer/comparator）、Tier 1–4、`plan → build`、`comparator`。
 > 一手来源：`git clone --depth 1 https://github.com/AgriciDaniel/skill-forge`（commit `2872ee9e1be8b81d48d8e6f2fe6c96225885e87b`，main，MIT，`CHANGELOG` 最新 `v1.1.0`）。
@@ -154,6 +165,7 @@ plan(设计) → build(生成) → review(审计) → eval(功能评测) → ben
 | --- | --- | --- | --- |
 | 需求文档（活文档） | 无 | **REQ-NNNN + 状态机 + 迭代记录**（`writing-requirements.md`） | shy 独有 |
 | 需求跟踪 / frontier | 无 | **`track_requirements.py`**（frontier / 悬空 `blocked_by`） | shy 独有 |
+| 验收标准的可执行门 | 无（验收只停在需求散文） | **`run_checks.py`**（REQ 里 `check:` 标签 → 机械跑、秒级；Spec 轴"靠跑不靠读"） | shy 独有 |
 | 逼问 | plan 的 5 问 discovery（`plan:14-22`） | **设计树 + frontier + 三动作**（`grilling.md`） | shy 更强 |
 | 脚手架 | `init_skill.py --tier 1-4`（生成整套树） | `scaffold_skill.py`（只生成 SKILL.md） | forge 更强 |
 | Tier 分层 | **Tier 1–4 + 4 套模板** | 只在 `lifecycle.md` 用 Tier 3/4 概念，无模板 | forge 更强 |
@@ -234,3 +246,9 @@ plan(设计) → build(生成) → review(审计) → eval(功能评测) → ben
 - 证伪检查命令与结果：
   - `Get-ChildItem skills/shy-skill-suite -Recurse` → 只有 `references/`、`scripts/`、`SKILL.md`（无 `agents/`、`assets/`）。
   - grep `package_skill|convert_skill|0-100|health score|assets/templates` 于 `skills/shy-skill-suite` → 无命中。
+  - **2026-09-20 复核追加**（克隆 `AgriciDaniel/skill-forge` @ `2872ee9`，`%TEMP%\opencode\skill-forge-src`）：
+    - `git rev-parse HEAD` → `2872ee9e1be8b81d48d8e6f2fe6c96225885e87b`（与报告锁定版本一致，无漂移）。
+    - `Select-String token_savings_ratio aggregate_benchmark.py` → `:203-204` 按 `with/baseline` 计算；`Select-String thresholds_met aggregate_benchmark.py` → 输出 schema 无此字段（只在 benchmark 子技能 SKILL.md）。
+    - `Select-String "break|for |while " optimize_description.py` → `:244-245` 主循环无条件 `break`。
+    - 复核 `validate_skill.py:291-305`（flat 扣分）与 `SKILL.md:101-108`（加权 rubric）两套口径并存；`validate_skill.py:18-91` 内联解析器。
+    - shy 侧 grep `run_checks.py` → `scripts/run_checks.py` 存在（1664 行），forge 无同名文件。

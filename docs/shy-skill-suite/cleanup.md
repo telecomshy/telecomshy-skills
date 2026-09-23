@@ -42,6 +42,7 @@
 | CL-0034 | `dup:converged-formula` | `converged` 公式在 `glossary.md:28` / `reviewing-skills.md:168` / `lifecycle.md:108` 各写一遍，与 glossary「含义以本文件为准」冲突 | iteration-4 | **fixed** | 2026-09-18 | 公式只留 `glossary.md`；Step 8 与 `lifecycle.md` 改指针 |
 | CL-0035 | `cache:SKILL-scripts-line` | `SKILL.md:41` 把 8 类脚本职责全列一遍；`running-evals.md:7-12` 与各脚本 `--help` 已可查，属 cache | iteration-4 | **fixed** | 2026-09-18 | 压成指针：接口看 `--help`、评测清单看 `running-evals.md`、Gate 三件套 |
 | CL-0036 | `gap:lifecycle-stage6` | `lifecycle.md` 阶段 6（复盘）只有触发条件、无完成判据；阶段 0–5 都有 | iteration-4 | **fixed** | 2026-09-18 | 阶段 6 补完成判据（落 REQ / 台账 + 过 Gate + track ok） |
+| CL-0037 | `bookkeep:REQ-0047-unchecked` | `REQ-0047` 验收第 3 条「`validate_skill.py ...` → `status: ok`」`[ ]` 未勾，但 `check:skill-validate-ok` 已绿（勾选漂移） | iteration-5 | **fixed** | 2026-09-21 | 复验：`run_checks.py --root . --skill shy-skill-suite` → `[PASS] REQ-0002 skill-validate-ok rc=0 status=ok`；已勾 `[x]` 并注明（2026-09-21 本复审 Step 8 台账机械项当轮结清） |
 
 ## 备注
 
