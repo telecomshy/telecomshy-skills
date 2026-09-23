@@ -21,6 +21,13 @@ TeleAgent 技能集合仓库（Agent Skills for TeleAgent）。
 | ---- | ------ | ---- |
 | 智识沉淀 (knowledge-distill) | [`skills/knowledge-distill`](skills/knowledge-distill) | 把对话沉淀为可检索、可关联、可长期复用的知识库笔记（Obsidian / 普通 Markdown / 有道云笔记） |
 | 技能开发套件 (shy-skill-suite) | [`skills/shy-skill-suite`](skills/shy-skill-suite) | 技能全流程操作规范：写技能需求文档（REQ-NNNN），以及生成/改写后复审技能、提出改进并迭代 |
+| 三跑代码审查 (shy-code-review) | [`skills/shy-code-review`](skills/shy-code-review) | `code-review` 的强化封装：两轴各 3 跑对拍 + 轴内裁决（共识免检、孤证必检），可选独立裁决与修复复核 |
+| 作者-盲评出规格 (shy-to-spec) | [`skills/shy-to-spec`](skills/shy-to-spec) | `to-spec` 的强化封装：主代理起草，3 个盲评者对照 brief 挑漏，分歧点抛回用户澄清 |
+| 作者-盲评拆工单 (shy-to-tickets) | [`skills/shy-to-tickets`](skills/shy-to-tickets) | `to-tickets` 的强化封装：覆盖矩阵 + 依赖边盲评，工单清单附需求覆盖矩阵 |
+| 三探索架构扫描 (shy-improve-codebase-architecture) | [`skills/shy-improve-codebase-architecture`](skills/shy-improve-codebase-architecture) | `improve-codebase-architecture` 的强化封装：三探索代理对拍，孤证候选过 deletion test 复核 |
+| 实施链入口 (shy-implement) | [`skills/shy-implement`](skills/shy-implement) | `implement` 的流程副本，收尾审查改走 `shy-code-review` |
+| 规格实施链入口 (shy-implement-spec) | [`skills/shy-implement-spec`](skills/shy-implement-spec) | `implement-spec` 的流程副本，收尾审查改走 `shy-code-review` |
+| 模型配置 (shy-setup-models) | [`skills/shy-setup-models`](skills/shy-setup-models) | 一次性环节：插槽推荐制挑 A/B/C 对拍矩阵（≤6 行确认）、连通性探测、写用户级矩阵 |
 
 ## 目录结构
 
@@ -29,12 +36,12 @@ telecomshy-skills/
 ├── README.md            # 仓库级人类说明
 ├── AGENTS.md            # 面向 agent 的仓库约定（目录约定等）
 ├── LICENSE              # MIT 许可证
-├── docs/
-│   └── knowledge-distill/
+├── docs/                # 每技能的研发记录（不随技能部署）
+│   └── <skill>/
 │       ├── research/        # 调研报告（research 技能产出，仅本地留存）
 │       └── requirements/    # 技能需求文档（REQ-NNNN-*.md）
-└── skills/              # 所有技能存放于此
-    └── knowledge-distill/
+└── skills/              # 所有技能存放于此（每技能 = 独立自包含文件夹）
+    └── <skill>/
         ├── SKILL.md
         ├── scripts/
         ├── references/
@@ -81,6 +88,52 @@ telecomshy-skills/
 - **复审技能**：AI 生成 / 改写技能后，按"触发 + 有效性"两问给出有证据的判断（真实轨迹、有/无技能对照基线、预算视角 no-op/cache/sprawl/sediment），并产出带优先级的改进清单。
 
 > 完整规范见 [`skills/shy-skill-suite/SKILL.md`](skills/shy-skill-suite/SKILL.md) 及其 `references/`。
+
+### 三跑代码审查（shy-code-review）
+
+> 前置：mattpocock 工程技能包的 `code-review`（封装运行时加载上游流程，原技能不动）。
+
+两轴（Standards / Spec）审查的强化封装：**每轴 3 个评审子代理并发对拍**（模型矩阵 A/B/C，缺一凑满并标注）→ 轴内归并 → **共识免检、孤证必检**逐条裁决 → 按轴分开报告（票数 + 裁决 + 对拍统计）。可选第 6 步：**独立裁决**（不见主代理裁决、防锚定重裁）与**修复复核**（只读核 fix diff）。默认 3 跑的实测依据见 [`docs/shy-code-review/research/model-variance-experiment.md`](docs/shy-code-review/research/model-variance-experiment.md)。
+
+> 完整流程见 [`skills/shy-code-review/SKILL.md`](skills/shy-code-review/SKILL.md)。
+
+### 作者-盲评出规格（shy-to-spec）
+
+> 前置：mattpocock 的 `to-spec`。
+
+主代理起草规格（独占对话上下文，起草不外包）→ 物化 brief（原话引述 / 已定决策 / 约束 / 未决问题，只收原料不下结论）→ **3 个盲评者**对照 brief 挑「缺失 / 加戏 / 矛盾」→ 主代理裁决合入；盲评者分歧 = 对话歧义，整理成问题抛回用户澄清。收尾按上游发布 issue。
+
+> 完整流程见 [`skills/shy-to-spec/SKILL.md`](skills/shy-to-spec/SKILL.md)。
+
+### 作者-盲评拆工单（shy-to-tickets）
+
+> 前置：mattpocock 的 `to-tickets`。
+
+拆分工单后 **3 个盲评者**各出两份机械检查：**需求覆盖矩阵**（找零覆盖行）与**依赖边检查**（环 / 断链 / 漏边）；裁决合入后，工单清单末尾附覆盖矩阵交用户确认。
+
+> 完整流程见 [`skills/shy-to-tickets/SKILL.md`](skills/shy-to-tickets/SKILL.md)。
+
+### 三探索架构扫描（shy-improve-codebase-architecture）
+
+> 前置：mattpocock 的 `improve-codebase-architecture`（及其 `codebase-design` 词汇表）。
+
+**3 个探索代理**各走一遍代码库找摩擦点 → 归并标票数（`3/3`、`2/3`、`1/3`）→ 孤证候选逐张过 **deletion test** 复核 → 按上游出 HTML 报告（卡片带票数徽章，孤证卡注明复核结论）。
+
+> 完整流程见 [`skills/shy-improve-codebase-architecture/SKILL.md`](skills/shy-improve-codebase-architecture/SKILL.md)。
+
+### 实施链入口（shy-implement / shy-implement-spec）
+
+> 前置：mattpocock 的 `implement` / `implement-spec`。
+
+上游流程的**逐字副本**，唯一差异：收尾审查改走 `shy-code-review`（正文自带指针，硬保证实施链以对拍审查收尾）。上游更新时人工同步——副本顶部的血统注记标出来源与差异位置。
+
+> 完整流程见 [`skills/shy-implement/SKILL.md`](skills/shy-implement/SKILL.md) / [`skills/shy-implement-spec/SKILL.md`](skills/shy-implement-spec/SKILL.md)。
+
+### 模型配置（shy-setup-models）
+
+shy 系列的一次性模型配置环节：按**插槽 + 推荐 + 确认**挑 A/B/C 三个对拍模型（用户最多看 6 行候选，可直接报模型 ID 跳过全程）、逐槽**连通性探测**、写**用户级矩阵** `~/.config/opencode/shy-models.md`（跟人走）。模型 ID 查找顺序（各 shy-* 执行）：目标项目 `docs/agents/subagent-models.md` → 用户级矩阵 → 问用户 / 同模型凑满并标注。
+
+> 完整流程见 [`skills/shy-setup-models/SKILL.md`](skills/shy-setup-models/SKILL.md)。
 
 ## 许可证
 
