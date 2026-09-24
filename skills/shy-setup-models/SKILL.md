@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 给 shy 系列（`shy-code-review` / `shy-to-spec` / `shy-to-tickets` / `shy-improve-codebase-architecture`）配置子代理模型矩阵。**一次性环节**（先例：`setup-matt-pocock-skills`）；换机器 / 换凭据后重跑即可。
 
-产物是**用户级矩阵文件** `~/.config/opencode/shy-models.md`（跟人走）。查找顺序由各 `shy-*` 技能执行：仓库 `docs/agents/subagent-models.md`（若有，优先生效）→ 本文件 → 问用户 / 同模型凑满。
+产物是**用户级矩阵文件** `~/.config/opencode/shy-models.md`（跟人走），也是各 `shy-*` 技能**唯一**的模型来源（不读仓库级文件）。文件缺失时由各 `shy-*` 先问用户（并建议跑本技能），问不出再同模型凑满并标注。
 
 大目录**不浏览、只确认**：模型目录动辄几百条，交互设计是「插槽 + 推荐 + 确认」，用户看到的候选不超过 6 行。
 
@@ -48,4 +48,4 @@ disable-model-invocation: true
 
 - 查不到想要的模型：加 `all: true` 再查一次；查无则如实说——不猜 ID（ID 会漂移，用前必须过目录）。
 - 只挑目录里**已可用**的模型；provider 与凭据归 OpenCode 自己管，本技能不改 `opencode.jsonc`。
-- shy-* 技能找不到任何约定时的兜底不变：问用户或同模型凑满并标注。
+- 用户级矩阵缺失时的兜底：先问用户（并建议跑本技能），问不出再同模型凑满并标注。

@@ -48,7 +48,7 @@ related: []
 - [x] `validate_skill.py <技能目录>` 输出 `status: ok` —— 判定：跑该命令看输出（语义）
 - [x] SKILL.md 逐条覆盖「行为与步骤」2–6 —— 判定：对照本节逐条读（语义）
 - [x] 上游 `~/.agents/skills/code-review/` 未被本次交付写入 —— 本次交付事实（episode）
-- [x] 外圈配套齐：`subagent-models.md` 运行 1–3 矩阵 + 降级行、`AGENTS.md`「Shy 技能路由」节、`/shy-code-review` command —— 判定：逐个文件读（语义）
+- [x] 外圈配套齐：`subagent-models.md` 运行 1–3 矩阵 + 降级行、`AGENTS.md`「Shy 技能路由」节、`/shy-code-review` command —— 判定：逐个文件读（语义）。（其中 `subagent-models.md` 外圈项**已被 REQ-0002 取代**）
 - [x] 真实跑一次 `shy-code-review`：两轴报告齐、每条 finding 带票数与裁决、被剔除的有依据 —— 判定：看一次真实运行的报告（行为）
 
 ## 范围外
@@ -67,6 +67,7 @@ related: []
 | 2 | 2026-09-23 | 默认遍数 2 → 3（对齐实验结论「3 遍质量甜点」），加快速模式 2 跑 + 补跑建议 | 本轮 Gate 重跑绿 | （行为）项仍待首次真实运行取证 |
 | 3 | 2026-09-23 | 模型矩阵改 A/B/C 三模型各一、缺一凑满 3 跑；补 `/shy-code-review` command；AGENTS.md 加「Shy 技能路由」（`implement` 链点名 `code-review` 时改走本技能） | 本轮 Gate 重跑绿 | （行为）项仍待首验，status 留 in-progress |
 | 4 | 2026-09-23 | 首次真实运行（shy-implement 链收尾审查，2 轴 × 3 跑矩阵 A/B/C 全成功、零降级，裁决 12 条采信 / 4 条剔除） | 本次会话的两轴报告 | （行为）项已验收，转 done |
+| 5 | 2026-09-24 | 模型来源收敛为**用户级矩阵唯一来源**（REQ-0002）：本技能不再读仓库级 `docs/agents/subagent-models.md` | 本轮 Gate 重跑绿 | 外圈 `subagent-models.md` 项随之作废；status 保持 done |
 
 ## 备注 / 待办
 

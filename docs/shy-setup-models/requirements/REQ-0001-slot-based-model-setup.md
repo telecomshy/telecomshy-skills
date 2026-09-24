@@ -45,7 +45,7 @@ shy 系列的子代理模型 ID 此前只住**仓库级** `docs/agents/subagent-
 ## 验收标准
 
 - [x] `shy-setup-models` SKILL.md 落盘：插槽推荐制（≤6 行确认）、逃生门、探测、矩阵格式、完成判据与边界 —— 本次交付事实（episode）
-- [x] 四个 shy 技能的 ID 查找顺序均为三级（仓库约定 → 用户级矩阵 → 问用户）—— 判定：逐文件 grep 查找顺序句（语义）
+- [x] 四个 shy 技能的 ID 查找顺序均为三级（仓库约定 → 用户级矩阵 → 问用户）—— 判定：逐文件 grep 查找顺序句（语义）。**（已被 REQ-0002 取代）**
 - [x] `validate_skill.py` 对 shy-setup-models 输出 `status: ok` —— 判定：跑该命令看输出（语义）
 - [x] 真实跑一次 `/shy-setup-models`：产出用户级矩阵且三槽带 why、探测结果落盘 —— 判定：看一次真实运行的矩阵文件（行为）
 
@@ -61,6 +61,7 @@ shy 系列的子代理模型 ID 此前只住**仓库级** `docs/agents/subagent-
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-23 | 骨架 + SKILL.md + 四技能查找顺序升级 + 本 REQ 落盘 | validate_skill `status: ok`；run_checks 绿 | （行为）项待首验（下次真实跑 /shy-setup-models 时勾销），status 留 in-progress |
 | 2 | 2026-09-23 | 首次真实运行：三 ID 目录核实（均 active）+ 三槽探测全通 + 写用户级矩阵 `~/.config/opencode/shy-models.md`（A/B/C 各带 why 与降级备注） | 矩阵文件 + 三份探测回应 | 全部验收过，转 done |
+| 3 | 2026-09-24 | 顺序变更为**用户级矩阵唯一来源**（REQ-0002）：删除仓库级 `docs/agents/subagent-models.md` 的优先地位；5 处技能表述同步 | 本轮 Gate 重跑绿；`grep -rn "subagent-models" skills/` 无输出 | 原「三级顺序」验收由 REQ-0002 取代；status 保持 done |
 
 ## 备注 / 待办
 

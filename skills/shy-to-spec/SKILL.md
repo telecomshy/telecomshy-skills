@@ -36,7 +36,7 @@ disable-model-invocation: true
 
 ### 3. 盲评（3 个子代理）
 
-并行、互不可见，输入 = brief + 草稿原文，模型 = **三个不同模型各一**（ID 查找顺序：仓库 `docs/agents/subagent-models.md` → 用户级 `~/.config/opencode/shy-models.md` → 问用户；某模型不可用则凑满 3 个：一模型 2 个 + 另一模型 1 个）。解析模型 ID 先查模型目录，看不到想要的加 `all: true`；不猜 ID。任务只有一个——对照 brief 挑草稿的漏，每条给位置 + 引语：
+并行、互不可见，输入 = brief + 草稿原文，模型 = **三个不同模型各一**（ID 来源：用户级 `~/.config/opencode/shy-models.md`，由 `/shy-setup-models` 生成；文件缺失则先问用户并建议跑 `/shy-setup-models`，问不出再同模型凑满；某模型不可用则凑满 3 个：一模型 2 个 + 另一模型 1 个）。解析模型 ID 先查模型目录，看不到想要的加 `all: true`；不猜 ID。任务只有一个——对照 brief 挑草稿的漏，每条给位置 + 引语：
 
 - **缺失**：brief / 引语里有、草稿没有的需求；
 - **加戏**：草稿有、brief 里找不到依据的内容；
