@@ -1008,10 +1008,10 @@ def req0071_evidence_meta(root: Path, skill: str) -> tuple[bool, str]:
 
 @check("req0071-eval-command")
 def req0071_eval_command(root: Path, skill: str) -> tuple[bool, str]:
-    """commands/shy-eval.md 存在：加载技能 + $ARGUMENTS + 触发/有效性/两者参数。"""
-    p = skill_dir(root, skill) / "commands" / "shy-eval.md"
+    """commands/shy-skill-eval.md 存在：加载技能 + $ARGUMENTS + 触发/有效性/两者参数。"""
+    p = skill_dir(root, skill) / "commands" / "shy-skill-eval.md"
     if not p.is_file():
-        return False, "commands/shy-eval.md 不存在"
+        return False, "commands/shy-skill-eval.md 不存在"
     text = read_text(p)
     need = ["$ARGUMENTS", "触发", "有效性", "两者", "references/running-evals.md", "skill"]
     missing = [n for n in need if n not in text]
@@ -1034,14 +1034,14 @@ def req0071_glossary_boundary(root: Path, skill: str) -> tuple[bool, str]:
 
 @check("req0071-no-auto-eval")
 def req0071_no_auto_eval(root: Path, skill: str) -> tuple[bool, str]:
-    """lifecycle 斜杠快捷表含 /shy-eval，且无「里程碑 / 收敛点」作为 eval 自动触发。"""
+    """lifecycle 斜杠快捷表含 /shy-skill-eval，且无「里程碑 / 收敛点」作为 eval 自动触发。"""
     p = skill_dir(root, skill) / "references" / "lifecycle.md"
     if not p.is_file():
         return False, "references/lifecycle.md 不存在"
     text = read_text(p)
-    has_cmd = "/shy-eval" in text
+    has_cmd = "/shy-skill-eval" in text
     auto = [w for w in ("里程碑", "收敛点") if w in text]
-    return (has_cmd and not auto), f"含/shy-eval={has_cmd} 自动触发词残留={auto}"
+    return (has_cmd and not auto), f"含/shy-skill-eval={has_cmd} 自动触发词残留={auto}"
 
 
 @check("req0071-review-completion")
@@ -1093,12 +1093,12 @@ def _render_reqs_sample(root: Path, skill: str) -> tuple[int, bool, str, str]:
 
 @check("req0072-reqs-command")
 def req0072_reqs_command(root: Path, skill: str) -> tuple[bool, str]:
-    """commands/shy-reqs.md 存在、shy-next.md 删除；含加载技能 + --skill / --kind。"""
+    """commands/shy-skill-reqs.md 存在、shy-next.md 删除；含加载技能 + --skill / --kind。"""
     sd = skill_dir(root, skill)
-    new = sd / "commands" / "shy-reqs.md"
+    new = sd / "commands" / "shy-skill-reqs.md"
     old = sd / "commands" / "shy-next.md"
     if not new.is_file():
-        return False, "commands/shy-reqs.md 不存在"
+        return False, "commands/shy-skill-reqs.md 不存在"
     if old.exists():
         return False, "commands/shy-next.md 仍存在"
     text = read_text(new)
@@ -1163,14 +1163,14 @@ def req0072_gitignore(root: Path, skill: str) -> tuple[bool, str]:
 
 @check("req0072-skill-routing")
 def req0072_skill_routing(root: Path, skill: str) -> tuple[bool, str]:
-    """lifecycle.md 斜杠快捷表与 SKILL.md 资源区含 /shy-reqs、不再有 shy-next。"""
+    """lifecycle.md 斜杠快捷表与 SKILL.md 资源区含 /shy-skill-reqs、不再有 shy-next。"""
     sd = skill_dir(root, skill)
     life = read_text(sd / "references" / "lifecycle.md")
     skillmd = read_text(sd / "SKILL.md")
     checks = {
-        "lifecycle含/shy-reqs": "/shy-reqs" in life,
+        "lifecycle含/shy-skill-reqs": "/shy-skill-reqs" in life,
         "lifecycle无shy-next": "shy-next" not in life,
-        "SKILL含shy-reqs": "shy-reqs" in skillmd,
+        "SKILL含shy-skill-reqs": "shy-skill-reqs" in skillmd,
         "SKILL无shy-next": "shy-next" not in skillmd,
     }
     failed = [k for k, v in checks.items() if not v]
@@ -1288,10 +1288,10 @@ def req0073_gate_preserved(root: Path, skill: str) -> tuple[bool, str]:
 
 @check("req0073-review-closing")
 def req0073_review_closing(root: Path, skill: str) -> tuple[bool, str]:
-    """commands/shy-review.md 收尾为「等用户确认分拣后实施」，不指向 /shy-apply。"""
-    p = skill_dir(root, skill) / "commands" / "shy-review.md"
+    """commands/shy-skill-review.md 收尾为「等用户确认分拣后实施」，不指向 /shy-apply。"""
+    p = skill_dir(root, skill) / "commands" / "shy-skill-review.md"
     if not p.is_file():
-        return False, "commands/shy-review.md 不存在"
+        return False, "commands/shy-skill-review.md 不存在"
     text = read_text(p)
     no_apply = "shy-apply" not in text
     has_confirm = ("确认" in text) and ("实施" in text)
@@ -1308,10 +1308,10 @@ def req0073_skill_commands(root: Path, skill: str) -> tuple[bool, str]:
 
 @check("req0075-triage-scope")
 def req0075_triage_scope(root: Path, skill: str) -> tuple[bool, str]:
-    """shy-review 不再无条件「不自动修改」；限定为技能行为 / findings，台账机械项当轮结清。"""
-    p = skill_dir(root, skill) / "commands" / "shy-review.md"
+    """shy-skill-review 不再无条件「不自动修改」；限定为技能行为 / findings，台账机械项当轮结清。"""
+    p = skill_dir(root, skill) / "commands" / "shy-skill-review.md"
     if not p.is_file():
-        return False, "commands/shy-review.md 不存在"
+        return False, "commands/shy-skill-review.md 不存在"
     text = read_text(p)
     need = ["不自动修改", "技能行为", "findings", "台账", "当轮结清"]
     missing = [n for n in need if n not in text]
@@ -1356,10 +1356,10 @@ def req0075_lifecycle(root: Path, skill: str) -> tuple[bool, str]:
 
 @check("req0076-start-command")
 def req0076_start_command(root: Path, skill: str) -> tuple[bool, str]:
-    """commands/shy-start.md 存在：加载技能 + `$ARGUMENTS` + 技能名可选 + 同一流程。"""
-    p = skill_dir(root, skill) / "commands" / "shy-start.md"
+    """commands/shy-skill-start.md 存在：加载技能 + `$ARGUMENTS` + 技能名可选 + 同一流程。"""
+    p = skill_dir(root, skill) / "commands" / "shy-skill-start.md"
     if not p.is_file():
-        return False, "commands/shy-start.md 不存在"
+        return False, "commands/shy-skill-start.md 不存在"
     text = read_text(p)
     need = ["$ARGUMENTS", "skill", "可选", "逼问", "落需求", "起骨架", "references/lifecycle.md"]
     missing = [n for n in need if n not in text]
@@ -1422,21 +1422,64 @@ def req0076_idempotent(root: Path, skill: str) -> tuple[bool, str]:
 
 @check("req0076-lifecycle")
 def req0076_lifecycle(root: Path, skill: str) -> tuple[bool, str]:
-    """lifecycle 斜杠快捷表含 `/shy-start`；阶段 2 说明开发层骨架。"""
+    """lifecycle 斜杠快捷表含 `/shy-skill-start`；阶段 2 说明开发层骨架。"""
     p = skill_dir(root, skill) / "references" / "lifecycle.md"
     if not p.is_file():
         return False, "references/lifecycle.md 不存在"
     text = read_text(p)
-    has_cmd = "/shy-start" in text
+    has_cmd = "/shy-skill-start" in text
     has_layer = "开发层" in text and "docs/<name>/requirements/" in text
-    return (has_cmd and has_layer), f"含/shy-start={has_cmd} 含开发层={has_layer}"
+    return (has_cmd and has_layer), f"含/shy-skill-start={has_cmd} 含开发层={has_layer}"
 
 
 @check("req0076-skill-resources")
 def req0076_skill_resources(root: Path, skill: str) -> tuple[bool, str]:
-    """SKILL.md 资源区 commands 列表含 `shy-start`。"""
+    """SKILL.md 资源区 commands 列表含 `shy-skill-start`。"""
     text = read_text(skill_dir(root, skill) / "SKILL.md")
-    return ("shy-start" in text), f"SKILL.md 含 shy-start={'shy-start' in text}"
+    return ("shy-skill-start" in text), f"SKILL.md 含 shy-skill-start={'shy-skill-start' in text}"
+
+
+@check("req0077-command-names")
+def req0077_command_names(root: Path, skill: str) -> tuple[bool, str]:
+    """5 个斜杠命令采用 `shy-skill-<分支>.md` 命名；旧名 `shy-<分支>.md` 不存在。"""
+    sd = skill_dir(root, skill) / "commands"
+    verbs = ("eval", "grill", "reqs", "review", "start")
+    missing = [v for v in verbs if not (sd / f"shy-skill-{v}.md").is_file()]
+    stale = [v for v in verbs if (sd / f"shy-{v}.md").exists()]
+    return (not missing and not stale), f"缺={missing} 旧名残留={stale}"
+
+
+@check("req0077-arg-ask")
+def req0077_arg_ask(root: Path, skill: str) -> tuple[bool, str]:
+    """必填参数的命令（eval / grill / review）写明：未给参数时直接询问用户。"""
+    sd = skill_dir(root, skill) / "commands"
+    bad = []
+    for v in ("eval", "grill", "review"):
+        p = sd / f"shy-skill-{v}.md"
+        if not p.is_file():
+            bad.append(f"{v}:缺文件")
+        elif "直接询问用户" not in read_text(p):
+            bad.append(f"{v}:无询问")
+    return (not bad), f"未过={bad}"
+
+
+@check("req0079-review-gate")
+def req0079_review_gate(root: Path, skill: str) -> tuple[bool, str]:
+    """复审闸门含新口径：建议 3 轮 / 默认单轮 / 每次问子代理模型（默认主代理模型）/ 仅剪枝+有效性 / 必配独立裁判 / 不读 shy-models.md。"""
+    rev = read_text(skill_dir(root, skill) / "references" / "reviewing-skills.md")
+    need = ["按需多跑", "建议 3 轮", "单轮", "剪枝", "有效性", "独立裁判", "主代理",
+            "子代理模型", "并发", "不读", "shy-models.md"]
+    missing = [n for n in need if n not in rev]
+    return (not missing), f"缺={missing}"
+
+
+@check("req0078-glossary-terms")
+def req0078_glossary_terms(root: Path, skill: str) -> tuple[bool, str]:
+    """glossary 含 剪枝 / 多跑（并集）/ 独立裁判 三条术语。"""
+    g = read_text(skill_dir(root, skill) / "references" / "glossary.md")
+    need = ["**剪枝**", "**多跑（并集）**", "**独立裁判**"]
+    missing = [n for n in need if n not in g]
+    return (not missing), f"缺={missing}"
 
 
 # --------------------------------------------------------------------------- #

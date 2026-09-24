@@ -245,7 +245,7 @@ def render_overview(result: dict[str, Any], focus_skill: str | None = None) -> s
 
     纯文本（不是 JSON）：给人扫一眼"做到哪了"。脚本仍只做排期，不出白话——
     唯一例外是 `--skill` 聚焦时给一行**白话 kind 计数摘要**（如
-    `shy-skill-suite：新增功能 3 / 修复缺陷 1`），供 `/shy-reqs` 直接引用。
+    `shy-skill-suite：新增功能 3 / 修复缺陷 1`），供 `/shy-skill-reqs` 直接引用。
     """
     lines: list[str] = []
     by_kind = result.get("by_kind") or {}

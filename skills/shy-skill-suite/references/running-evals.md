@@ -1,10 +1,10 @@
 # 运行评测（独立取证路径）
 
-评测（eval）是**独立、user-invoked** 的取证路径（`/shy-eval`）：只产触发率 / with_skill vs baseline 的 delta，**不改技能、不提修复建议**。它给复审的 Step 1（触发）与 Step 2（有效性）提供**可选**证据——复审默认静态，缺证据显式降级，不强制跑 eval。脚本在 `scripts/` 下，纯标准库、无第三方依赖。
+评测（eval）是**独立、user-invoked** 的取证路径（`/shy-skill-eval`）：只产触发率 / with_skill vs baseline 的 delta，**不改技能、不提修复建议**。它给复审的 Step 1（触发）与 Step 2（有效性）提供**可选**证据——复审默认静态，缺证据显式降级，不强制跑 eval。脚本在 `scripts/` 下，纯标准库、无第三方依赖。
 
-## 独立评测路径（`/shy-eval`）
+## 独立评测路径（`/shy-skill-eval`）
 
-`/shy-eval <skill> [触发|有效性|两者]`（默认两者）：加载本技能 → 调 `optimize_description.py`（触发轴）/ `run_effectiveness.py`（有效性轴）→ `aggregate_benchmark.py` 聚合 → `render_report.py` 渲染并打开报告。**与 `/shy-review` 互不调用**。
+`/shy-skill-eval <skill> [触发|有效性|两者]`（默认两者）：加载本技能 → 调 `optimize_description.py`（触发轴）/ `run_effectiveness.py`（有效性轴）→ `aggregate_benchmark.py` 聚合 → `render_report.py` 渲染并打开报告。**与 `/shy-skill-review` 互不调用**。
 
 - **必须钉模型**：全程 `--model <provider>/<id>`，并把模型 ID 记进证据；不钉模型的结论不可复现（见下「必须钉模型」）。
 - 产物落 `<skill>-workspace/iteration-N/`（N = 现有最大编号 + 1，**不覆盖**旧目录；过期证据**不删**，供追溯）。
@@ -19,7 +19,7 @@
 
 确定性（否则证据永远"不匹配"）：文件按相对路径排序、路径统一为 `/`、只 hash 内容（不掺 mtime / 绝对路径）。算指纹：`python "<SKILL_DIR>/scripts/skill_fingerprint.py" --skill-dir <skill_dir> [--axis trigger|effectiveness]`。
 
-**复审读证据的规则**：同技能工作区存在 eval 且**指纹匹配当前技能** → 可引用为该轴证据、标注来源；指纹**不匹配**（技能自 eval 后已改）→ 标「过期证据（技能已变更）」、行为轴降级，**可**产出「待验证 + 建议跑 `/shy-eval`」的 finding（把取证显式交给用户）。**无 `evidence.json` 的旧证据一律视为过期**（保守）。
+**复审读证据的规则**：同技能工作区存在 eval 且**指纹匹配当前技能** → 可引用为该轴证据、标注来源；指纹**不匹配**（技能自 eval 后已改）→ 标「过期证据（技能已变更）」、行为轴降级，**可**产出「待验证 + 建议跑 `/shy-skill-eval`」的 finding（把取证显式交给用户）。**无 `evidence.json` 的旧证据一律视为过期**（保守）。
 
 ## 脚本
 
@@ -122,7 +122,7 @@ python "<SKILL_DIR>/scripts/run_effectiveness.py" --arm baseline \
 
 ## HTML 报告（评审路 / 评测路的呈现）
 
-**评测路**（`/shy-eval`）收尾时渲染评测报告（`benchmark.json` + `eval-*/`）；**评审路**（`/shy-review`，用户主动触发）收尾时渲染**含 findings 的**报告供**分拣**（立即修 / 以后修 / 丢弃）；实现路不出报告（见 `reviewing-skills.md` Step 8）：
+**评测路**（`/shy-skill-eval`）收尾时渲染评测报告（`benchmark.json` + `eval-*/`）；**评审路**（`/shy-skill-review`，用户主动触发）收尾时渲染**含 findings 的**报告供**分拣**（立即修 / 以后修 / 丢弃）；实现路不出报告（见 `reviewing-skills.md` Step 8）：
 
 ```bash
 python "<SKILL_DIR>/scripts/render_report.py" <workspace>/iteration-1 --skill-name <name>

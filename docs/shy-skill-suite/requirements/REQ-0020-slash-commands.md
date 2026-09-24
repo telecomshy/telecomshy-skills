@@ -75,11 +75,12 @@ related: [REQ-0011, REQ-0010]
 | --- | --- | --- | --- | --- |
 | 1 | 2026-09-16 | 落需求（用户诉求：引入调用方式机制 + `/` 快捷） | — | 待开工 |
 | 2 | 2026-09-16 | 新增 `commands/shy-{grill,review,eval,apply,next}.md`；`writing-skills.md §2` 补 opencode command 路线 + "忽略 `disable-model-invocation`"；`lifecycle.md` 加「斜杠快捷」小节；`SKILL.md` 资源清单加 `commands/` | 4 模板齐（原 5，`REQ-0022` 删了 `shy-eval`；2026-09-17 复审订正）、含 description 与分支指针；自包含 grep 0；`validate_skill` ok；`track_requirements --root .` 已单独验证。**命令安装后真跑：待验证**（按用户决策未碰本机配置） | 收敛（done，附 1 条待验证） |
+| 3 | 2026-09-24 | 命令名改为 `/shy-skill-<分支>`（REQ-0077）：`commands/shy-<分支>.md` → `commands/shy-skill-<分支>.md`，同步 `SKILL.md` / `references/*` / `run_checks.py` 断言 | 本轮 Gate 重跑绿 | 原「`/shy-<分支>` 命名决策」由 REQ-0077 取代；status 保持 done |
 
 ## 备注 / 待办
 
 - 来源：2026-09-16 用户诉求；决策：先落地 **opencode** + 加域限定触发词。
-- **命名决策（用户确认）**：命令名带横线 `/shy-<分支>`（`/shy-grill` 等），**不支持** `/shy <分支>` 空格式。因 opencode **以文件名作命令名**，每个分支一个文件；无法用单文件响应多个 `/shy-xxx`。
+- **命名决策（用户确认）**：命令名带横线 `/shy-<分支>`（`/shy-grill` 等），**不支持** `/shy <分支>` 空格式。因 opencode **以文件名作命令名**，每个分支一个文件；无法用单文件响应多个 `/shy-xxx`。**（本条已被 `REQ-0077` 取代：命令名改为 `/shy-skill-<分支>`。）**
 - **命令集被 `REQ-0022` 取代**：原 5 个命令合并为 4 个（删 `/shy-eval`，评测并入 `/shy-review`）。验收标准里的 5 已于 2026-09-17 复审订正为 4（`REQ-0026`）。
 - 与 `REQ-0011` 不冲突：`REQ-0011` 把 Claude Code 字段写进 §2 并放进校验器白名单；本 REQ 补的是 **opencode 的 command 路线**，仍只写在 §2 一处（单一事实源）。
 - opencode 文档依据：<https://opencode.ai/docs/skills>、<https://opencode.ai/docs/commands>（access date 2026-09-16）。

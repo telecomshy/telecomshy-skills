@@ -17,13 +17,13 @@
 
 | 命令 | 进入 |
 | --- | --- |
-| `/shy-start [<skill>]` | **开始开发新技能**：逼问 → 落需求 → 起骨架（**同一流程**；技能名可选，缺则先问用户）。入口见 `commands/shy-start.md` |
-| `/shy-grill` | 逼问一个技能该做什么（`grilling.md`） |
-| `/shy-review` | 触发**评审路**：三轴复审、**按需引用**指纹匹配的评测，出报告供分拣（`reviewing-skills.md`） |
-| `/shy-eval` | 独立**评测取证**：触发率 / with_skill vs baseline 对照，写指纹证据、渲染报告（`running-evals.md`） |
-| `/shy-reqs` | 单技能 REQ 报告：按类型（kind）→ 状态（status）分组、可折叠，产出可展开 HTML（`track_requirements.py --view overview --skill <skill>` / `render_reqs.py --skill <skill>`） |
+| `/shy-skill-start [<skill>]` | **开始开发新技能**：逼问 → 落需求 → 起骨架（**同一流程**；技能名可选，缺则先问用户）。入口见 `commands/shy-skill-start.md` |
+| `/shy-skill-grill` | 逼问一个技能该做什么（`grilling.md`） |
+| `/shy-skill-review` | 触发**评审路**：三轴复审、**按需引用**指纹匹配的评测，出报告供分拣（`reviewing-skills.md`） |
+| `/shy-skill-eval` | 独立**评测取证**：触发率 / with_skill vs baseline 对照，写指纹证据、渲染报告（`running-evals.md`） |
+| `/shy-skill-reqs` | 单技能 REQ 报告：按类型（kind）→ 状态（status）分组、可折叠，产出可展开 HTML（`track_requirements.py --view overview --skill <skill>` / `render_reqs.py --skill <skill>`） |
 
-**评测（eval）与复审（review）分离**：eval 是**独立、user-invoked** 的取证路径（`/shy-eval`），只产触发率 / delta、不改技能、不提修复建议；复审默认静态，仅当同技能工作区存在**指纹匹配当前技能**的 eval 才引用（见 `running-evals.md`）。**实现路径不会自动进入评审，评审也不自动跑 eval。**
+**评测（eval）与复审（review）分离**：eval 是**独立、user-invoked** 的取证路径（`/shy-skill-eval`），只产触发率 / delta、不改技能、不提修复建议；复审默认静态，仅当同技能工作区存在**指纹匹配当前技能**的 eval 才引用（见 `running-evals.md`）。**实现路径不会自动进入评审，评审也不自动跑 eval。**
 
 ## 七个阶段
 
@@ -67,7 +67,7 @@
 
 动笔时按 [`writing-skills.md`](writing-skills.md) 的 lever 写（description 作指针、信息层级与按需披露、leading word、剪枝、完成判据……）。
 
-新建技能时用 `python "<SKILL_DIR>/scripts/scaffold_skill.py" <name> --description "<触发描述>"` 起骨架——**轻量，只生成 `SKILL.md`**（不建子目录、不生成 REQ），内容靠后续迭代补。加 `--project` 则一次建齐**开发层**：技能包 + `docs/<name>/requirements/`（目录）+ 追加 `.gitignore` 条目（`*-workspace/` / `reports/` / `__pycache__/`，**仅缺失时**追加）——**仍不预建** `scripts/` / `references/` / `assets/` / `evals/` / `commands/` 空目录、**不写 REQ 正文**（REQ 由阶段 1 产生）。入口 `/shy-start`。
+新建技能时用 `python "<SKILL_DIR>/scripts/scaffold_skill.py" <name> --description "<触发描述>"` 起骨架——**轻量，只生成 `SKILL.md`**（不建子目录、不生成 REQ），内容靠后续迭代补。加 `--project` 则一次建齐**开发层**：技能包 + `docs/<name>/requirements/`（目录）+ 追加 `.gitignore` 条目（`*-workspace/` / `reports/` / `__pycache__/`，**仅缺失时**追加）——**仍不预建** `scripts/` / `references/` / `assets/` / `evals/` / `commands/` 空目录、**不写 REQ 正文**（REQ 由阶段 1 产生）。入口 `/shy-skill-start`。
 
 实现收尾跑一次 **Gate（静默秒级门）**：`validate_skill.py <skill_dir>` + `run_checks.py --root . --skill <skill>` + `selftest.py`（末尾给出 `（episode）` / 迁移债 / 台账 open 计数）。**静默 = 绿了就报"完成"、红了才说**；不产 findings、不出报告、**不自动进评审**。
 
@@ -75,13 +75,13 @@
 
 ### 3 · 评审（评审路，用户主动触发）
 
-**只在用户明确要求时进入**（"帮我评审 / 检查一下 / 跑个复审"、`/shy-review`）。**实现路不会自动进这里。**
+**只在用户明确要求时进入**（"帮我评审 / 检查一下 / 跑个复审"、`/shy-skill-review`）。**实现路不会自动进这里。**
 
 > 本阶段即 **Discovery**——**低频、对抗式**，触发点**只有两个**：**真实失败**（任务做砸 / 真 bug）/ **用户显式要求**。**不是"每次改动都跑"**——那是 **Gate**（阶段 2 的静默门）的活。改动一律先过 Gate；Discovery 是额外的、偶尔的"找新问题"。**真实失败时不自动进入**：报告并建议评审，进不进入由用户决定。
 
 按 `reviewing-skills.md` 执行**完整三轴**（行为轴：触发 + 有效性；需求轴：Spec——**先跑 `run_checks.py`，只有 `（语义）` 项才逐条读**；标准轴：结构 / 脚本 / 安全）。**复审默认静态**：行为轴的触发率与 delta 结论一律标「（静态）待验证」；同技能工作区存在**指纹匹配当前技能**的 eval 才引用为证据，指纹不匹配则标「过期证据（技能已变更）」。
 
-**取证时机由用户选**：跑 eval 是分钟级的独立动作，只在用户显式触发 `/shy-eval`（或用户说"这次也测"）时发生；复审可以**建议**取证，但**不自行静默跑**。日常轻改动不必取证。
+**取证时机由用户选**：跑 eval 是分钟级的独立动作，只在用户显式触发 `/shy-skill-eval`（或用户说"这次也测"）时发生；复审可以**建议**取证，但**不自行静默跑**。日常轻改动不必取证。
 
 **评审收尾 = 报告 + 分拣**（这是评审路的终点）：
 
@@ -128,4 +128,4 @@
 
 ## 一句话
 
-需求是**活文档**：用户确认落盘后，每轮评审按用户的分拣回写它（阶段 3 → 4）。**实现 / 评审 / 评测三路分离**——实现完停下、评审由用户触发、评测另由 `/shy-eval` 按需取证；技能与需求一起演进，而不是需求写完就冻结。
+需求是**活文档**：用户确认落盘后，每轮评审按用户的分拣回写它（阶段 3 → 4）。**实现 / 评审 / 评测三路分离**——实现完停下、评审由用户触发、评测另由 `/shy-skill-eval` 按需取证；技能与需求一起演进，而不是需求写完就冻结。

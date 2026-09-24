@@ -239,7 +239,7 @@ def render_evidence_banner(evidence: Any) -> str:
         text = f"行为轴证据：{iteration}（指纹匹配）{tail}"
         cls = "ok"
     elif status == "stale":
-        text = f"行为轴证据：已过期（技能已变更）——建议重跑 /shy-eval{tail}"
+        text = f"行为轴证据：已过期（技能已变更）——建议重跑 /shy-skill-eval{tail}"
         cls = "warn"
     else:
         text = f"行为轴：无匹配的 eval 证据，结论为（静态）待验证{tail}"
