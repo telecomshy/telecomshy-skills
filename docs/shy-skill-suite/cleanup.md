@@ -18,18 +18,18 @@
 | CL-0010 | `doc:SKILL-md-42-lifecycle-ref` | `SKILL.md:42` 裸 `lifecycle.md` 引用缺 `references/` 前缀 | iteration-3 | **fixed** | REQ-0050 同批 | 现为 `references/lifecycle.md` |
 | CL-0011 | `doc:optimize-docstring` | `optimize_description.py` docstring 称「保证两边都有正负例」，小集时 test 为空 | iteration-3 | **fixed** | REQ-0050 同批 | 改为「样本足够时尽量分层」 |
 | CL-0012 | `dup:优先删其次改` | 「优先删，其次改，最后才加」两处逐字重复 | iteration-3 | **fixed** | REQ-0050 同批 | `SKILL.md:30` 改指针，仅 `reviewing-skills.md:21` 保留 |
-| CL-0013 | `hygiene:pycache` | 技能目录内 `scripts/__pycache__/`（跑脚本生成） | iteration-3 | open | | 复验（2026-09-20）：`.gitignore:2` 已忽略 `__pycache__/`（`git check-ignore` 命中）；`selftest.py` 报**非致命** WARN（REQ-0042 口径）。生成物，跑脚本即重生——无法机械“修”，删了下一跑又出现，故保持 open（不删用户目录外内容） |
-| CL-0014 | `design:budget-口径` | 设计文档 §8 问「`invariant_budget` 初值」、§4.7 已改「增长率上限」，两口径不同步 | iteration-3 | open | | 复验（2026-09-20）：§8 措辞已由「初值」变为「`invariant_budget_growth` 的 k 取多少（每个 feature 净增上限）」，与 §4.7「增长率上限」一致——字面不同步已消失；但 **k 取多少**仍是未决设计问题 → 待用户决策：k 的取值 |
-| CL-0015 | `design:§10.4-估算` | §10.4 估算数字不闭合（各项相加 > 227，未交代重叠） | iteration-3 | open | | 复验（2026-09-20）：`ticket-contract-redesign.md:256` 粗分 40–60 + 120 + 40 + 39 = 239–259 > 227，未交代重叠——仍成立；设计文档冻结，属设计级修 |
+| CL-0013 | `hygiene:pycache` | 技能目录内 `scripts/__pycache__/`（跑脚本生成） | iteration-3 | **wontfix** | 2026-09-24（用户决定） | 复验（2026-09-20）：`.gitignore:2` 已忽略 `__pycache__/`（`git check-ignore` 命中）；`selftest.py` 报**非致命** WARN（REQ-0042 口径）。生成物，跑脚本即重生——无法机械“修”，删了下一跑又出现，故保持 open（不删用户目录外内容） |
+| CL-0014 | `design:budget-口径` | 设计文档 §8 问「`invariant_budget` 初值」、§4.7 已改「增长率上限」，两口径不同步 | iteration-3 | **wontfix** | 2026-09-24（用户决定） | 复验（2026-09-20）：§8 措辞已由「初值」变为「`invariant_budget_growth` 的 k 取多少（每个 feature 净增上限）」，与 §4.7「增长率上限」一致——字面不同步已消失；但 **k 取多少**仍是未决设计问题 → 待用户决策：k 的取值 |
+| CL-0015 | `design:§10.4-估算` | §10.4 估算数字不闭合（各项相加 > 227，未交代重叠） | iteration-3 | **wontfix** | 2026-09-24（用户决定） | 复验（2026-09-20）：`ticket-contract-redesign.md:256` 粗分 40–60 + 120 + 40 + 39 = 239–259 > 227，未交代重叠——仍成立；设计文档冻结，属设计级修 |
 | CL-0016 | `script:EPISODE_RE-脆弱` | `EPISODE_RE` 只认 `（episode）`/`(episode)`；全角/半角变体、方括号、大小写会静默计入未标，虚增债 | iteration-3 | **fixed** | 2026-09-20 | 复验：`EPISODE_RE` 收紧为 `[（(\[【]\s*episode\s*[）)\]】]` + `re.IGNORECASE`（覆盖全/半角括号、方/六角括号、大小写、空白）；实测 `（episode）` `(episode)` `[episode]` `【episode】` `（Episode）` `（EPISODE）` 均命中；`run_checks` 的 `（episode）` 计数 **155 不变**、Gate 全绿 |
 | CL-0017 | `script:trial-run-0046-失效` | `trial-run-0046.py` 断言「措辞打磨 → 假警报」，REQ-0050 后该断言反了，脚本退出码 1 | iteration-3 | **fixed** | REQ-0050 同批 | 已退休（删除）；`pilot-0046.py` 改为幂等回归守卫 |
-| CL-0018 | `design:§9§10-该搬走` | 设计文档 §9（验证）/§10（实施台账）是证据/台账，不是提案；按 §1 根因应进 REQ / 本台账，暂留设计文档 | iteration-3 | open | | 复验（2026-09-20）：§9/§10 仍在 `ticket-contract-redesign.md:205-258`（冻结设计，文内已自注“暂留此处待搬迁”）。搬迁是跨较大改动 → 待用户决策：是否把 §9/§10 搬进 REQ / 本台账 |
+| CL-0018 | `design:§9§10-该搬走` | 设计文档 §9（验证）/§10（实施台账）是证据/台账，不是提案；按 §1 根因应进 REQ / 本台账，暂留设计文档 | iteration-3 | deferred | 2026-09-24 | 复验（2026-09-20）：§9/§10 仍在 `ticket-contract-redesign.md:205-258`（冻结设计，文内已自注“暂留此处待搬迁”）。搬迁是跨较大改动 → 待用户决策：是否把 §9/§10 搬进 REQ / 本台账 |
 | CL-0019 | `debt:227-拆句` | **A（复审循环）的消失点**：227 条未分类散文需逐条判成 不变量 / `（episode）` / 未定，让 `untagged` 单调降到 0。Step 3 已改为"读即当场分类" | iteration-3 | **fixed** | 2026-09-20 | 复验：`run_checks.py --root . --skill shy-skill-suite` → `未分类(迁移债) 0`、`converged: true`；`state.json` `debt_targets.unclassified_criteria=0`。债已归零 |
-| CL-0020 | `state:converged-budget-unread` | `state.json` 的 `converged` / `invariant_budget_growth` / `cleanup_ttl_gate_runs` 仍无脚本读（`debt_targets` 已被 Gate 读） | iteration-3 | open | | 复验（2026-09-20）：`Select-String` 全部脚本 → 仅 `run_checks.py:1487` 读 `debt_targets.unclassified_criteria`；`converged_since` / `invariant_budget_growth` / `cleanup_ttl_gate_runs` 仍无人读。接线会改变 Gate 行为（TTL 计数 / 预算红门）→ 待用户决策：是否接线这些机制 |
-| CL-0021 | `guard:episode-无护栏` | `（episode）` 是无人校验的自由文本标记——agent 把真不变量标成 episode 即可绕过 Gate；应比照"契约漂移防护"（改 episode 需挂工单 + Gate 比对快照） | iteration-3 | open | | 复验（2026-09-20）：`run_checks.py` 只计数 `EPISODE_RE`、无快照比对。属设计级护栏 → 待用户决策：（episode）是否需要“改必挂工单 + Gate 比对快照”的护栏 |
-| CL-0022 | `debt:unmigrated_reqs-未算` | `state.json` 声明两个债目标，但只算了 `unclassified_criteria`（标准数），`unmigrated_reqs`（未迁移 REQ 数）无数据 | iteration-3 | open | | 复验（2026-09-20）：`Select-String` 全部脚本 → `unmigrated_reqs` 无任何读写；“未迁移 closed REQ”的判定口径未定。→ 待用户决策：`unmigrated_reqs` 是否接线、以何口径算 |
-| CL-0023 | `cleanup:写权/dedup` | 台账无写命令、`dedup_key` 是自由文本、`resolved_in` 自由文本 → 关闭路径不可执行、去重不可靠 | iteration-3 | open | | 复验（2026-09-20）：`run_checks.py` 只读台账计数（`cleanup_counts`），无写命令；`dedup_key` 仍为自由文本。→ 待用户决策：是否提供台账写命令与 `dedup_key` 归一化规则 |
-| CL-0024 | `design:机制无状态戳` | 设计文档各机制未标"已接线 / 仅文档"，读者分不清哪条是活的 | iteration-3 | open | | 复验（2026-09-20）：§6 有 `✅ 已接线` / `◐ 文档已写、脚本未强制` 标注、§10.1 有实施表，但 §4 各机制（4.4/4.5/4.7）本身仍未逐条标状态。设计文档冻结 → 待用户决策：是否逐机制标“已接线 / 仅文档” |
+| CL-0020 | `state:converged-budget-unread` | `state.json` 的 `converged` / `invariant_budget_growth` / `cleanup_ttl_gate_runs` 仍无脚本读（`debt_targets` 已被 Gate 读） | iteration-3 | **wontfix** | 2026-09-24（用户决定） | 复验（2026-09-24）：`cleanup_ttl_gate_runs` **已接线**（REQ-0081：Gate 逐条计龄 + 黄告警）；`converged_since` / `invariant_budget_growth` 仍无人读。→ 待用户决策：是否接线后两者 |
+| CL-0021 | `guard:episode-无护栏` | `（episode）` 是无人校验的自由文本标记——agent 把真不变量标成 episode 即可绕过 Gate；应比照"契约漂移防护"（改 episode 需挂工单 + Gate 比对快照） | iteration-3 | **wontfix** | 2026-09-24（用户决定） | 复验（2026-09-20）：`run_checks.py` 只计数 `EPISODE_RE`、无快照比对。属设计级护栏 → 待用户决策：（episode）是否需要“改必挂工单 + Gate 比对快照”的护栏 |
+| CL-0022 | `debt:unmigrated_reqs-未算` | `state.json` 声明两个债目标，但只算了 `unclassified_criteria`（标准数），`unmigrated_reqs`（未迁移 REQ 数）无数据 | iteration-3 | **wontfix** | 2026-09-24（用户决定） | 复验（2026-09-20）：`Select-String` 全部脚本 → `unmigrated_reqs` 无任何读写；“未迁移 closed REQ”的判定口径未定。→ 待用户决策：`unmigrated_reqs` 是否接线、以何口径算 |
+| CL-0023 | `cleanup:写权/dedup` | 台账无写命令、`dedup_key` 是自由文本、`resolved_in` 自由文本 → 关闭路径不可执行、去重不可靠 | iteration-3 | **fixed** | 2026-09-24 | 复验（2026-09-20）：`run_checks.py` 只读台账计数（`cleanup_counts`），无写命令；`dedup_key` 仍为自由文本。→ 待用户决策：是否提供台账写命令与 `dedup_key` 归一化规则 |
+| CL-0024 | `design:机制无状态戳` | 设计文档各机制未标"已接线 / 仅文档"，读者分不清哪条是活的 | iteration-3 | **wontfix** | 2026-09-24（用户决定） | 复验（2026-09-20）：§6 有 `✅ 已接线` / `◐ 文档已写、脚本未强制` 标注、§10.1 有实施表，但 §4 各机制（4.4/4.5/4.7）本身仍未逐条标状态。设计文档冻结 → 待用户决策：是否逐机制标“已接线 / 仅文档” |
 | CL-0025 | `readout:B-合并` | 读数 B 只打印 `cleanup_open`（一来源）；fix 工单数、红不变量数未并入 → "有多少问题"仍需手拼 | iteration-3 | **wontfix** | 2026-09-18（用户决定） | 决定**不合并**红不变量：红=阻断（Gate exit≠0）、台账/fix=积压，两类不同；合并会稀释紧迫度。且 check 跨多张 REQ 无唯一归属（`scaffold-ok` 属 REQ-0001/0027）、按归属去重复杂。B 保持两栏即可 |
 | CL-0026 | `misfile:REQ-0028-doc-item` | `REQ-0028`「`SKILL.md` 资源清单不再重复路由表 / 不再抄脚本 `--help` 简介」错标 **`（行为）`**——它是文档质量 / 一次性事实，不是行为契约。A5 的 E 规则只看 episode，故被"改标 （行为）"绕过。正解：**移出验收标准** → 本台账（或 `（episode）`） | iteration-3 | **fixed** | 2026-09-18 | 验收行已删；`classify_audit.py` 复核 E=0 |
 | CL-0027 | `misfile:REQ-0031-meta-item` | `REQ-0031`「`REQ-0012` 备注含 `REQ-0027` 对退出码的修订说明」错标 **`（行为）`**——meta / 文档项，同上 | iteration-3 | **fixed** | 2026-09-18 | 验收行已删 |
@@ -43,6 +43,31 @@
 | CL-0035 | `cache:SKILL-scripts-line` | `SKILL.md:41` 把 8 类脚本职责全列一遍；`running-evals.md:7-12` 与各脚本 `--help` 已可查，属 cache | iteration-4 | **fixed** | 2026-09-18 | 压成指针：接口看 `--help`、评测清单看 `running-evals.md`、Gate 三件套 |
 | CL-0036 | `gap:lifecycle-stage6` | `lifecycle.md` 阶段 6（复盘）只有触发条件、无完成判据；阶段 0–5 都有 | iteration-4 | **fixed** | 2026-09-18 | 阶段 6 补完成判据（落 REQ / 台账 + 过 Gate + track ok） |
 | CL-0037 | `bookkeep:REQ-0047-unchecked` | `REQ-0047` 验收第 3 条「`validate_skill.py ...` → `status: ok`」`[ ]` 未勾，但 `check:skill-validate-ok` 已绿（勾选漂移） | iteration-5 | **fixed** | 2026-09-21 | 复验：`run_checks.py --root . --skill shy-skill-suite` → `[PASS] REQ-0002 skill-validate-ok rc=0 status=ok`；已勾 `[x]` 并注明（2026-09-21 本复审 Step 8 台账机械项当轮结清） |
+| CL-0038 | `drift:lifecycle-fork-count` | `lifecycle.md:57` 称 `knowledge-distill` 有「6 个分支」，实际其路由表只有 5 行 | iteration-14 | **fixed** | 2026-09-24 | 已改「5 个分支」；复验：`Select-String '5 个分支'` 命中、`'6 个分支'` 0 命中 |
+| CL-0039 | `drift:wr-criteria-classes` | `writing-requirements.md:64` 写「标四类之一」却只列三类（漏 `（episode）`） | iteration-14 | **fixed** | 2026-09-24 | 已补齐四类清单（`check:` / `（行为）` / `（语义）` / `（episode）`） |
+| CL-0040 | `dup:three-way-separation` | 「实现/评审/评测三路分离、不自动评审」同义重复：`SKILL.md:33`、`lifecycle.md:26/72/78/131` | iteration-14 | **wontfix** | 2026-09-24（用户决定） | 剪枝 3 跑均报、独立裁判判「弱成立（点处强化）」；去重需重排 lifecycle 阶段 3，属较大改动 → 待用户决策 |
+| CL-0041 | `dup:description-writing` | `description` 写法（祈使句/聚焦意图/pushy）与 user-invoked 整句在 `reviewing-skills.md:65-67` 与 `writing-skills.md:7/9/15` 逐字重复 | iteration-14 | **fixed** | 2026-09-24 | 复审侧「措辞」「调用方式」两条改指针（保留「硬约束」条）；复验 `Select-String '用祈使句|只有人手动调用' reviewing-skills.md` → 0 命中 |
+| CL-0042 | `dup:fingerprint-rule` | 「指纹匹配则引用、否则静态/过期」在 `running-evals.md:22`、`reviewing-skills.md:74/78/89/130`、`lifecycle.md:82`、`SKILL.md:33` 重复 ≥6 处 | iteration-14 | **fixed** | 2026-09-24 | 裁判**成立**；可收为指针 |
+| CL-0043 | `dup:triage-def` | 「分拣=立即修/以后修/丢弃、逐条不批量」在 `glossary.md:43`、`reviewing-skills.md:202`、`lifecycle.md:89-92`、`running-evals.md:138` 重复 | iteration-14 | **fixed** | 2026-09-24 | 裁判弱成立（分属定义/判据/操作/UI） |
+| CL-0044 | `dup:converged-def` | 「`converged` 由脚本算出、agent 不得手写」在 `glossary.md:28`、`reviewing-skills.md:197/202`、`lifecycle.md:120` 重复 | iteration-14 | **fixed** | 2026-09-24 | 裁判弱成立 |
+| CL-0045 | `dup:cleanup-ledger-entry` | 「自洽/卫生项进 `cleanup.md` 台账、不进 findings」在 `glossary.md:25`、`reviewing-skills.md:111`、`writing-requirements.md:12/88` 重复 4 处 | iteration-14 | **fixed** | 2026-09-24 | 裁判弱成立（跨关切应用） |
+| CL-0046 | `dup:command-list` | 5 个命令名与作用在 `SKILL.md:44` 与 `lifecycle.md:18-24` 各列一遍（SKILL 已自指 lifecycle） | iteration-14 | **fixed** | 2026-09-24 | `SKILL.md:44` 压为指针（保留命令名以满足 `req0076/req0072` 断言） |
+| CL-0047 | `dup:report-once` | 「报告只在 Step 8 生成一次」在 `reviewing-skills.md:204`、`running-evals.md:136`、`subagents.md:70` 重复 | iteration-14 | **wontfix** | 2026-09-24（用户决定） | 裁判弱成立 |
+| CL-0048 | `dup:delete-first` | 「先删后加」在 `SKILL.md:30`、`reviewing-skills.md:21/242` 重复 | iteration-14 | **wontfix** | 2026-09-24（用户决定） | 裁判弱成立 |
+| CL-0049 | `dup:multirun-gate-summary` | 复审多跑闸门要点在 `SKILL.md:34` 与 `reviewing-skills.md:33-38` 整段重复 | iteration-14 | **wontfix** | 2026-09-24（用户决定） | 裁判弱成立（顶层摘要+指针） |
+| CL-0050 | `dup:avoid-word-collision` | `glossary.md:8/11` 把同一 `_避免_` 词「自动检查」同时挂给 Gate 与 Discovery | iteration-14 | **fixed** | 2026-09-24 | Discovery 的 `_避免_` 改为「巡检、自动检查」，与 Gate 去撞车 |
+| CL-0051 | `dup:discovery-def` | `lifecycle.md:80` 复述 `glossary.md:10` 的 Discovery 定义 | iteration-14 | **wontfix** | 2026-09-24（用户决定） | 裁判弱成立 |
+| CL-0052 | `dup:split-criteria` | 拆分判据在 `lifecycle.md:55` 与 `writing-skills.md:60-61` 重叠 | iteration-14 | **wontfix** | 2026-09-24（用户决定） | 裁判弱成立（粒度不同） |
+| CL-0053 | `term:axis-misuse` | `SKILL.md:34` 把 触发/安全 叫「轴」，与 `glossary.md:31`「三轴=行为/需求/标准」冲突 | iteration-14 | **fixed** | 2026-09-24 | `SKILL.md:34` 与闸门改「触发与安全两类」；复验 `Select-String '触发轴|安全轴'` → 0 命中 |
+| CL-0054 | `doc:axis-mapping` | `reviewing-skills.md:15/17` 三问（触发/有效性/需求一致性）与三轴（行为/需求/标准）映射不成立 | iteration-14 | **fixed** | 2026-09-24 | 改为「三问映射到三条轴」并说明标准轴另立、不对应三问之一 |
+| CL-0055 | `index:running-evals-scripts` | `running-evals.md:26-32` 脚本表漏 `render_report.py` 与 `skill_fingerprint.py` | iteration-14 | **fixed** | 2026-09-24 | 表内补两行 |
+| CL-0056 | `doc:count-attribution` | `lifecycle.md:72` 括号紧贴 `selftest.py`，易读作「episode/迁移债/台账 open」由它输出（实为 `run_checks.py`） | iteration-14 | **fixed** | 2026-09-24 | 注明该计数由 `run_checks.py` 的输出末尾给出 |
+| CL-0057 | `doc:scope-objects` | `reviewing-skills.md:4` 称「完整文件集」只列 SKILL/scripts/references/assets，漏 `commands/`、`evals/` | iteration-14 | **fixed** | 2026-09-24 | 适用对象补 `commands/`、`evals/` |
+| CL-0058 | `doc:running-evals-params` | `running-evals.md:11` 列出的参数与同文示例（:90/:96/:106）不一致（示例缺取证参数） | iteration-14 | **fixed** | 2026-09-24 | 裁判弱成立（示例不完整） |
+| CL-0059 | `term:Tier-undefined` | `lifecycle.md:55` 用 Tier 1/2/3/4 作拆分判据，全套件未定义 Tier | iteration-14 | **fixed** | 2026-09-24 | 裁判弱成立（同句有内联解释） |
+| CL-0060 | `doc:selfcontain-vs-docs` | `reviewing-skills.md:165` 自包含规则未区分「文件内链接」与「工作流运行时读写 `docs/<skill>/…`」 | iteration-14 | **fixed** | 2026-09-24 | 补「指技能文件内的链接；工作流读写 `docs/` 是开发仓库用法、部署后按非开发仓库降级」 |
+| CL-0061 | `doc:triage-location-unique` | `reviewing-skills.md:202` 回写「按 `location` 对应 findings」，但同 `file:line` 可有多条 finding，映射不唯一 | iteration-14 | **fixed** | 2026-09-24 | 裁判弱成立 |
+| CL-0062 | `noop:generic-batch` | 通用废话/常识批次：`reviewing-skills.md:148-155/188/244-246`、`writing-skills.md:29/33/37`、`writing-requirements.md:82/90`、`running-evals.md:163`（后半） | iteration-14 | **fixed** | 2026-09-24 | 裁判弱成立；逐条判删 |
 
 ## 备注
 
@@ -51,7 +76,8 @@
 - **2026-09-20（`REQ-0075`）补写权与时点**：复审的"发现"由子代理做、子代理**禁写**；**机械项由主 agent 在 Step 8（出报告前）当轮结清**，需决策项留 `open` 并在报告一句话提示。见 `skills/shy-skill-suite/references/reviewing-skills.md` Step 8。
 - `open` 项的关闭路径：见设计说明 §4.3（N 次 Gate 运行内 fixed/wontfix；`wontfix` 需用户显式决定）。
 - 与 `REQ-0032`/`REQ-0033`（已退休的自洽批）重叠的项，一并收进本台账，不再各自开 REQ。
-- **`dedup_key` 规则（评审 H4，待定）**：现为自由文本标签（如 `dup:不自动再审`），两个 agent 会写出不同 key → 去重失效。应改为**归一化指纹**：`<类别>:<规范主体>`，主体取自"规则的定义句/leading word"而非复述，且大小写/标点归一。在定下来之前，去重靠人工。
+- **`dedup_key` 规则（2026-09-24 定，CL-0023）**：统一为 `<类别>:<规范主体>`——类别取 `dup` / `hygiene` / `drift` / `doc` / `term` / `noop` / `cache` / `sediment` 等；主体取**规则定义句的关键词**（不是复述处），小写、去标点与空白。新建 / 复核台账前先按此归一化，再与本表已有 key 比对：**命中即视为同一条**（不改 open/fixed 状态，仅追加复验）。
+- **台账写命令（待接线，CL-0023 余项）**：`fixed`/`wontfix` 仍只能手改 Markdown；如需 `run_checks --close <id>` 之类命令，另开 REQ。
 - **无写权归属（评审 H5，待定）**：目前只能手改 Markdown；`fixed`/`wontfix` 无命令、无时机约定。
 - 2026-09-18：`CL-0029` 是 `REQ-0052`「REQ 路由规则」的卫生项验证用例——它按新规则只登记本台账、**未开 REQ**。
 - **A4 待办（非自洽类，仅登记）**：验收契约 `acceptance.md` 的 **A4（真实复审）尚无证据**——`skills/shy-skill-suite-workspace/` 无 15:00 之后产物。需跑 1 次真实复审 + 改一处无害措辞，确认 **0 假回归**，把命令与输出记下。做完 A 才算干净（A1/A2/A3/A5 已通过）。

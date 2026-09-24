@@ -247,7 +247,7 @@ def run_prompt(
 def main() -> int:
     force_utf8_stdio()
     parser = argparse.ArgumentParser(
-        description="把一条 prompt 跑过 agent 客户端，并检测目标技能是否被触发。命令模板按 argv 切分、不经 shell。",
+        description="把一条 prompt 跑过 agent 客户端，并检测目标技能是否被触发。命令模板按 argv 切分、不经 shell。**必须钉模型**：`opencode run` 的默认模型解析不可控，不钉模型（不传 --model）的结论不可复现。",
         epilog=(
             "示例:\n"
             '  python agent_runner.py --runner opencode --detect shy-skill-suite --prompt "帮我写个技能需求"\n'

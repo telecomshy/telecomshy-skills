@@ -5,5 +5,7 @@
   "debt_targets": {
     "unclassified_criteria": 0,
     "unmigrated_reqs": 0
-  }
+  },
+  "gate_runs": 3,
+  "cleanup_age": {}
 }

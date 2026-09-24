@@ -1,6 +1,6 @@
 {
   "skill_name": "shy-skill-suite",
-  "note": "行为轴 · 有效性对照用例集（任务式，不点名技能）。每条断言由独立 grader 盲评；prompt 一律不出现技能名，防止 baseline 顺着名字去搜技能源码。断言口径按 REQ-0069 加强：frontmatter 取值 / H1 格式 / 标记覆盖率 / 独立分项。",
+  "note": "行为轴 · 有效性对照用例集（任务式，不点名技能）。每条断言由独立 grader 盲评；prompt 一律不出现技能名，防止 baseline 顺着名字去搜技能源码。断言口径按『独立分项 + 标记覆盖率』加强：frontmatter 取值 / H1 格式 / 标记覆盖率 / 独立分项。",
   "cases": [
     {
       "eval_id": 0,

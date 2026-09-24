@@ -8,7 +8,7 @@
     outputs/workspace/       运行目录里的产物快照（文件数 / 体积有上限）
     timing.json              耗时 / 返回码 / 加载的技能 / 越界取材证据
 
-隔离与防污染（REQ-0069）：
+隔离与防污染：
 
 - 每批在系统临时目录新建**唯一根**（默认跑完删除，``--keep`` 保留）；所有运行目录都在
   其下——杜绝"上一轮遗留被这一轮读到"。
@@ -129,15 +129,26 @@ def copy_workspace(src: Path, dst: Path) -> tuple[int, bool]:
     return files, truncated
 
 
-def disable_skills(skills_dir: Path, names: list[str]) -> list[tuple[Path, Path]]:
+def disable_skills(skills_dir: Path, names: list[str]) -> tuple[list[tuple[Path, Path]], list[str], list[str]]:
+    """把列出的技能临时移出技能目录。
+
+    返回 ``(moved, missing, invalid)``：``moved`` = 实际移动的 (原路径, 隐藏路径)；
+    ``missing`` = 技能目录里没找到的技能名；``invalid`` = ``skills_dir`` 无效时非空。
+    调用方须据 ``invalid`` 显式报错、据 ``missing`` 告警，不得静默。
+    """
+    if not skills_dir.is_dir():
+        return [], [], [f"--skills-dir 不是目录：{skills_dir}"]
     moved: list[tuple[Path, Path]] = []
+    missing: list[str] = []
     for name in names:
         src = skills_dir / name
         if src.is_dir():
             dst = skills_dir.parent / f".{name}.disabled-{uuid.uuid4().hex[:8]}"
             shutil.move(str(src), str(dst))
             moved.append((src, dst))
-    return moved
+        else:
+            missing.append(name)
+    return moved, missing, []
 
 
 def restore_skills(moved: list[tuple[Path, Path]]) -> None:
@@ -193,6 +204,8 @@ def main() -> int:
     ap.add_argument("--detect-skill", help="目标技能名（缺省取用例集 skill_name）")
     ap.add_argument("--skills-dir", help="技能目录（配合 --disable-skills）")
     ap.add_argument("--disable-skills", help="整批期间临时移出的技能名（逗号分隔）")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="只列出 --disable-skills 将移出的技能，不实际移动（配合 --skills-dir）")
     ap.add_argument("--skill-dir", help="被评测技能的目录；给定则跑完写有效性轴证据到 <ws>/evidence.json")
     args = ap.parse_args()
 
@@ -225,12 +238,29 @@ def main() -> int:
         fresh_root = True
 
     moved: list[tuple[Path, Path]] = []
-    if args.disable_skills and args.skills_dir:
-        moved = disable_skills(Path(args.skills_dir), [
-            s.strip() for s in args.disable_skills.split(",") if s.strip()])
-    elif args.disable_skills:
-        print("--disable-skills 需要同时给 --skills-dir", file=sys.stderr)
-        return 2
+    if args.disable_skills:
+        if not args.skills_dir:
+            print("--disable-skills 需要同时给 --skills-dir", file=sys.stderr)
+            return 2
+        sd = Path(args.skills_dir)
+        if not sd.is_dir():
+            print(f"--skills-dir 不是目录：{sd}", file=sys.stderr)
+            return 2
+        names = [s.strip() for s in args.disable_skills.split(",") if s.strip()]
+        if args.dry_run:
+            present = [n for n in names if (sd / n).is_dir()]
+            print(json.dumps({"dry_run": True, "would_disable": present,
+                              "missing": [n for n in names if n not in present]},
+                             ensure_ascii=False))
+            return 0
+        moved, missing, _invalid = disable_skills(sd, names)
+        if missing:
+            print(f"警告：以下技能不在技能目录、未移出：{', '.join(missing)}", file=sys.stderr)
+        ws.mkdir(parents=True, exist_ok=True)
+        plan = ws / "disabled_skills.json"
+        plan.write_text(json.dumps({"moved": [[str(s), str(d)] for s, d in moved]},
+                                   ensure_ascii=False), encoding="utf-8")
+        print(f"已移出 {len(moved)} 个技能（恢复清单：{plan}）", file=sys.stderr)
 
     runs: list[dict] = []
     errors = 0

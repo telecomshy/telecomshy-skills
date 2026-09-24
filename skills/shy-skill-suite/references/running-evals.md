@@ -8,7 +8,7 @@
 
 - **必须钉模型**：全程 `--model <provider>/<id>`，并把模型 ID 记进证据；不钉模型的结论不可复现（见下「必须钉模型」）。
 - 产物落 `<skill>-workspace/iteration-N/`（N = 现有最大编号 + 1，**不覆盖**旧目录；过期证据**不删**，供追溯）。
-- 触发轴：`optimize_description.py … --evidence-ws <iteration-N> --model <id>`；有效性轴：`run_effectiveness.py … --skill-dir <skill_dir> --model <id>`；聚合：`aggregate_benchmark.py <iteration-N> --skill-dir <skill_dir> --model <id>`。三者都会把指纹写进 `<iteration-N>/evidence.json`。
+- 触发轴：`optimize_description.py … --runner cmd --cmd 'opencode run --model <id> "{prompt}"' --detect <name> --detect-mode skill-line --trials N --isolate-cwd --evidence-ws <iteration-N>`；有效性轴：`run_effectiveness.py --arm with_skill|baseline --cases <skill_dir>/evals/effectiveness.json --ws <iteration-N> --skill-dir <skill_dir> --model <id>`；聚合：`aggregate_benchmark.py <iteration-N> --skill-name <name> --skill-dir <skill_dir> --model <id>`。三者都会把指纹写进 `<iteration-N>/evidence.json`（**完整参数见下方「命令」节**）。
 
 ## 指纹（判「本轮证据」）
 
@@ -30,6 +30,8 @@
 | `agent_runner.py` | 把一条 prompt 跑过 agent 客户端并检测技能是否被触发（适配 opencode / TeleAgent） |
 | `run_effectiveness.py` | 行为轴有效性对照：with_skill / baseline 两臂跑任务式用例，隔离根 + 技能屏蔽 + 污染扫描 |
 | `aggregate_benchmark.py` | 聚合 iteration 结果成 `benchmark.json` / `benchmark.md`（含 with_skill vs baseline 的 delta） |
+| `render_report.py` | 把 `benchmark.json` + `eval-*/` + `findings.json` 渲染成单文件自包含 HTML 报告 |
+| `skill_fingerprint.py` | 算技能指纹（触发轴 = `hash(description)`；有效性轴 = 对技能文件集整体取 hash） |
 
 ## 工作区布局
 
@@ -114,7 +116,7 @@ python "<SKILL_DIR>/scripts/run_effectiveness.py" --arm baseline \
   --skills-dir "<技能目录>" --disable-skills shy-skill-suite,skill-creator,writing-for-agents
 ```
 
-**隔离（硬要求）**：每批在系统临时目录新建**唯一隔离根**，所有运行目录都在其下、跑完删除（`--keep` 保留）。**不要**把运行目录放进共享目录——agent 会上溯父目录搜索；实测 baseline 从共享 temp 的旧副本里读到了技能内容（REQ-0069）。
+**隔离（硬要求）**：每批在系统临时目录新建**唯一隔离根**，所有运行目录都在其下、跑完删除（`--keep` 保留）。**不要**把运行目录放进共享目录——agent 会上溯父目录搜索；实测 baseline 从共享 temp 的旧副本里读到了技能内容（一次真跑观察）。
 
 **污染可见化**：每次运行把扫描结果写进 `timing.json`——`loaded_skills`（`Skill "名"` 加载行）与 `contamination{foreign_reads, other_skills_loaded, target_loaded, ancestor_scans}`。**判读规则**：baseline 出现 `target_loaded`、或 `foreign_reads` 命中目标技能的任何副本 ⇒ 该 run 作废或降权；出现 `other_skills_loaded` ⇒ 该 run 是"别的指导"，不是"无指导"。污染 run 一律在报告里点名，**不得静默计入 delta**。
 
@@ -160,7 +162,7 @@ python "<SKILL_DIR>/scripts/render_report.py" <workspace>/iteration-1 --skill-na
 
 ## 边界
 
-- 起手评测集是**启发式**，必须人工或 agent 复核后再用；评测集质量决定评测结论质量。
+- 起手评测集是**启发式**，必须人工或 agent 复核后再用；用它下结论前先补真实材料。
 - 真跑模式依赖客户端的**非交互命令**（不能弹 TTY）。
 - 对照基线（with_skill vs baseline）是硬要求：**只有 delta 才算证据**，单跑不算。
 - 启发式分数只用于排序候选，**不能**当作"技能有效"的证据。

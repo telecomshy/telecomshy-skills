@@ -136,6 +136,39 @@ def cleanup_counts(root: Path, skill: str) -> tuple[int, int] | None:
     return o, f
 
 
+def cleanup_ttl(root: Path, skill: str) -> dict | None:
+    """台账 TTL：读 `cleanup_ttl_gate_runs`，逐条累计 open 项跨过的 Gate 次数，报超期。
+
+    - 计数器 `gate_runs` 与逐条年龄 `cleanup_age` 写回 `docs/<skill>/state.json`。
+    - **超期** = 某条 open 项的年龄 > `cleanup_ttl_gate_runs`。
+    - **仅告警、不阻断** Gate（黄告警）；`state.json` / `cleanup.md` 缺失时返回 None（部署场景跳过）。
+    """
+    sd = root / "docs" / skill
+    cleanup = sd / "cleanup.md"
+    state_p = sd / "state.json"
+    if not cleanup.is_file() or not state_p.is_file():
+        return None
+    open_ids: list[str] = []
+    for ln in read_text(cleanup).splitlines():
+        s = ln.lstrip()
+        if s.startswith("| CL-"):
+            cols = [c.strip().strip("*").strip() for c in s.strip().strip("|").split("|")]
+            if len(cols) >= 5 and cols[4] == "open":
+                open_ids.append(cols[0])
+    try:
+        state = json.loads(read_text(state_p))
+    except Exception:  # noqa: BLE001
+        return None
+    ttl = int(state.get("cleanup_ttl_gate_runs", 3))
+    prev = state.get("cleanup_age") or {}
+    age = {i: int(prev.get(i, -1)) + 1 for i in open_ids}
+    state["gate_runs"] = int(state.get("gate_runs", 0)) + 1
+    state["cleanup_age"] = age
+    state_p.write_text(json.dumps(state, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    overdue = sorted(i for i, a in age.items() if a > ttl)
+    return {"ttl": ttl, "gate_runs": state["gate_runs"], "overdue": overdue}
+
+
 def fix_counts(root: Path, skill: str) -> tuple[int, int]:
     """fix 类工单的 (open, fixed)：open = ready/in-progress，fixed = done。"""
     base = root / "docs" / skill / "requirements"
@@ -1473,6 +1506,124 @@ def req0079_review_gate(root: Path, skill: str) -> tuple[bool, str]:
     return (not missing), f"缺={missing}"
 
 
+@check("req0080-multirun-consistent")
+def req0080_multirun_consistent(root: Path, skill: str) -> tuple[bool, str]:
+    """多跑口径一致：glossary 与 reviewing-skills 都写「默认同一模型、多模型才轮换」；glossary 不再写死默认 3 跑。"""
+    sd = skill_dir(root, skill)
+    g = read_text(sd / "references" / "glossary.md")
+    r = read_text(sd / "references" / "reviewing-skills.md")
+    ok = ("同一模型" in g and "逐跑轮换" in g and "默认 3 跑" not in g
+          and "逐跑轮换" in r and "主代理的模型" in r)
+    return ok, f"glossary同模型={'同一模型' in g} 去默认3跑={'默认 3 跑' not in g} reviewing轮换={'逐跑轮换' in r}"
+
+
+@check("req0080-spec-range")
+def req0080_spec_range(root: Path, skill: str) -> tuple[bool, str]:
+    """Spec 轴范围统一为「（语义）+（未定）逐条读」。"""
+    life = read_text(skill_dir(root, skill) / "references" / "lifecycle.md")
+    ok = "`（语义）` 与 `（未定）`" in life
+    return ok, f"lifecycle 含(语义)+(未定)={ok}"
+
+
+@check("req0080-step6-selftest")
+def req0080_step6_selftest(root: Path, skill: str) -> tuple[bool, str]:
+    """Step 6 完成判据不再用套件自身的 selftest.py 代替。"""
+    r = read_text(skill_dir(root, skill) / "references" / "reviewing-skills.md")
+    no_old = "有自测覆盖**：`python" not in r
+    has_new = "被审技能自己有测试覆盖" in r
+    return (no_old and has_new), f"旧句已去={no_old} 新句在={has_new}"
+
+
+@check("req0080-no-req0069")
+def req0080_no_req0069(root: Path, skill: str) -> tuple[bool, str]:
+    """技能文件与 evals 内不再出现仓库级 REQ-0069 引用（`run_checks.py` 自身的 check 名除外）。"""
+    sd = skill_dir(root, skill)
+    hits = []
+    for p in sd.rglob("*"):
+        if not p.is_file() or p.name == "run_checks.py" or p.suffix not in (".md", ".py", ".json"):
+            continue
+        if "REQ-0069" in read_text(p):
+            hits.append(p.name)
+    return (not hits), f"残留={hits}"
+
+
+@check("req0080-disable-guard")
+def req0080_disable_guard(root: Path, skill: str) -> tuple[bool, str]:
+    """run_effectiveness 的 disable 护栏：--dry-run、落盘 moved 清单、无效 --skills-dir 报错、missing 告警。"""
+    t = read_text(skill_dir(root, skill) / "scripts" / "run_effectiveness.py")
+    need = ["--dry-run", "disabled_skills.json", "不是目录", "missing"]
+    miss = [n for n in need if n not in t]
+    return (not miss), f"缺={miss}"
+
+
+@check("req0080-skilldir-defined")
+def req0080_skilldir_defined(root: Path, skill: str) -> tuple[bool, str]:
+    """glossary 定义 `<SKILL_DIR>` 并与 `<skill_dir>` 区分。"""
+    g = read_text(skill_dir(root, skill) / "references" / "glossary.md")
+    ok = "**`<SKILL_DIR>`**" in g and "<skill_dir>" in g
+    return ok, f"含定义={ok}"
+
+
+@check("req0080-desc-eval-boundary")
+def req0080_desc_eval_boundary(root: Path, skill: str) -> tuple[bool, str]:
+    """description 含「跑评测取证据」并写明与 skill-creator / writing-for-agents 的边界。"""
+    t = read_text(skill_dir(root, skill) / "SKILL.md")
+    parts = t.split("---")
+    head = parts[1] if len(parts) >= 2 else t
+    ok = "跑评测取证据" in head and "skill-creator" in head and "writing-for-agents" in head
+    return ok, f"ok={ok}"
+
+
+@check("req0080-p2-triage")
+def req0080_p2_triage(root: Path, skill: str) -> tuple[bool, str]:
+    """P2 分拣去向统一：lifecycle 写明 P2 例外进台账、不开 REQ。"""
+    life = read_text(skill_dir(root, skill) / "references" / "lifecycle.md")
+    ok = "`P2` 例外" in life and "cleanup.md" in life
+    return ok, f"ok={ok}"
+
+
+@check("req0080-pin-model-help")
+def req0080_pin_model_help(root: Path, skill: str) -> tuple[bool, str]:
+    """agent_runner.py --help 含「必须钉模型」提示。"""
+    rc, out, err = run_script(root, skill_dir(root, skill) / "scripts" / "agent_runner.py", "--help")
+    text = out + err
+    ok = rc == 0 and "必须钉模型" in text
+    return ok, f"rc={rc} 含提示={'必须钉模型' in text}"
+
+
+@check("req0080-no-skillforge")
+def req0080_no_skillforge(root: Path, skill: str) -> tuple[bool, str]:
+    """技能文件不再指名外部项目 skill-forge。"""
+    sd = skill_dir(root, skill)
+    hits = [p.name for p in sd.rglob("*.md") if "skill-forge" in read_text(p)]
+    return (not hits), f"残留={hits}"
+
+
+@check("req0080-skill-en")
+def req0080_skill_en(root: Path, skill: str) -> tuple[bool, str]:
+    """writing-skills 单一事实源含 SKILL.en.md 的地位。"""
+    t = read_text(skill_dir(root, skill) / "references" / "writing-skills.md")
+    ok = "SKILL.en.md" in t and "不作事实源" in t
+    return ok, f"ok={ok}"
+
+
+@check("req0080-teleagent-degrade")
+def req0080_teleagent_degrade(root: Path, skill: str) -> tuple[bool, str]:
+    """SKILL.md 斜杠快捷含 TeleAgent 降级（自然语言点名）。"""
+    t = read_text(skill_dir(root, skill) / "SKILL.md")
+    ok = "TeleAgent" in t and "自然语言点名" in t
+    return ok, f"ok={ok}"
+
+
+@check("req0081-ttl-wired")
+def req0081_ttl_wired(root: Path, skill: str) -> tuple[bool, str]:
+    """台账 TTL 已接线：run_checks 读 `cleanup_ttl_gate_runs`、维护 `gate_runs` / `cleanup_age`、超期黄告警。"""
+    t = read_text(skill_dir(root, skill) / "scripts" / "run_checks.py")
+    need = ["cleanup_ttl_gate_runs", "cleanup_age", "gate_runs", "台账超期", "不阻断"]
+    miss = [n for n in need if n not in t]
+    return (not miss), f"缺={miss}"
+
+
 @check("req0078-glossary-terms")
 def req0078_glossary_terms(root: Path, skill: str) -> tuple[bool, str]:
     """glossary 含 剪枝 / 多跑（并集）/ 独立裁判 三条术语。"""
@@ -1649,6 +1800,7 @@ def main() -> int:
     cc = cleanup_counts(root, args.skill) if args.skill else None
     fc = fix_counts(root, args.skill) if args.skill else None
     result["cleanup_open"] = cc[0] if cc else None
+    ttl_info = cleanup_ttl(root, args.skill) if args.skill else None
 
     # V6：没有 REQ = 不适用，不是"绿"（技能单独部署 / 空需求目录时不得假绿）。
     if not discover(root, args.skill):
@@ -1690,6 +1842,11 @@ def main() -> int:
     if cc is not None and fc is not None:
         print(f"问题: open={cc[0] + fc[0]}（台账 {cc[0]} + fix 工单 {fc[0]}） "
               f"fixed={cc[1] + fc[1]}（台账 {cc[1]} + fix 工单 {fc[1]}）")
+    if ttl_info and ttl_info["overdue"]:
+        print(f"[warn] 台账超期（{ttl_info['ttl']} 次 Gate 内未结清，gate_runs={ttl_info['gate_runs']}）："
+              f"{', '.join(ttl_info['overdue'])}——请结清或经用户决定转 wontfix（TTL 仅告警、不阻断）")
+    elif ttl_info:
+        print(f"[info] 台账 TTL：gate_runs={ttl_info['gate_runs']}，无超期（阈值 {ttl_info['ttl']}）")
     print(f"converged: {str(result['converged']).lower()}")
     e = result["executable"]
     cleanup_note = ""
